@@ -1,0 +1,26 @@
+{
+  "_comment": "Real measured surface imagery, downloaded by tools/cosmodata/fetch_surface_maps.py. Bodies listed here render with measured imagery and are marked Measured in the provenance panel. Every other body keeps its procedural surface.",
+  "generated": "2026-07-30T18:21:14Z",
+  "maps": {
+    "earth": {
+      "file": "earth.jpg",
+      "width": 2048,
+      "height": 1024,
+      "source": "NASA Visible Earth \u2014 Blue Marble: Land Surface, Shallow Water and Shaded Topography",
+      "reference": "https://visibleearth.nasa.gov/images/57752/blue-marble-land-surface-shallow-water-and-shaded-topography",
+      "instrument": "Terra/MODIS composite",
+      "url": "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/land_shallow_topo_2048.jpg",
+      "retrieved": "2026-07-30"
+    },
+    "moon": {
+      "file": "moon.jpg",
+      "width": 1024,
+      "height": 512,
+      "source": "NASA SVS / LRO \u2014 LROC colour global mosaic",
+      "reference": "https://svs.gsfc.nasa.gov/4720",
+      "instrument": "Lunar Reconnaissance Orbiter / LROC WAC",
+      "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg",
+      "retrieved": "2026-07-30"
+    }
+  }
+}
