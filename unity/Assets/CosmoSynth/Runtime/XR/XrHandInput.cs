@@ -1,23 +1,26 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.XR;
 using UnityEngine.XR.Hands;
 
 namespace CosmoSynth.Runtime
 {
     /// <summary>
-    /// Turns hand tracking and controllers into the grab/scale gestures the universe responds to.
+    /// Turns hand tracking and controllers into the grab/scale gesture, and issues the commands
+    /// that are not tied to a surface — recentre and time warp.
     ///
     /// Both input paths converge on one place — <see cref="TabletopManipulator.UpdateHands"/> —
     /// which takes a pose and a boolean per hand and knows nothing about where they came from.
-    /// That is why the manipulator was written to accept injected poses from the start: the
-    /// manipulation logic has no input dependency to stub out, so a controller, a tracked hand
-    /// and a mouse in the editor all drive identical code, and a bug in the gesture recogniser
+    /// That is why the manipulator was written to accept injected poses: a controller, a tracked
+    /// hand and a mouse in the editor all drive identical code, so a bug in the gesture recogniser
     /// can never be confused with a bug in the manipulation.
     ///
-    /// Hands take priority when they are being tracked, because on Quest picking up a
-    /// controller stops hand tracking and putting it down resumes it — the user switches
-    /// modality mid-session without any explicit mode change, and the app should follow.
+    /// Hands take priority when tracked, because on Quest picking up a controller stops hand
+    /// tracking and putting it down resumes it — the user changes modality mid-session with no
+    /// explicit mode change, and the app should follow.
+    ///
+    /// Buttons are read through <see cref="XrInput"/> rather than from the devices directly. This
+    /// component used to poll them itself and bound the trigger to the grip test, which quietly
+    /// made every trigger pull a grab as well as a selection.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("CosmoSynth/XR Hand Input")]
@@ -30,134 +33,135 @@ namespace CosmoSynth.Runtime
         [Tooltip("Distance above which a closed pinch releases. Must exceed the close distance.")]
         [SerializeField] private float _pinchOpenMetres = 0.035f;
 
+        [Tooltip("A pinch that travels further than this is a drag, not a tap, and does not select.")]
+        [SerializeField] private float _tapTravelMetres = 0.03f;
+
         [Header("References")]
         [SerializeField] private TabletopManipulator _manipulator;
         [SerializeField] private XrRig _rig;
+        [SerializeField] private XrInput _input;
 
         private XRHandSubsystem _handSubsystem;
         private readonly List<XRHandSubsystem> _handSubsystems = new List<XRHandSubsystem>();
-        private readonly List<InputDevice> _devices = new List<InputDevice>();
 
-        // Latched per hand, so the hysteresis band below actually has an effect.
-        private bool _leftPinching;
-        private bool _rightPinching;
+        private SimulationClock _clock;
+
+        private PinchState _leftPinch;
+        private PinchState _rightPinch;
+
+        /// <summary>
+        /// A pinch, with enough history to tell a tap from a drag.
+        ///
+        /// The old rule was "exactly one hand pinching means select", which fires continuously
+        /// throughout a one-handed grab: hauling the universe past yourself re-selected whatever
+        /// the ray crossed on the way. A tap and a drag start identically, so the only honest
+        /// place to decide is on release, by how far the hand travelled.
+        /// </summary>
+        private struct PinchState
+        {
+            public bool Closed;
+            public Vector3 StartPosition;
+            public float Travel;
+            public bool TapReleased;
+        }
 
         /// <summary>Which input the user is currently driving with.</summary>
-        public enum Modality { None, Hands, Controllers }
+        public enum Modality
+        {
+            None,
+            Hands,
+            Controllers
+        }
 
         public Modality Active { get; private set; } = Modality.None;
 
         /// <summary>
         /// Raised when the user asks for the universe to be brought back in front of them.
-        /// Bound to either controller's face button — "I have lost it" has to be recoverable
-        /// without taking the headset off.
+        /// "I have lost it" has to be recoverable without taking the headset off.
         /// </summary>
         public event System.Action RecenterRequested;
-
-        private bool _recenterHeld;
-
-        private void PollRecenter()
-        {
-            bool pressed = ReadPrimaryButton(InputDeviceCharacteristics.Left) ||
-                           ReadPrimaryButton(InputDeviceCharacteristics.Right);
-
-            // Edge-triggered, or holding the button would fire it every frame.
-            if (pressed && !_recenterHeld) RecenterRequested?.Invoke();
-            _recenterHeld = pressed;
-        }
-
-        private SimulationClock _clock;
-        private bool _warpHeld;
-
-        /// <summary>
-        /// Time warp on the thumbstick: push right to speed time up, left to slow it, click to
-        /// pause.
-        ///
-        /// Stepped rather than continuous, and edge-triggered rather than repeating. The clock's
-        /// ladder runs from real time to a million years per second, so a continuous control
-        /// would make it impossible to land on a rate you can name — and impossible to return to
-        /// a moment you just flew past.
-        /// </summary>
-        private void PollTimeWarp()
-        {
-            if (_clock == null) _clock = FindAnyObjectByType<SimulationClock>();
-            if (_clock == null) return;
-
-            float axis = 0f;
-            bool click = false;
-
-            InputDevices.GetDevicesWithCharacteristics(
-                InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller, _devices);
-
-            foreach (InputDevice device in _devices)
-            {
-                if (device.TryGetFeatureValue(CommonUsages.primary2DAxis, out Vector2 stick) &&
-                    Mathf.Abs(stick.x) > Mathf.Abs(axis))
-                {
-                    axis = stick.x;
-                }
-                if (device.TryGetFeatureValue(CommonUsages.primary2DAxisClick, out bool pressed) && pressed)
-                {
-                    click = true;
-                }
-            }
-
-            const float deadzone = 0.65f;
-            bool active = Mathf.Abs(axis) > deadzone || click;
-
-            if (active && !_warpHeld)
-            {
-                if (click) _clock.TogglePause();
-                else if (axis > 0f) _clock.FasterWarp();
-                else _clock.SlowerWarp();
-            }
-            _warpHeld = active;
-        }
-
-        private bool ReadPrimaryButton(InputDeviceCharacteristics side)
-        {
-            InputDevices.GetDevicesWithCharacteristics(
-                InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller | side,
-                _devices);
-
-            if (_devices.Count == 0) return false;
-            return _devices[0].TryGetFeatureValue(CommonUsages.primaryButton, out bool pressed) && pressed;
-        }
 
         private void Awake()
         {
             if (_manipulator == null) _manipulator = FindAnyObjectByType<TabletopManipulator>();
             if (_rig == null) _rig = FindAnyObjectByType<XrRig>();
 
-            // Open is deliberately larger than close: a single threshold makes a pinch flicker
-            // on and off while the fingers hover near it, which reads as the object being
-            // dropped repeatedly.
+            // Open is deliberately larger than close: a single threshold makes a pinch flicker on
+            // and off while the fingers hover near it, which reads as the object being dropped
+            // repeatedly.
             if (_pinchOpenMetres <= _pinchCloseMetres) _pinchOpenMetres = _pinchCloseMetres * 1.6f;
         }
 
         private void Update()
         {
-            PollRecenter();
-            PollTimeWarp();
+            if (_input == null) _input = FindAnyObjectByType<XrInput>();
+            if (_input == null) return;
+
+            PollCommands();
 
             if (_manipulator == null) return;
+
+            bool wasGrabbing = _manipulator.IsGrabbing;
 
             if (TryReadHands(out HandPose left, out HandPose right))
             {
                 Active = Modality.Hands;
                 _manipulator.UpdateHands(left, right);
-                return;
             }
-
-            if (TryReadControllers(out left, out right))
+            else if (TryReadControllers(out left, out right))
             {
                 Active = Modality.Controllers;
                 _manipulator.UpdateHands(left, right);
-                return;
+            }
+            else
+            {
+                Active = Modality.None;
+                _manipulator.UpdateHands(default, default);
             }
 
-            Active = Modality.None;
-            _manipulator.UpdateHands(default, default);
+            // A tick on grabbing and on letting go, so the universe feels picked up rather than
+            // just starting to move.
+            if (_manipulator.IsGrabbing != wasGrabbing)
+            {
+                _input.Pulse(Hand.Left, 0.4f, 0.03f);
+                _input.Pulse(Hand.Right, 0.4f, 0.03f);
+            }
+        }
+
+        /// <summary>
+        /// Recentre and time warp.
+        ///
+        /// Time warp is on the face buttons, not the thumbstick. The stick used to do it, and it
+        /// was the worst control decision in the app: pushing forward on a thumbstick means "go
+        /// forward" to everyone who has ever worn a headset, and here it made the planets orbit
+        /// faster instead. The stick now flies; a secondary, occasional command belongs on Y and B.
+        /// </summary>
+        private void PollCommands()
+        {
+            if (_input.RecenterPressed)
+            {
+                RecenterRequested?.Invoke();
+                _input.Pulse(Hand.Right, 0.5f, 0.06f);
+            }
+
+            if (_clock == null) _clock = FindAnyObjectByType<SimulationClock>();
+            if (_clock == null) return;
+
+            if (_input.PauseTogglePressed)
+            {
+                _clock.TogglePause();
+                _input.Pulse(Hand.Right, 0.35f, 0.05f);
+            }
+            else if (_input.WarpFasterPressed)
+            {
+                _clock.FasterWarp();
+                _input.Pulse(Hand.Right, 0.25f, 0.03f);
+            }
+            else if (_input.WarpSlowerPressed)
+            {
+                _clock.SlowerWarp();
+                _input.Pulse(Hand.Left, 0.25f, 0.03f);
+            }
         }
 
         // ---- Hand tracking ---------------------------------------------------
@@ -173,89 +177,95 @@ namespace CosmoSynth.Runtime
                 SubsystemManager.GetSubsystems(_handSubsystems);
                 foreach (XRHandSubsystem subsystem in _handSubsystems)
                 {
-                    if (subsystem.running) { _handSubsystem = subsystem; break; }
+                    if (subsystem.running)
+                    {
+                        _handSubsystem = subsystem;
+                        break;
+                    }
                 }
                 if (_handSubsystem == null) return false;
             }
 
             bool anyTracked = false;
-
-            if (TryReadHand(_handSubsystem.leftHand, ref _leftPinching, out left)) anyTracked = true;
-            if (TryReadHand(_handSubsystem.rightHand, ref _rightPinching, out right)) anyTracked = true;
-
+            if (TryReadHand(_handSubsystem.leftHand, ref _leftPinch, out left)) anyTracked = true;
+            if (TryReadHand(_handSubsystem.rightHand, ref _rightPinch, out right)) anyTracked = true;
             return anyTracked;
         }
 
-        private bool TryReadHand(XRHand hand, ref bool pinching, out HandPose pose)
+        private bool TryReadHand(XRHand hand, ref PinchState pinch, out HandPose pose)
         {
             pose = default;
-            if (!hand.isTracked) { pinching = false; return false; }
+            pinch.TapReleased = false;
+
+            if (!hand.isTracked)
+            {
+                pinch.Closed = false;
+                return false;
+            }
 
             if (!hand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumb) ||
                 !hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose index))
             {
-                pinching = false;
+                pinch.Closed = false;
                 return false;
             }
 
             float separation = Vector3.Distance(thumb.position, index.position);
 
-            // Hysteresis: close below one threshold, release only above a larger one.
-            if (pinching) { if (separation > _pinchOpenMetres) pinching = false; }
-            else { if (separation < _pinchCloseMetres) pinching = true; }
+            // The grab point is between the fingertips — where the user perceives the pinch to be
+            // — rather than the palm, which lags it by a hand's length and makes a held object
+            // feel anchored to the wrong place.
+            Vector3 pinchPoint = ToWorld((thumb.position + index.position) * 0.5f);
 
-            // The grab point is between the fingertips — where the user perceives the pinch to
-            // be — rather than the palm or wrist, which lag behind it by a hand's length and
-            // make a held object feel anchored to the wrong place.
-            Vector3 pinchPoint = (thumb.position + index.position) * 0.5f;
+            // Hysteresis: close below one threshold, release only above a larger one.
+            if (pinch.Closed)
+            {
+                pinch.Travel = Mathf.Max(pinch.Travel, Vector3.Distance(pinchPoint, pinch.StartPosition));
+                if (separation > _pinchOpenMetres)
+                {
+                    pinch.Closed = false;
+                    pinch.TapReleased = pinch.Travel < _tapTravelMetres;
+                }
+            }
+            else if (separation < _pinchCloseMetres)
+            {
+                pinch.Closed = true;
+                pinch.StartPosition = pinchPoint;
+                pinch.Travel = 0f;
+            }
 
             Quaternion rotation = hand.GetJoint(XRHandJointID.Palm).TryGetPose(out Pose palm)
                 ? palm.rotation
                 : index.rotation;
 
-            pose = new HandPose(ToWorld(pinchPoint), rotation, pinching);
+            pose = new HandPose(pinchPoint, rotation, pinch.Closed);
             return true;
         }
 
         // ---- Controllers -----------------------------------------------------
 
+        /// <summary>
+        /// Grip, and only grip.
+        ///
+        /// This used to accept <c>grip || trigger &gt; 0.6</c>, on the reasoning that neither is
+        /// obviously "the" grab button on a Touch controller. That is true in isolation and wrong
+        /// in context: the trigger is the one control every headset application uses to click, and
+        /// spending it on grab meant selection and grab fired together every time. Grip is the
+        /// hold; the trigger is the click.
+        /// </summary>
         private bool TryReadControllers(out HandPose left, out HandPose right)
         {
-            // Presence is reported explicitly rather than inferred from the pose.
-            //
-            // The tempting test — "is the rotation still default?" — is quietly wrong: Unity's
-            // Quaternion equality compares by dot product, and two default (0,0,0,0) quaternions
-            // have a dot of 0, so they compare as NOT equal. A presence check written that way
-            // returns true even with no controllers connected, and the manipulator then acts on
-            // an identity pose sitting at the play-area origin.
-            bool hasLeft = TryReadController(InputDeviceCharacteristics.Left, out left);
-            bool hasRight = TryReadController(InputDeviceCharacteristics.Right, out right);
+            bool hasLeft = TryReadController(Hand.Left, out left);
+            bool hasRight = TryReadController(Hand.Right, out right);
             return hasLeft || hasRight;
         }
 
-        private bool TryReadController(InputDeviceCharacteristics side, out HandPose pose)
+        private bool TryReadController(Hand hand, out HandPose pose)
         {
             pose = default;
+            if (!_input.TryGetPose(hand, out Vector3 position, out Quaternion rotation)) return false;
 
-            InputDevices.GetDevicesWithCharacteristics(
-                InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller | side,
-                _devices);
-
-            if (_devices.Count == 0) return false;
-
-            InputDevice device = _devices[0];
-            if (!device.isValid) return false;
-            if (!device.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 position)) return false;
-
-            if (!device.TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion rotation))
-                rotation = Quaternion.identity;
-
-            // Grip, with the analogue trigger as a second way in — grabbing with either feels
-            // natural and neither is obviously "the" grab button on a Touch controller.
-            device.TryGetFeatureValue(CommonUsages.gripButton, out bool grip);
-            device.TryGetFeatureValue(CommonUsages.trigger, out float trigger);
-
-            pose = new HandPose(ToWorld(position), rotation, grip || trigger > 0.6f);
+            pose = new HandPose(ToWorld(position), rotation, _input.Grip(hand));
             return true;
         }
 
@@ -264,10 +274,10 @@ namespace CosmoSynth.Runtime
         /// <summary>
         /// Convert a tracking-space point into world space.
         ///
-        /// Both hand joints and controller poses arrive in the XR Origin's tracking space, not
-        /// in world space. Feeding them to the manipulator unconverted works right up until the
-        /// rig is moved or the world is rescaled — at which point the grab anchor drifts away
-        /// from the hand, which looks like a tracking fault rather than a coordinate bug.
+        /// Hand joints and controller poses both arrive in the XR Origin's tracking space. Feeding
+        /// them to the manipulator unconverted works right up until the rig moves or the world is
+        /// rescaled, at which point the grab anchor drifts away from the hand — which looks like a
+        /// tracking fault rather than a coordinate bug.
         /// </summary>
         private Vector3 ToWorld(Vector3 trackingSpacePoint)
         {
@@ -278,29 +288,18 @@ namespace CosmoSynth.Runtime
         }
 
         /// <summary>
-        /// True when the pointing hand is pinching but the other is not — the gesture the
-        /// selector treats as a click.
-        ///
-        /// A two-hand pinch is the scale gesture, so it must not also fire selection, or every
-        /// resize would re-target whatever the ray happened to cross.
+        /// True on the frame a pinch is released without having travelled — a tap, which the
+        /// selector treats as a click. False throughout a drag, so grabbing the universe never
+        /// also re-targets the selection.
         /// </summary>
-        public bool SelectPinch => _rightPinching ^ _leftPinching;
+        public bool SelectTap => _rightPinch.TapReleased || _leftPinch.TapReleased;
 
-        /// <summary>Human-readable state, for the HUD.</summary>
-        public string StatusLine
+        /// <summary>Human-readable state, for the status card.</summary>
+        public string StatusLine => Active switch
         {
-            get
-            {
-                switch (Active)
-                {
-                    case Modality.Hands:
-                        return $"hands{(_leftPinching ? " L-pinch" : "")}{(_rightPinching ? " R-pinch" : "")}";
-                    case Modality.Controllers:
-                        return "controllers";
-                    default:
-                        return "no XR input";
-                }
-            }
-        }
+            Modality.Hands => $"hands{(_leftPinch.Closed ? " L-pinch" : "")}{(_rightPinch.Closed ? " R-pinch" : "")}",
+            Modality.Controllers => "controllers",
+            _ => "no XR input"
+        };
     }
 }

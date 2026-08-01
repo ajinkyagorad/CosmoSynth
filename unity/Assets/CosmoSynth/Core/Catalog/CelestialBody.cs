@@ -208,6 +208,33 @@ namespace CosmoSynth.Core
         /// </summary>
         public Double3? PositionKm;
 
+        /// <summary>
+        /// A sampled trajectory about <see cref="ParentId"/>, for motion no conic describes.
+        ///
+        /// Takes precedence over <see cref="Orbit"/> when both are present. Spacecraft use this;
+        /// see <see cref="TrajectoryTable"/> for why elements are the wrong tool for them.
+        /// </summary>
+        public TrajectoryTable Trajectory;
+
+        /// <summary>
+        /// A fixed place on the parent's rotating surface, for anything that has landed.
+        /// Mutually exclusive with <see cref="Orbit"/> and <see cref="Trajectory"/>.
+        /// </summary>
+        public SurfaceSite? Site;
+
+        /// <summary>
+        /// First and last instants this body's position is claimed to be known, or null for
+        /// "always" — which is the right answer for a planet and the wrong one for a spacecraft.
+        ///
+        /// Elements and surface sites are closed forms: they will happily evaluate a century
+        /// after the spacecraft burned up, drawing a Cassini that is still orbiting Saturn. The
+        /// window is how a catalogue says when its own data stopped meaning anything. See
+        /// <see cref="KnownAt"/>.
+        /// </summary>
+        public CosmicTime? KnownFrom;
+
+        public CosmicTime? KnownUntil;
+
         public BodyOrientation? Orientation;
 
         // ---- Star-specific --------------------------------------------------
@@ -229,6 +256,18 @@ namespace CosmoSynth.Core
 
         /// <summary>Relative path of the elevation map, if one is shipped.</summary>
         public string HeightmapTexture;
+
+        /// <summary>A shipped mesh to draw instead of a sphere, for spacecraft.</summary>
+        public ModelReference? Model;
+
+        /// <summary>One line of description for the selection panel, where the source supplies one.</summary>
+        public string Summary;
+
+        /// <summary>
+        /// When and how the mission ended, for something no longer operating. Empty for
+        /// anything still working, so the UI can distinguish "silent since 2003" from "live".
+        /// </summary>
+        public string Epitaph;
 
         /// <summary>Fallback display colour, linear RGB in [0,1], used before textures stream in.</summary>
         public Double3 DisplayColor = new Double3(0.6, 0.6, 0.6);
@@ -293,6 +332,80 @@ namespace CosmoSynth.Core
         }
 
         public bool IsStar => Type == BodyType.Star;
+
+        /// <summary>
+        /// Whether this body's position is actually known at an instant.
+        ///
+        /// A sampled trajectory answers this from its own ends: beyond them the interpolator
+        /// clamps, which would leave a spacecraft parked at its final position looking exactly
+        /// like one still flying. Elements and surface sites have no ends of their own, so they
+        /// rely on <see cref="KnownFrom"/> and <see cref="KnownUntil"/> — without which Cassini
+        /// would still be circling Saturn nine years after it entered the atmosphere.
+        ///
+        /// Callers that draw things are expected to check this and draw nothing. Absence of
+        /// data is a fact about the data, and showing a plausible position instead is the one
+        /// outcome this catalogue exists to prevent.
+        /// </summary>
+        public bool KnownAt(CosmicTime time)
+        {
+            if (Trajectory != null && !Trajectory.Covers(time)) return false;
+            if (KnownFrom.HasValue && time.SecondsPastJ2000 < KnownFrom.Value.SecondsPastJ2000) return false;
+            if (KnownUntil.HasValue && time.SecondsPastJ2000 > KnownUntil.Value.SecondsPastJ2000) return false;
+            return true;
+        }
+
+        /// <summary>How a body's position is arrived at. See <see cref="Placement"/>.</summary>
+        public enum PlacementKind
+        {
+            /// <summary>Nothing says where it is; it sits at its parent's centre.</summary>
+            None = 0,
+            /// <summary>A fixed offset in its parent's frame — an exoplanet host star.</summary>
+            Fixed,
+            /// <summary>A two-body conic osculating at one epoch.</summary>
+            Elements,
+            /// <summary>Measured state vectors, interpolated between samples.</summary>
+            Sampled,
+            /// <summary>A latitude and longitude carried by the host's rotation.</summary>
+            Surface,
+        }
+
+        /// <summary>
+        /// Which mechanism actually places this body, in the order the frame builder picks.
+        ///
+        /// Derived from the fields rather than stored beside them, so it cannot disagree with
+        /// them — the same reason the input legend is generated from the binding table. Anything
+        /// presenting a body has to answer this question, and three callers each re-deriving it
+        /// from four nullable fields is three chances to answer it differently from
+        /// <see cref="CelestialCatalog.BuildFrameTree"/>, which is the only answer that matters.
+        /// </summary>
+        public PlacementKind Placement
+        {
+            get
+            {
+                if (Trajectory != null) return PlacementKind.Sampled;
+                if (Site.HasValue) return PlacementKind.Surface;
+                if (Orbit.HasValue) return PlacementKind.Elements;
+                if (PositionKm.HasValue) return PlacementKind.Fixed;
+                return PlacementKind.None;
+            }
+        }
+
+        /// <summary>
+        /// One line saying over what span this body's position is claimed, for display.
+        ///
+        /// Lives here rather than in the interface because it is a statement about the data, and
+        /// because the window is the whole reason a spacecraft is ever hidden: a user who sees
+        /// nothing where a spacecraft should be has no other way to find out whether it is
+        /// missing or simply not known at this instant. Returns null for a body with no window,
+        /// which is every planet, so a caller can leave the row out entirely.
+        /// </summary>
+        public string DescribeCoverage()
+        {
+            if (!KnownFrom.HasValue && !KnownUntil.HasValue) return null;
+            if (!KnownUntil.HasValue) return $"position known from {KnownFrom.Value.ToIso8601()}";
+            if (!KnownFrom.HasValue) return $"position known until {KnownUntil.Value.ToIso8601()}";
+            return $"position known {KnownFrom.Value.ToIso8601()} to {KnownUntil.Value.ToIso8601()}";
+        }
 
         public override string ToString() => $"{Name} ({Type}, id={Id})";
 
@@ -360,6 +473,69 @@ namespace CosmoSynth.Core
             else if (Type == BodyType.Planet || Type == BodyType.Moon)
             {
                 problems.Add($"{Type} '{Id}' has no orbit.");
+            }
+
+            if (Trajectory != null && string.IsNullOrEmpty(ParentId))
+                problems.Add("A body with a sampled trajectory must name the parent it is measured against.");
+
+            // ---- Coverage window -------------------------------------------
+            //
+            // The window is what stops a dead spacecraft being drawn, so it is worth as much
+            // as its own consistency. All three of these shipped wrong at least once.
+
+            if (KnownFrom.HasValue && KnownUntil.HasValue &&
+                KnownUntil.Value.SecondsPastJ2000 <= KnownFrom.Value.SecondsPastJ2000)
+            {
+                problems.Add(
+                    $"Coverage window ends at {KnownUntil.Value.SecondsPastJ2000:G9} s, which is not " +
+                    $"after it starts at {KnownFrom.Value.SecondsPastJ2000:G9} s. Nothing is ever drawn.");
+            }
+
+            // A window wider than the table behind it is a claim with no data under it. It does
+            // no visible harm — KnownAt takes the intersection — which is exactly why it went
+            // unnoticed on all eight sampled missions, running past the samples by between one
+            // and 148 days. A catalogue that overstates its own extent will eventually be
+            // believed by something that does not cross-check.
+            if (Trajectory != null)
+            {
+                if (KnownFrom.HasValue && !Trajectory.Covers(KnownFrom.Value))
+                {
+                    problems.Add(
+                        $"KnownFrom {KnownFrom.Value.SecondsPastJ2000:G9} s is outside the sampled " +
+                        $"trajectory, which runs {Trajectory.Start.SecondsPastJ2000:G9} to " +
+                        $"{Trajectory.End.SecondsPastJ2000:G9} s.");
+                }
+                if (KnownUntil.HasValue && !Trajectory.Covers(KnownUntil.Value))
+                {
+                    problems.Add(
+                        $"KnownUntil {KnownUntil.Value.SecondsPastJ2000:G9} s is outside the sampled " +
+                        $"trajectory, which runs {Trajectory.Start.SecondsPastJ2000:G9} to " +
+                        $"{Trajectory.End.SecondsPastJ2000:G9} s.");
+                }
+            }
+
+            // A spacecraft with nothing saying where it is is a name and a mesh. It would build
+            // a frame anyway — FixedEphemeris at the parent's centre — and be drawn inside the
+            // planet it was supposed to be orbiting.
+            if (Type == BodyType.Spacecraft &&
+                !Orbit.HasValue && Trajectory == null && !Site.HasValue && !PositionKm.HasValue)
+            {
+                problems.Add(
+                    "Spacecraft has no orbit, trajectory, site or fixed position, so nothing says " +
+                    "where it is; it would be placed at its parent's centre.");
+            }
+
+            if (Site.HasValue)
+            {
+                if (string.IsNullOrEmpty(ParentId))
+                    problems.Add("A body on a surface must name the body it is standing on.");
+                if (System.Math.Abs(Site.Value.LatitudeDeg) > 90.0)
+                    problems.Add($"Site latitude {Site.Value.LatitudeDeg} is outside [-90, 90].");
+
+                // Two placements would silently let one win. Which one is not something the
+                // reader should have to know.
+                if (Orbit.HasValue || Trajectory != null)
+                    problems.Add("A body cannot both be landed and be in flight; it has a site and an orbit.");
             }
 
             if (Atmosphere != null && Atmosphere.IsPresent)
@@ -445,6 +621,14 @@ namespace CosmoSynth.Core
                 json["orientation"] = orientationJson;
             }
 
+            if (KnownFrom.HasValue) json["knownFromSecondsPastJ2000"] = JsonValue.Number(KnownFrom.Value.SecondsPastJ2000);
+            if (KnownUntil.HasValue) json["knownUntilSecondsPastJ2000"] = JsonValue.Number(KnownUntil.Value.SecondsPastJ2000);
+            if (Trajectory != null) json["trajectory"] = Trajectory.ToJson();
+            if (Site.HasValue) json["site"] = Site.Value.ToJson();
+            if (Model.HasValue) json["model"] = Model.Value.ToJson();
+            if (!string.IsNullOrEmpty(Summary)) json["summary"] = JsonValue.String(Summary);
+            if (!string.IsNullOrEmpty(Epitaph)) json["epitaph"] = JsonValue.String(Epitaph);
+
             if (Atmosphere != null) json["atmosphere"] = Atmosphere.ToJson();
             if (!string.IsNullOrEmpty(AlbedoTexture)) json["albedoTexture"] = JsonValue.String(AlbedoTexture);
             if (!string.IsNullOrEmpty(HeightmapTexture)) json["heightmapTexture"] = JsonValue.String(HeightmapTexture);
@@ -470,8 +654,18 @@ namespace CosmoSynth.Core
                 SpectralType = json["spectralType"].AsString(),
                 AlbedoTexture = json["albedoTexture"].AsString(),
                 HeightmapTexture = json["heightmapTexture"].AsString(),
-                ProceduralSeed = json["proceduralSeed"].AsLong()
+                ProceduralSeed = json["proceduralSeed"].AsLong(),
+                Summary = json["summary"].AsString(),
+                Epitaph = json["epitaph"].AsString()
             };
+
+            if (json.ContainsKey("knownFromSecondsPastJ2000"))
+                body.KnownFrom = new CosmicTime(json["knownFromSecondsPastJ2000"].AsDouble());
+            if (json.ContainsKey("knownUntilSecondsPastJ2000"))
+                body.KnownUntil = new CosmicTime(json["knownUntilSecondsPastJ2000"].AsDouble());
+            if (json.ContainsKey("trajectory")) body.Trajectory = TrajectoryTable.FromJson(json["trajectory"]);
+            if (json.ContainsKey("site")) body.Site = SurfaceSite.FromJson(json["site"]);
+            if (json.ContainsKey("model")) body.Model = ModelReference.FromJson(json["model"]);
 
             body.Type = Enum.TryParse(json["type"].AsString("Unknown"), ignoreCase: true, out BodyType type)
                 ? type

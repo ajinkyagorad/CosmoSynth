@@ -126,6 +126,51 @@ namespace CosmoSynth.Core
     }
 
     /// <summary>
+    /// An origin bolted to a rotating body's surface: a landing site, a rover, a base.
+    ///
+    /// A lander does not orbit anything, and it is not stationary either — it is carried round
+    /// once per day by the body it sits on. Storing that as a sampled trajectory would need
+    /// dozens of points per rotation to interpolate a circle accurately, forever. Storing it as
+    /// a latitude and a longitude and rotating it through the same IAU model the planet itself
+    /// is drawn with costs six numbers, is exact at every epoch, and cannot drift out of step
+    /// with the planet's own rotation, because it *is* the planet's rotation.
+    ///
+    /// Note that this frame's origin translates but, like every frame in this tree, stays
+    /// inertially oriented. Which way the lander points is a rendering question, answered from
+    /// the same rotation matrix.
+    /// </summary>
+    public sealed class SurfaceFixedEphemeris : IEphemerisSource
+    {
+        private readonly BodyOrientation _orientation;
+        private readonly Double3 _bodyFixedKm;
+        private readonly double _angularRateRadPerSec;
+
+        /// <summary>Position in the body's rotating frame, km from its centre.</summary>
+        public Double3 BodyFixedPositionKm => _bodyFixedKm;
+
+        public SurfaceFixedEphemeris(BodyOrientation orientation, Double3 bodyFixedKm)
+        {
+            _orientation = orientation;
+            _bodyFixedKm = bodyFixedKm;
+            _angularRateRadPerSec =
+                orientation.RotationRateDegPerDay * MathD.Deg2Rad / Constants.SecondsPerDay;
+        }
+
+        public StateVector GetStateInParent(CosmicTime time)
+        {
+            Double3 position = _orientation.BodyFixedToIcrf(time) * _bodyFixedKm;
+
+            // Rigid rotation: v = omega x r, with omega along the pole. Reporting zero velocity
+            // instead would be wrong by 0.24 km/s at Mars's equator, and anything that computes
+            // a relative velocity — a rendezvous readout, an entry model — would quietly
+            // inherit the error.
+            Double3 omega = _orientation.PoleDirectionAt(time) * _angularRateRadPerSec;
+
+            return new StateVector(position, Double3.Cross(omega, position));
+        }
+    }
+
+    /// <summary>
     /// A node in the nested reference-frame tree: solar-system barycentre, a planet's centre,
     /// a moon's centre, a landing site, and so on.
     ///

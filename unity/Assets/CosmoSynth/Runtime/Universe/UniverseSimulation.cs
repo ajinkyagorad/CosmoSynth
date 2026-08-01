@@ -151,6 +151,57 @@ namespace CosmoSynth.Runtime
         }
 
         /// <summary>
+        /// The same read, for a binary asset: spacecraft meshes rather than JSON.
+        ///
+        /// Kept separate from <see cref="ReadStreamingAsset"/> rather than folded into it,
+        /// because <c>downloadHandler.text</c> decodes as UTF-8 and would quietly mangle every
+        /// byte sequence that is not valid UTF-8 — which for a mesh is most of them. The
+        /// failure would be a model that loads without error and is made of noise.
+        /// </summary>
+        public IEnumerator ReadStreamingAssetBytes(string relativePath, Action<byte[]> onComplete)
+        {
+            string fullPath = Path.Combine(Application.streamingAssetsPath, relativePath);
+            bool needsWebRequest = fullPath.Contains("://");
+
+            if (!needsWebRequest)
+            {
+                byte[] bytes = null;
+                if (File.Exists(fullPath))
+                {
+                    try
+                    {
+                        bytes = File.ReadAllBytes(fullPath);
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.LogError($"[CosmoSynth] Failed to read '{fullPath}': {exception.Message}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[CosmoSynth] Asset not found at '{fullPath}'.");
+                }
+
+                onComplete?.Invoke(bytes);
+                yield break;
+            }
+
+            using (var request = UnityWebRequest.Get(fullPath))
+            {
+                yield return request.SendWebRequest();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogError($"[CosmoSynth] Failed to read '{fullPath}': {request.error}");
+                    onComplete?.Invoke(null);
+                    yield break;
+                }
+
+                onComplete?.Invoke(request.downloadHandler.data);
+            }
+        }
+
+        /// <summary>
         /// Load a catalogue from StreamingAssets and build the scene from it.
         ///
         /// Synchronous, and therefore desktop and editor only — see
@@ -365,7 +416,17 @@ namespace CosmoSynth.Runtime
         /// <summary>True when the view is not showing true relative proportions.</summary>
         public bool IsPresentationScaled => _sizeCompression < 1f || !Mathf.Approximately(_radiusExaggeration, 1f);
 
-        /// <summary>Nearest body to an absolute position, and its surface distance in km.</summary>
+        /// <summary>
+        /// Nearest body to an absolute position, and its surface distance in km.
+        ///
+        /// Bodies outside their coverage window are skipped. Their position is not merely
+        /// unknown, it is stale: <see cref="CelestialBodyView.UpdateState"/> stops writing one
+        /// the moment the clock leaves the window, so what is left is wherever the body was
+        /// when it stopped being known — or, if it was never known since the catalogue loaded,
+        /// the closed form extrapolated to an epoch it does not cover. Answering "what is
+        /// nearest" with a spacecraft that is not there, at a position that is not real, is
+        /// exactly the fabrication the window exists to prevent.
+        /// </summary>
         public CelestialBodyView NearestBody(Double3 absoluteKm, out double surfaceDistanceKm)
         {
             CelestialBodyView nearest = null;
@@ -373,7 +434,7 @@ namespace CosmoSynth.Runtime
 
             foreach (var view in _views.Values)
             {
-                if (view == null) continue;
+                if (view == null || !view.IsKnown) continue;
 
                 double centreDistance = Double3.Distance(absoluteKm, view.AbsolutePositionKm);
                 double radius = view.Body.EquatorialRadiusKm ?? 0.0;

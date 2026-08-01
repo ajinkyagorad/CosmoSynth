@@ -1,26 +1,32 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
 using CosmoSynth.Core;
 using UnityEngine;
-using UnityEngine.XR;
 
 namespace CosmoSynth.Runtime
 {
     /// <summary>
-    /// A panel that rides on the back of the left hand, for navigating from a handheld globe
-    /// out to interstellar distances.
+    /// A panel that rides on the back of the left hand, for navigating from a handheld globe out
+    /// to interstellar distances.
     ///
     /// The problem it solves is that the universe spans twenty-two orders of magnitude and a
-    /// pinch-and-pull gesture covers maybe two per motion. Getting from Earth to Proxima
-    /// Centauri by hand would take dozens of pulls, and there is nothing to aim at on the way —
-    /// the destination is invisible until you are nearly there. So the dashboard offers the two
-    /// things gesture cannot: a scale ladder with named rungs, and a destination list.
+    /// pinch-and-pull gesture covers maybe two per motion. Getting from Earth to Proxima Centauri
+    /// by hand would take dozens of pulls, and there is nothing to aim at on the way — the
+    /// destination is invisible until you are nearly there. So the dashboard offers the two things
+    /// gesture cannot: a scale ladder with named rungs, and a destination list.
     ///
-    /// Wrist-mounted rather than floating, because a panel fixed in the room is somewhere you
-    /// have to walk back to, and one that follows your gaze is always in the way. Turning your
-    /// wrist over to check something and turning it away to dismiss it is the interaction people
-    /// already have with a watch, and it costs no buttons.
+    /// Wrist-mounted rather than floating, because a panel fixed in the room is somewhere you have
+    /// to walk back to, and one that follows your gaze is always in the way. Turning your wrist
+    /// over to check something and turning it away to dismiss it is the interaction people already
+    /// have with a watch, and it costs no buttons.
+    ///
+    /// <b>Glance and engage are separate states</b>, which is the fix for the control collision
+    /// this panel used to cause. Turning the wrist reveals it; that is all. It claims no input, so
+    /// reading it while flying does not also drive it — the previous version acted on the left
+    /// stick whenever it was merely visible, so flying with the wrist tilted up scrolled the
+    /// destination list and steered at the same time. Pressing X engages it, at which point it
+    /// takes the stick from locomotion through <see cref="XrInput.ClaimNavigationStick"/> and says
+    /// so by lighting its edge.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("CosmoSynth/Wrist Dashboard")]
@@ -28,105 +34,79 @@ namespace CosmoSynth.Runtime
     {
         [Header("Placement")]
         [Tooltip("Offset from the tracked hand, in metres: right, up, forward.")]
-        [SerializeField] private Vector3 _wristOffset = new Vector3(0f, 0.045f, -0.02f);
-
-        [Tooltip("Panel width in metres. A watch face, not a monitor.")]
-        [SerializeField] private float _widthMetres = 0.13f;
+        [SerializeField] private Vector3 _wristOffset = new Vector3(0f, 0.055f, -0.02f);
 
         [Tooltip("Degrees between the palm normal and the gaze below which the panel shows.")]
         [SerializeField] private float _revealAngleDegrees = 55f;
 
+        [Tooltip("Rows of the list shown at once. The list is windowed around the selection.")]
+        [SerializeField] private int _visibleRows = 6;
+
         private UniverseSimulation _simulation;
         private XrRig _rig;
         private TabletopManipulator _manipulator;
-        private XrHandInput _input;
+        private XrInput _input;
         private SimulationClock _clock;
 
-        private Transform _panel;
-        private TextMesh _text;
-        private Material _backingMaterial;
-        private readonly List<InputDevice> _devices = new List<InputDevice>();
-
+        private CosmoPanel _panel;
         private int _selectedRung;
         private int _selectedDestination;
-        private bool _stickHeld;
+        private bool _showingDestinations;
+        private bool _engaged;
         private float _visibility;
+
+        /// <summary>Where a rung puts the middle of the view.</summary>
+        private enum Centre
+        {
+            /// <summary>The focused body itself.</summary>
+            Focus,
+
+            /// <summary>What the focused body orbits — a planet, for a moon.</summary>
+            Primary,
+
+            /// <summary>The star at the top of the focused body's chain.</summary>
+            Star
+        }
 
         /// <summary>
         /// The scale ladder.
         ///
         /// Rungs are named for what you can do at them rather than for a number, because
         /// "1.4e-9 units per kilometre" tells a user nothing and "the whole system on a table"
-        /// tells them everything. The metres value is the diameter the reference span occupies
-        /// in the room.
+        /// tells them everything. The metres value is the diameter the reference span occupies in
+        /// the room.
+        ///
+        /// Two things were wrong with the table this replaces, and between them they made the top
+        /// four rungs useless.
+        ///
+        /// <b>The sizes were written for a room and the universe hangs 70 cm from your face.</b>
+        /// "Whole system" asked for 31 AU across 2.2 m, so the outer planets orbited at 1.1 m
+        /// radius about a point closer than that — the user was inside Neptune's orbit, seeing it
+        /// as a band across the view rather than as a ring on a table. A span the anchor distance
+        /// can actually hold is about 0.7 m, which is a comfortable 50 degrees.
+        ///
+        /// <b>They changed the scale and left the origin alone.</b> Zooming out to "Whole system"
+        /// while anchored on Earth leaves the viewer on Earth — one point on Earth's own orbit —
+        /// so the system is seen from inside it and edge-on to the very ellipse the rung is named
+        /// after. A rung has to say what is at the middle of the view as well as how wide it is.
         /// </summary>
-        private static readonly (string Name, double SpanKm, float RoomMetres)[] ScaleRungs =
+        private static readonly (string Name, double SpanKm, float RoomMetres, Centre Centre)[] ScaleRungs =
         {
-            ("Held in hand",        2.0 * Constants.EarthEquatorialRadius,      0.30f),
-            ("Room-scale planet",   2.0 * Constants.EarthEquatorialRadius,      2.50f),
-            ("Earth and Moon",      2.0 * 384400.0,                             1.60f),
-            ("Inner system",        2.0 * 1.6 * Constants.AstronomicalUnit,     2.00f),
-            ("Whole system",        2.0 * 31.0 * Constants.AstronomicalUnit,    2.20f),
-            ("Nearest stars",       2.0 * 12.0 * Constants.LightYear,           2.50f),
-            ("Solar neighbourhood", 2.0 * 130.0 * Constants.LightYear,          3.00f),
+            ("Held in hand", 2.0 * Constants.EarthEquatorialRadius, 0.28f, Centre.Focus),
+            ("Room-scale planet", 2.0 * Constants.EarthEquatorialRadius, 2.50f, Centre.Focus),
+            ("Planet and moons", 2.0 * 384400.0, 0.55f, Centre.Primary),
+            ("Inner system", 2.0 * 1.6 * Constants.AstronomicalUnit, 0.60f, Centre.Star),
+            ("Whole system", 2.0 * 31.0 * Constants.AstronomicalUnit, 0.70f, Centre.Star),
+            ("Nearest stars", 2.0 * 12.0 * Constants.LightYear, 0.70f, Centre.Star),
+            ("Solar neighbourhood", 2.0 * 130.0 * Constants.LightYear, 0.70f, Centre.Star),
         };
 
         private readonly List<CelestialBodyView> _destinations = new List<CelestialBodyView>();
 
         private void Awake()
         {
-            BuildPanel();
-            _visibility = 0f;
-        }
-
-        private void BuildPanel()
-        {
-            var panelObject = new GameObject("Wrist Panel");
-            panelObject.transform.SetParent(transform, false);
-            _panel = panelObject.transform;
-
-            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            quad.name = "Backing";
-            DestroyImmediate(quad.GetComponent<Collider>());
-            quad.transform.SetParent(_panel, false);
-            quad.transform.localPosition = new Vector3(0f, 0f, 0.003f);
-            quad.transform.localScale = new Vector3(_widthMetres, _widthMetres * 0.95f, 1f);
-
-            _backingMaterial = CosmoShaders.Material(CosmoShaders.UnlitTransparent);
-            _backingMaterial.mainTexture = BuildBackingTexture();
-            _backingMaterial.renderQueue = 3200;
-            quad.GetComponent<MeshRenderer>().sharedMaterial = _backingMaterial;
-
-            var textObject = new GameObject("Text");
-            textObject.transform.SetParent(_panel, false);
-            textObject.transform.localPosition = new Vector3(-_widthMetres * 0.44f, _widthMetres * 0.42f, 0f);
-
-            _text = textObject.AddComponent<TextMesh>();
-            _text.characterSize = 0.0034f;
-            _text.fontSize = 72;
-            _text.anchor = TextAnchor.UpperLeft;
-            _text.alignment = TextAlignment.Left;
-            _text.color = new Color(0.82f, 0.94f, 0.98f);
-            _text.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        }
-
-        private static Texture2D BuildBackingTexture()
-        {
-            const int size = 64;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            var pixels = new Color32[size * size];
-
-            for (int y = 0; y < size; y++)
-            for (int x = 0; x < size; x++)
-            {
-                float edge = Mathf.Min(Mathf.Min(x, size - 1 - x), Mathf.Min(y, size - 1 - y)) / (size * 0.5f);
-                float alpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(edge * 7f)) * 0.88f;
-                pixels[y * size + x] = new Color(0.015f, 0.03f, 0.055f, alpha);
-            }
-
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
-            return texture;
+            _panel = new CosmoPanel(transform, "Wrist Panel");
+            _panel.Opacity = 0f;
         }
 
         private void Update()
@@ -143,9 +123,9 @@ namespace CosmoSynth.Runtime
             if (_simulation == null) _simulation = FindAnyObjectByType<UniverseSimulation>();
             if (_rig == null) _rig = FindAnyObjectByType<XrRig>();
             if (_manipulator == null) _manipulator = FindAnyObjectByType<TabletopManipulator>();
-            if (_input == null) _input = FindAnyObjectByType<XrHandInput>();
+            if (_input == null) _input = FindAnyObjectByType<XrInput>();
             if (_clock == null) _clock = FindAnyObjectByType<SimulationClock>();
-            return _simulation != null && _rig != null;
+            return _simulation != null && _rig != null && _input != null;
         }
 
         /// <summary>
@@ -159,10 +139,7 @@ namespace CosmoSynth.Runtime
         {
             if (!TryGetLeftHandPose(out Vector3 position, out Quaternion rotation))
             {
-                // No tracked left hand: park it out of the way rather than at the world origin,
-                // where it would sit inside whatever the user is looking at.
-                _visibility = Mathf.MoveTowards(_visibility, 0f, Time.unscaledDeltaTime * 4f);
-                ApplyVisibility();
+                Dismiss();
                 return;
             }
 
@@ -172,29 +149,22 @@ namespace CosmoSynth.Runtime
             Vector3 toCamera = (camera.position - transform.position).normalized;
 
             // The panel's own forward is the wrist's; the angle between it and the gaze says
-            // whether the wrist is turned over.
+            // whether the wrist is turned over. Engaging holds it open, so a deliberate
+            // interaction is not cancelled by the small wrist movements the interaction requires.
             float angle = Vector3.Angle(transform.forward, toCamera);
-            bool revealed = angle < _revealAngleDegrees;
+            bool revealed = _engaged || angle < _revealAngleDegrees;
 
             _visibility = Mathf.MoveTowards(_visibility, revealed ? 1f : 0f, Time.unscaledDeltaTime * 5f);
-            ApplyVisibility();
+            _panel.Opacity = Mathf.SmoothStep(0f, 1f, _visibility);
 
-            // Face the reader squarely once revealed, so the text is not read at a slant.
-            if (_visibility > 0.01f)
-            {
-                _panel.rotation = Quaternion.LookRotation(transform.position - camera.position, camera.up);
-            }
+            if (!revealed && _engaged && _visibility <= 0.01f) Disengage();
         }
 
-        private void ApplyVisibility()
+        private void Dismiss()
         {
-            bool visible = _visibility > 0.01f;
-            if (_panel.gameObject.activeSelf != visible) _panel.gameObject.SetActive(visible);
-            if (!visible) return;
-
-            _panel.localScale = Vector3.one * Mathf.SmoothStep(0.6f, 1f, _visibility);
-            Color colour = _text.color;
-            _text.color = new Color(colour.r, colour.g, colour.b, _visibility);
+            _visibility = Mathf.MoveTowards(_visibility, 0f, Time.unscaledDeltaTime * 4f);
+            _panel.Opacity = _visibility;
+            if (_visibility <= 0.01f) Disengage();
         }
 
         private bool TryGetLeftHandPose(out Vector3 position, out Quaternion rotation)
@@ -202,13 +172,7 @@ namespace CosmoSynth.Runtime
             position = Vector3.zero;
             rotation = Quaternion.identity;
 
-            InputDevices.GetDevicesWithCharacteristics(
-                InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller |
-                InputDeviceCharacteristics.Left, _devices);
-
-            if (_devices.Count == 0 || !_devices[0].isValid) return false;
-            if (!_devices[0].TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 local)) return false;
-            _devices[0].TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion localRotation);
+            if (!_input.TryGetPose(Hand.Left, out Vector3 local, out Quaternion localRotation)) return false;
 
             Transform space = _rig.Origin != null ? _rig.Origin.CameraFloorOffsetObject.transform : null;
             position = space != null ? space.TransformPoint(local) : local;
@@ -217,33 +181,51 @@ namespace CosmoSynth.Runtime
         }
 
         /// <summary>
-        /// Thumbstick on the left hand drives the dashboard: up/down moves the highlight,
-        /// left/right switches between the scale ladder and the destination list, click acts.
+        /// X engages and dismisses. While engaged the left stick moves the highlight and switches
+        /// page, and the right trigger acts — the same trigger that selects a body, because both
+        /// mean "the thing I am pointing at, do it".
         /// </summary>
         private void PollInput()
         {
-            if (_visibility < 0.5f) return;   // ignore input while the wrist is turned away
-
-            InputDevices.GetDevicesWithCharacteristics(
-                InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller |
-                InputDeviceCharacteristics.Left, _devices);
-            if (_devices.Count == 0) return;
-
-            _devices[0].TryGetFeatureValue(CommonUsages.primary2DAxis, out Vector2 stick);
-            _devices[0].TryGetFeatureValue(CommonUsages.primary2DAxisClick, out bool click);
-            _devices[0].TryGetFeatureValue(CommonUsages.primaryButton, out bool primary);
-
-            bool active = stick.magnitude > 0.6f || click || primary;
-            if (active && !_stickHeld)
+            if (_input.DashboardTogglePressed && _visibility > 0.4f)
             {
-                if (click || primary) Activate();
-                else if (Mathf.Abs(stick.y) > Mathf.Abs(stick.x)) MoveSelection(stick.y > 0 ? -1 : 1);
-                else _showingDestinations = !_showingDestinations;
+                if (_engaged) Disengage();
+                else Engage();
             }
-            _stickHeld = active;
+
+            if (!_engaged) return;
+
+            Vector2Int step = _input.StickStep(Hand.Left);
+
+            if (step.y != 0)
+            {
+                MoveSelection(step.y > 0 ? -1 : 1);
+                _input.Pulse(Hand.Left, 0.2f, 0.015f);
+            }
+            else if (step.x != 0)
+            {
+                _showingDestinations = !_showingDestinations;
+                _input.Pulse(Hand.Left, 0.25f, 0.02f);
+            }
+
+            if (_input.SelectPressed) Activate();
         }
 
-        private bool _showingDestinations;
+        private void Engage()
+        {
+            if (!_input.ClaimNavigationStick(this)) return;
+            _engaged = true;
+            _panel.SetActive(true);
+            _input.Pulse(Hand.Left, 0.3f, 0.03f);
+        }
+
+        private void Disengage()
+        {
+            if (!_engaged) return;
+            _engaged = false;
+            _panel.SetActive(false);
+            _input.ReleaseNavigationStick(this);
+        }
 
         private void MoveSelection(int delta)
         {
@@ -251,7 +233,9 @@ namespace CosmoSynth.Runtime
             {
                 RefreshDestinations();
                 if (_destinations.Count > 0)
+                {
                     _selectedDestination = (_selectedDestination + delta + _destinations.Count) % _destinations.Count;
+                }
             }
             else
             {
@@ -261,6 +245,8 @@ namespace CosmoSynth.Runtime
 
         private void Activate()
         {
+            _input.Pulse(Hand.Right, 0.6f, 0.07f);
+
             if (_showingDestinations)
             {
                 RefreshDestinations();
@@ -270,9 +256,8 @@ namespace CosmoSynth.Runtime
                 _simulation.SetFocus(target.Body.Id);
                 _simulation.Origin.SetOrigin(target.AbsolutePositionKm);
 
-                // Arrive at a scale where the destination is actually legible, rather than at
-                // whatever scale the previous system happened to be viewed at.
-                double radiusKm = target.Body.EquatorialRadiusKm ?? Constants.EarthEquatorialRadius;
+                // Arrive at a scale where the destination is legible, rather than at whatever
+                // scale the previous system happened to be viewed at.
                 _manipulator?.FrameBodyAtSize(target, 0.55f);
 
                 Debug.Log($"[CosmoSynth] travelled to {target.Body.Name} " +
@@ -280,15 +265,75 @@ namespace CosmoSynth.Runtime
             }
             else
             {
-                (string name, double spanKm, float roomMetres) = ScaleRungs[_selectedRung];
-                _simulation.Origin.SetUnitsPerKm(roomMetres / spanKm);
-                Debug.Log($"[CosmoSynth] scale set to '{name}' — {roomMetres:F2} m across {spanKm:G4} km");
+                ApplyScaleRung(_selectedRung);
             }
         }
 
+        /// <summary>Number of rungs on the scale ladder.</summary>
+        public static int ScaleRungCount => ScaleRungs.Length;
+
+        /// <summary>The name of a rung, for diagnostics and for the harness.</summary>
+        public static string ScaleRungName(int index) =>
+            ScaleRungs[Mathf.Clamp(index, 0, ScaleRungs.Length - 1)].Name;
+
         /// <summary>
-        /// Destinations, nearest first: the focused body's own system, then whatever else is in
-        /// the catalogue. Rebuilt on demand rather than cached, because bodies move.
+        /// Jump to a rung on the scale ladder.
+        ///
+        /// Public so the play-mode harness can exercise the real path rather than reproducing the
+        /// arithmetic. A screenshot of a scale the harness computed for itself proves the
+        /// harness's arithmetic; only a screenshot of the scale this method sets proves the app's.
+        /// </summary>
+        public void ApplyScaleRung(int index)
+        {
+            if (_simulation == null) _simulation = FindAnyObjectByType<UniverseSimulation>();
+            if (_simulation == null) return;
+
+            (string name, double spanKm, float roomMetres, Centre centre) =
+                ScaleRungs[Mathf.Clamp(index, 0, ScaleRungs.Length - 1)];
+
+            _simulation.Origin.SetUnitsPerKm(roomMetres / spanKm);
+
+            CelestialBodyView middle = Resolve(centre);
+            if (middle != null) _simulation.Origin.SetOrigin(middle.AbsolutePositionKm);
+
+            Debug.Log($"[CosmoSynth] scale set to '{name}' — {roomMetres:F2} m across {spanKm:G4} km, " +
+                      $"centred on {(middle != null ? middle.Body.Name : "the current view")}");
+        }
+
+        /// <summary>
+        /// The body a rung puts at the middle of the view, walking up the catalogue's parent chain
+        /// from the current focus.
+        /// </summary>
+        private CelestialBodyView Resolve(Centre centre)
+        {
+            CelestialBodyView focus = _simulation.FocusBody;
+            if (focus == null || _simulation.Catalog == null) return focus;
+            if (centre == Centre.Focus) return focus;
+
+            CelestialBody body = focus.Body;
+
+            if (centre == Centre.Primary)
+            {
+                if (string.IsNullOrEmpty(body.ParentId)) return focus;
+                return _simulation.Views.TryGetValue(body.ParentId, out CelestialBodyView primary)
+                    ? primary
+                    : focus;
+            }
+
+            // Centre.Star: climb until a star, with a hop limit so a malformed catalogue cannot
+            // spin here forever.
+            for (int hops = 0; hops < 16 && body != null && !body.IsStar; hops++)
+            {
+                body = string.IsNullOrEmpty(body.ParentId) ? null : _simulation.Catalog.Get(body.ParentId);
+            }
+
+            return body != null && _simulation.Views.TryGetValue(body.Id, out CelestialBodyView star)
+                ? star
+                : focus;
+        }
+
+        /// <summary>
+        /// Destinations, nearest first. Rebuilt on demand rather than cached, because bodies move.
         /// </summary>
         private void RefreshDestinations()
         {
@@ -316,53 +361,95 @@ namespace CosmoSynth.Runtime
         {
             if (_visibility < 0.01f) return;
 
-            var text = new StringBuilder();
-            text.AppendLine(_showingDestinations ? "DESTINATIONS" : "SCALE");
-            text.AppendLine();
+            Transform camera = _rig.Camera.transform;
+            float distance = _panel.FaceViewer(camera);
+
+            var body = new StringBuilder();
+            int selectedLine;
 
             if (_showingDestinations)
             {
                 RefreshDestinations();
-                int start = Mathf.Max(0, _selectedDestination - 2);
-                for (int i = start; i < _destinations.Count && i < start + 6; i++)
-                {
-                    CelestialBodyView view = _destinations[i];
-                    double distance = Double3.Distance(_simulation.Origin.OriginKm, view.AbsolutePositionKm);
-                    string marker = i == _selectedDestination ? ">" : " ";
-                    text.AppendLine($"{marker}{Truncate(view.Body.Name, 13),-13} {FormatDistance(distance)}");
-                }
-                if (_destinations.Count == 0) text.AppendLine(" (loading)");
+                selectedLine = AppendDestinations(body);
             }
             else
             {
-                for (int i = 0; i < ScaleRungs.Length; i++)
-                {
-                    string marker = i == _selectedRung ? ">" : " ";
-                    text.AppendLine($"{marker}{ScaleRungs[i].Name}");
-                }
+                selectedLine = AppendRungs(body);
             }
 
-            text.AppendLine();
-            if (_clock != null) text.AppendLine($"time  {_clock.WarpLabel}");
-            text.AppendLine($"scale 1km={_simulation.Origin.UnitsPerKm:G2}u");
-            text.Append("stick move · click go");
+            // The footer is separated by a blank line so it never reads as another list row, and
+            // the selection bar can never land on it.
+            body.AppendLine();
+            body.Append(_clock != null ? $"{_clock.WarpLabel}   " : "");
+            body.Append($"1 km = {_simulation.Origin.UnitsPerKm:G2} u");
 
-            _text.text = text.ToString();
+            if (!_engaged)
+            {
+                body.AppendLine();
+                body.Append("press X to use");
+            }
+
+            _panel.SetContent(_showingDestinations ? "DESTINATIONS" : "SCALE", body.ToString(), distance);
+            _panel.SetSelectedLine(_engaged ? selectedLine : -1);
         }
 
-        private static string Truncate(string text, int length) =>
-            string.IsNullOrEmpty(text) ? "" : (text.Length <= length ? text : text.Substring(0, length - 1) + "…");
+        /// <summary>Append the scale ladder; returns the body line the selection sits on.</summary>
+        private int AppendRungs(StringBuilder body)
+        {
+            int first = WindowStart(_selectedRung, ScaleRungs.Length);
+            int last = Mathf.Min(ScaleRungs.Length, first + _visibleRows);
+
+            for (int i = first; i < last; i++)
+            {
+                if (i > first) body.AppendLine();
+                body.Append(ScaleRungs[i].Name);
+            }
+            return _selectedRung - first;
+        }
+
+        /// <summary>Append the destination list; returns the body line the selection sits on.</summary>
+        private int AppendDestinations(StringBuilder body)
+        {
+            if (_destinations.Count == 0)
+            {
+                body.Append("loading…");
+                return -1;
+            }
+
+            int first = WindowStart(_selectedDestination, _destinations.Count);
+            int last = Mathf.Min(_destinations.Count, first + _visibleRows);
+
+            for (int i = first; i < last; i++)
+            {
+                CelestialBodyView view = _destinations[i];
+                double distance = Double3.Distance(_simulation.Origin.OriginKm, view.AbsolutePositionKm);
+                if (i > first) body.AppendLine();
+                body.Append($"{view.Body.Name}  ·  {FormatDistance(distance)}");
+            }
+            return _selectedDestination - first;
+        }
+
+        /// <summary>
+        /// Keep the selection inside the visible window, and keep the window inside the list — so
+        /// a selection near either end does not leave the panel half empty.
+        /// </summary>
+        private int WindowStart(int selected, int count)
+        {
+            if (count <= _visibleRows) return 0;
+            return Mathf.Clamp(selected - _visibleRows / 2, 0, count - _visibleRows);
+        }
 
         private static string FormatDistance(double km)
         {
-            if (km < 1e6) return $"{km:N0}km";
-            if (km < 0.05 * Constants.LightYear) return $"{km / Constants.AstronomicalUnit:N1}AU";
-            return $"{km / Constants.LightYear:N1}ly";
+            if (km < 1e6) return $"{km:N0} km";
+            if (km < 0.05 * Constants.LightYear) return $"{km / Constants.AstronomicalUnit:N1} AU";
+            return $"{km / Constants.LightYear:N1} ly";
         }
 
         private void OnDestroy()
         {
-            if (_backingMaterial != null && Application.isPlaying) Destroy(_backingMaterial);
+            _input?.ReleaseNavigationStick(this);
+            _panel?.Destroy();
         }
     }
 }

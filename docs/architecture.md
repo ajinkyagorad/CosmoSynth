@@ -76,6 +76,8 @@ adding a `using UnityEngine` to Core is a compile error, not a code-review conve
 | `KeplerSolver` | Kepler's equation | Danby's cubic iteration with a **bisection fallback**, because near `e → 1` with `M → 0` the derivative vanishes exactly where the root is and Newton methods stall |
 | `UniversalKepler` | Conic-free propagation | Exists partly as a second, independent derivation to cross-validate the first. Also the right tool for spacecraft, whose orbit may pass through `e = 1` mid-burn where classical elements are singular |
 | `ReferenceFrame` | Nested frame tree | **Translation only.** Body rotation lives in `BodyOrientation`, mirroring NAIF's SPK/PCK split. Folding rotation in would make a moon's orbit appear to precess with its planet's spin |
+| `TrajectoryTable` | Sampled state vectors | **Uniform** spacing, so sample times are implied by an epoch and a step rather than stored — a third of the data. The cost is that one step has to serve a whole mission, so a gravity assist is cut across rather than followed; see `docs/accuracy.md`. Knows its own ends, and callers must ask: clamping past them would park a spacecraft at its last known position looking exactly like one still flying |
+| `SurfaceFixedEphemeris` | Landers and rovers | A latitude and longitude rotated by the host's own IAU model, rather than a sampled path. Exact at any epoch, six numbers, and it cannot drift out of step with the planet's rotation because it *is* that rotation |
 | `ScaleSpace` | LOD, bands, navigation | Selection is by **apparent pixels**, not distance, so one rule covers a 500 m asteroid and a gas giant and adapts to any display resolution automatically |
 | `CelestialCatalog` | Bodies and hierarchy | Validates physical plausibility. The AI architect and the procedural generator go through the same gate as imported data |
 | `Provenance` | Per-field data lineage | Per *field*, not per object. An object's orbit can be measured while its surface is invented |
@@ -223,7 +225,11 @@ effectively as it hid this non-bug.
 Named so they are visible decisions rather than oversights:
 
 - **N-body propagation.** Two-body Kepler is adequate for a viewer and is not adequate for
-  mission planning. `SampledEphemeris` already exists and is the cheaper correct fix.
+  mission planning. `SampledEphemeris` already exists, is the cheaper correct fix, and is now
+  fed real JPL data for the spacecraft — the planets have simply not been converted yet.
+- **Articulated spacecraft.** Models are baked to a single static mesh: node hierarchies are
+  flattened at import. A solar array that tracks the Sun would need the hierarchy kept, and
+  nothing currently animates one.
 - **Multi-pass band compositor.** One pass with adaptive clip planes is sufficient for a single
   system.
 - **Real terrain data.** The cube-sphere quadtree and LOD selection are built and tested; only

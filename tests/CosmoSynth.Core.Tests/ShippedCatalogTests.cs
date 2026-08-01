@@ -70,6 +70,7 @@ namespace CosmoSynth.Tests
                 ("moon", 4.9028001e3, 1737.4, 1e-3),
                 ("mars", 4.2828375e4, 3396.19, 1e-3),
                 ("jupiter", 1.26686531e8, 71492.0, 3e-2),
+                ("saturn", 3.7931206e7, 60268.0, 3e-2),
                 ("titan", 8978.14, 2574.7, 1e-3),
             };
 
@@ -79,7 +80,11 @@ namespace CosmoSynth.Tests
                 Assert.True(body != null, $"'{id}' is missing from the shipped catalogue");
                 Assert.Relative(gm, body.GravitationalParameter, tolerance, $"[{id}] gravitational parameter");
                 Assert.True(body.EquatorialRadiusKm.HasValue, $"[{id}] has no radius");
-                Assert.Relative(radiusKm, body.EquatorialRadiusKm.Value, 5e-2, $"[{id}] equatorial radius");
+                // 1e-3, not the 5e-2 this used to allow. A five per cent bound on a radius is
+                // wide enough to accept the volumetric mean in place of the equatorial one,
+                // which is exactly the substitution the importer was making: Jupiter shipped at
+                // 69 911 km against the 71 492 written right here, 2.2% out, and passed.
+                Assert.Relative(radiusKm, body.EquatorialRadiusKm.Value, 1e-3, $"[{id}] equatorial radius");
             }
 
             // Derived quantities must come out at their textbook values.
@@ -88,6 +93,70 @@ namespace CosmoSynth.Tests
             Assert.Equal(11.18, earth.EscapeSpeed.Value, 0.05, "Earth escape speed (km/s)");
             Assert.Equal(5514.0, earth.DensityKgPerM3.Value, 30.0, "Earth mean density (kg/m^3)");
             Assert.Equal(5.972e24, earth.MassKg, 5e21, "Earth mass (kg)");
+        }
+
+        [Test("the flattened planets are actually flattened")]
+        public static void PlanetShapesAreNotAllSpheres()
+        {
+            // Every one of these shipped as a perfect sphere, because Horizons labels the giants
+            // "Equat. radius (1 bar)" and the scraper's pattern only allowed "Equ." and
+            // "Equatorial" — so no equatorial radius was found, the volumetric mean was used in
+            // its place, and the published polar radius was never read at all. Jupiter was
+            // 69 911 x 69 911 km. Its real flattening is 0.065, which is one of the most visible
+            // things about it.
+            //
+            // Figures are the IAU/WGCCRE ones, independent of the import path.
+            var expected = new (string id, double flattening)[]
+            {
+                ("jupiter", 0.06487),
+                ("saturn", 0.09796),
+                ("uranus", 0.02293),
+                ("neptune", 0.01708),
+                ("earth", 0.0033528),
+                ("mars", 0.00589),
+            };
+
+            foreach (var (id, flattening) in expected)
+            {
+                var body = Catalog.Get(id);
+                Assert.True(body != null, $"'{id}' is missing from the shipped catalogue");
+                Assert.Relative(flattening, body.Flattening, 5e-3, $"[{id}] flattening");
+            }
+
+            // And a body with no published shape stays explicitly spherical rather than
+            // acquiring an invented one.
+            Assert.Equal(0.0, Catalog.Get("moon").Flattening, 1e-12,
+                "the Moon has no separately published polar radius and must stay spherical");
+        }
+
+        [Test("no radius claims a source that did not publish it")]
+        public static void RadiiCiteWhatTheyCameFrom()
+        {
+            // A polar radius is Measured only where Horizons publishes one, or publishes a
+            // flattening to combine with the equatorial radius. Everywhere else it is derived or
+            // assumed, and must say so. Mars shipped its *volumetric mean* radius as a Measured
+            // polar radius — 13.7 km from the IAU value, citing a source that says something
+            // else — which is the failure this checks for.
+            foreach (var body in Catalog.Bodies)
+            {
+                if (!body.PolarRadiusKm.HasValue || !body.EquatorialRadiusKm.HasValue) continue;
+
+                FieldProvenance provenance = body.Provenance.Get("polarRadiusKm");
+                Assert.True(provenance.Class != ProvenanceClass.Unknown,
+                    $"[{body.Id}] polar radius has no provenance at all");
+
+                if (provenance.Class != ProvenanceClass.Measured) continue;
+
+                // The one thing a Measured polar radius must never be is the volumetric mean,
+                // which is what it silently was. R_vol = (a^2 c)^(1/3) reproduces it exactly,
+                // so a "measured" polar radius equal to the mean radius of its own ellipsoid is
+                // the fingerprint of that substitution.
+                double a = body.EquatorialRadiusKm.Value, c = body.PolarRadiusKm.Value;
+                double meanRadius = System.Math.Cbrt(a * a * c);
+                Assert.True(System.Math.Abs(c - meanRadius) > 1e-6 || System.Math.Abs(a - c) < 1e-9,
+                    $"[{body.Id}] polar radius {c:F3} km is its own volumetric mean radius, which is " +
+                    "what the importer used to substitute for a value Horizons never published");
+            }
         }
 
         [Test("orbits in the catalogue reproduce the real orbital periods")]

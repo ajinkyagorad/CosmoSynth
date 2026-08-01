@@ -292,12 +292,31 @@ def fetch_body_constants(body: str) -> Dict[str, float]:
             # with published mean radii instead of relying on this.
             rf"\bRadius{_UNITS}=\s*({_NUMBER})",
         ],
+        # Horizons abbreviates this three ways and the first version of this pattern only
+        # allowed two of them. "Equat. radius (1 bar)" is how all four giant planets are
+        # labelled, so none of them matched, the caller fell back to the volumetric mean, and
+        # Jupiter shipped with an equatorial radius of 69911 km instead of 71492 — which,
+        # combined with the polar radius never being read at all, made every gas giant
+        # perfectly spherical. One optional-group pattern covers Equ., Equat. and Equatorial.
         "equatorialRadiusKm": [
-            rf"Equ\.?\s*radius{_UNITS}=\s*({_NUMBER})",
-            rf"Equatorial\s*radius{_UNITS}=\s*({_NUMBER})",
+            rf"Equ(?:at(?:orial)?)?\.?\s*radius{_UNITS}=\s*({_NUMBER})",
         ],
         "polarRadiusKm": [
             rf"Polar\s*radius{_UNITS}=\s*({_NUMBER})",
+        ],
+        # Published directly for the giants, and worth having as an independent check on the
+        # pair above rather than as a source: a and c are what the renderer needs.
+        #
+        # Two spellings, and only one of them is a number. The giants print "Flattening =
+        # 0.06487" while Earth and Mars print "Flattening = 1/298.257", so a single pattern
+        # reads Earth's as 1 — a body flattened to a disc, which is exactly the sort of
+        # plausible-looking wrong value this scraper exists to avoid producing. The reciprocal
+        # form is captured separately and inverted below.
+        "_flatteningReciprocal": [
+            rf"Flattening{_UNITS}=\s*1\s*/\s*({_NUMBER})",
+        ],
+        "flattening": [
+            rf"Flattening{_UNITS}=\s*({_NUMBER})",
         ],
         "siderealRotationPeriodDays": [
             rf"Sidereal\s*rot\.?\s*period{_UNITS}=\s*({_NUMBER})\s*d\b",
@@ -329,6 +348,13 @@ def fetch_body_constants(body: str) -> Dict[str, float]:
                 except ValueError:
                     continue
                 break
+
+    # "1/298.257" is the same quantity written the other way up. Resolved here so callers see
+    # one field with one meaning, and so the direct pattern -- which would otherwise read the
+    # leading 1 -- can never win for a body that uses the reciprocal form.
+    denominator = result.pop("_flatteningReciprocal", None)
+    if denominator:
+        result["flattening"] = 1.0 / denominator
 
     return result
 

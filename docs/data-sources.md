@@ -20,6 +20,70 @@ vectors in the validation fixture.
 - **Etiquette**: JPL asks that automated clients keep their request rate modest. The importers
   sleep between requests by default (`--delay`).
 
+### NASA 3D Resources — <https://github.com/nasa/NASA-3D-Resources>
+
+The 24 spacecraft models. Fetched by `tools/cosmodata/build_spacecraft.py`, converted to the
+compact `.csmesh` format, and committed under `StreamingAssets/CosmoSynth/models/`.
+
+NASA publishes these into the public domain, subject to the [media usage
+guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/). **Some models in that
+repository are contributed rather than NASA-authored**; the ones shipped here were checked
+individually, and each catalogue record carries the source URL and licence string.
+
+Five things about this source are worth recording, because each cost time:
+
+- **Almost every model is Draco-compressed** (`KHR_draco_mesh_compression`, and *required*, not
+  optional). Draco is an entropy-coded connectivity format; decoding it is not a job for a
+  hand-written parser. The importer shells out to `npx @gltf-transform/cli` for that one step.
+  This is the only tool in `tools/cosmodata/` that is not standard-library-only, and the
+  dependency is confined to it: the `.csmesh` output is committed, so building the app, running
+  the tests and using the data need nothing but Python.
+- **A silent decode failure looks exactly like a success.** A well-known Python mesh library,
+  handed one of these models without a Draco decoder present, returns a scene with the right
+  number of meshes and *exactly* the right triangle count — with every vertex at the origin,
+  and no error raised. Triangle counts therefore prove nothing. `gltf.validate_decoded` checks
+  that the geometry occupies space, which is the only cheap check that actually distinguishes
+  the two.
+- **Some models are simply authored inside out.** glTF fixes both conventions at once, so a
+  model's winding and its normals must agree; SOHO's disagree on 100% of faces, and no amount of
+  correct importing changes that. Which half is wrong is settled by the enclosed signed volume,
+  which reads the geometry and no normals at all: SOHO encloses +0.0149 of its bounding box
+  cubed, squarely among the 23 models that need no repair, so its winding is right and its
+  normals are inverted. `gltf.orient_outward` negates them, says so in the build log, and
+  refuses to guess where the volume is near zero because the model is open. Separately, a
+  mirroring node transform requires the winding to be reversed as the specification says —
+  which the importer did for its own axis conversion and not for transforms inside the model.
+- **A failed import must not leave the previous answer behind.** The mesh builder used to write
+  straight to its output path, so a model the importer *correctly refused* kept whatever was
+  there from the run before — and `--skip-models` adopts any `.csmesh` it finds by name, so the
+  next partial rebuild put the rejected file back into the catalogue as though it had just been
+  made. That is how the inside-out SOHO nearly shipped after the check had already caught it:
+  the refusal was printed, the old file survived, a later run adopted it. Meshes are now written
+  to a temporary name and moved into place only when complete; any failure deletes the target
+  outright and says so; an adopted mesh is re-validated against its own header before being
+  trusted; `--only` merges into the existing catalogue instead of replacing it with the one
+  mission it rebuilt; and the run reports any mesh no mission claims. Same lesson as the Draco
+  trap one step further out — the artefact on disk is not evidence of the run meant to make it.
+- **Model scale is not recorded in the files.** The exports carry no consistent unit, so each
+  model's longest axis is scaled to a published dimension from the mission table. The dimension
+  is a measurement; that the longest axis *is* that dimension is an assumption about the
+  export. The pair is recorded as **Inferred**, naming the dimension used.
+
+Two missions were dropped rather than approximated. New Horizons has a JPL ephemeris but no
+model in the repository, and substituting another probe's body would have put something that is
+not New Horizons at New Horizons' position under its name.
+
+### Spacecraft trajectories — JPL Horizons
+
+The same service as the planets, queried for spacecraft NAIF identifiers. Coverage is
+per-object and finite, and was verified rather than assumed — `-25` is Lunar Prospector, not
+Magellan; JPL's Webb ephemeris ends in July 2031; Dawn's begins at 12:40 on launch day, so a
+request starting at midnight that morning returns nothing at all.
+
+Every spacecraft therefore ships with the window over which its position is claimed to be
+known, and is **not drawn outside it**. See `docs/accuracy.md` for why that matters more for
+spacecraft than for planets.
+
 ### IAU WGCCRE rotational elements
 
 Pole right ascension and declination, prime meridian angle and rotation rate for 20 bodies.
@@ -85,7 +149,6 @@ Listed with the licence question that has to be answered before each is shipped.
 | Earth elevation | [Copernicus DEM](https://dataspace.copernicus.eu/) | **ESA/EU, not NASA.** Copernicus has its own licence with attribution requirements and some redistribution conditions |
 | Weather and climate | [Copernicus CDS](https://cds.climate.copernicus.eu/) | Copernicus licence; registration required |
 | Ocean bathymetry | [GEBCO](https://www.gebco.net/) | Free to use with a required attribution statement |
-| Spacecraft models | [NASA 3D Resources](https://nasa3d.arc.nasa.gov/) | Mostly public, **but some models are contributed** and carry separate terms — check per asset |
 | Borders and coastlines | [Natural Earth](https://www.naturalearthdata.com/) | Public domain |
 | Roads and places | [OpenStreetMap](https://www.openstreetmap.org/) | **ODbL.** Share-alike. Has real implications for a commercial product — read it before integrating |
 
@@ -115,9 +178,17 @@ python3 tools/cosmodata/build_solar_system.py
 
 # The validation fixture (10 bodies, 260 state vectors, ~104 kB)
 python3 tools/cosmodata/fetch_validation_fixture.py
+
+# The spacecraft: trajectories from JPL, models from NASA (24 craft, ~470 kB + ~2 MB of meshes)
+python3 tools/cosmodata/build_spacecraft.py
+
+# ...just the trajectories, leaving the committed meshes alone
+python3 tools/cosmodata/build_spacecraft.py --skip-models
 ```
 
-Both use only the Python standard library. Both are network-bound and take a few minutes.
+All are network-bound and take a few minutes. All use only the Python standard library except
+`build_spacecraft.py`, which additionally needs `npx` on the path to decompress Draco geometry —
+see the NASA 3D Resources section above.
 
 Generated files carry a `source` field naming the query and the retrieval date, and every body
 carries per-field provenance. Nothing in the pipeline invents a value silently: where Horizons

@@ -33,6 +33,16 @@ namespace CosmoSynth.Runtime
         public const string Rim = "CosmoSynth/Rim";
 
         /// <summary>
+        /// What <c>TextMesh</c> draws glyphs with.
+        ///
+        /// Listed for the same reason as everything else here: every label and panel in the app is
+        /// created at runtime, so no asset references this shader and the build step is free to
+        /// strip it. The failure would be the whole interface — every panel, every body label —
+        /// rendering as pink quads on the device while the editor showed it working perfectly.
+        /// </summary>
+        public const string Text = "GUI/Text Shader";
+
+        /// <summary>
         /// The complete set. The editor writes exactly this into Always Included Shaders, so
         /// adding a shader to the runtime means adding it here and nowhere else.
         /// </summary>
@@ -45,6 +55,7 @@ namespace CosmoSynth.Runtime
             ParticlesUnlit,
             Atmosphere,
             Rim,
+            Text,
         };
 
         /// <summary>

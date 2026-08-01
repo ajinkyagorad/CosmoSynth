@@ -82,7 +82,7 @@
       "parent": "sun",
       "gravitationalParameter": 22031.86855,
       "equatorialRadiusKm": 2440.53,
-      "polarRadiusKm": 2439.4,
+      "polarRadiusKm": 2437.1415693758227,
       "bondAlbedo": 0.088,
       "geometricAlbedo": 0.106,
       "orbit": {
@@ -115,9 +115,8 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Measured",
-          "source": "JPL Horizons body constants",
-          "reference": "https://ssd.jpl.nasa.gov/horizons/",
+          "class": "Inferred",
+          "source": "derived from the published equatorial and volumetric mean radii assuming an oblate spheroid, c = Rvol^3 / a^2; JPL Horizons publishes no polar radius for this body",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -161,7 +160,7 @@
       "parent": "sun",
       "gravitationalParameter": 324858.592,
       "equatorialRadiusKm": 6051.893,
-      "polarRadiusKm": 6051.84,
+      "polarRadiusKm": 6051.734001392452,
       "bondAlbedo": 0.76,
       "geometricAlbedo": 0.65,
       "orbit": {
@@ -212,9 +211,8 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Measured",
-          "source": "JPL Horizons body constants",
-          "reference": "https://ssd.jpl.nasa.gov/horizons/",
+          "class": "Inferred",
+          "source": "derived from the published equatorial and volumetric mean radii assuming an oblate spheroid, c = Rvol^3 / a^2; JPL Horizons publishes no polar radius for this body",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -269,7 +267,7 @@
       "parent": "sun",
       "gravitationalParameter": 398600.435436,
       "equatorialRadiusKm": 6378.137,
-      "polarRadiusKm": 6371.01,
+      "polarRadiusKm": 6356.752314245179,
       "bondAlbedo": 0.306,
       "geometricAlbedo": 0.367,
       "orbit": {
@@ -379,7 +377,7 @@
       "parent": "sun",
       "gravitationalParameter": 42828.375662,
       "equatorialRadiusKm": 3396.19,
-      "polarRadiusKm": 3389.92,
+      "polarRadiusKm": 3376.186407093928,
       "bondAlbedo": 0.25,
       "geometricAlbedo": 0.15,
       "orbit": {
@@ -488,8 +486,8 @@
       ],
       "parent": "sun",
       "gravitationalParameter": 126686531.9,
-      "equatorialRadiusKm": 69911.0,
-      "polarRadiusKm": 69911.0,
+      "equatorialRadiusKm": 71492.0,
+      "polarRadiusKm": 66854.0,
       "bondAlbedo": 0.503,
       "geometricAlbedo": 0.52,
       "orbit": {
@@ -540,8 +538,9 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Inferred",
-          "source": "assumed spherical: no separate polar radius published",
+          "class": "Measured",
+          "source": "JPL Horizons body constants",
+          "reference": "https://ssd.jpl.nasa.gov/horizons/",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -595,8 +594,8 @@
       ],
       "parent": "sun",
       "gravitationalParameter": 37931206.234,
-      "equatorialRadiusKm": 58232.0,
-      "polarRadiusKm": 58232.0,
+      "equatorialRadiusKm": 60268.0,
+      "polarRadiusKm": 54364.0,
       "bondAlbedo": 0.342,
       "geometricAlbedo": 0.47,
       "orbit": {
@@ -647,8 +646,9 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Inferred",
-          "source": "assumed spherical: no separate polar radius published",
+          "class": "Measured",
+          "source": "JPL Horizons body constants",
+          "reference": "https://ssd.jpl.nasa.gov/horizons/",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -702,8 +702,8 @@
       ],
       "parent": "sun",
       "gravitationalParameter": 5793950.6103,
-      "equatorialRadiusKm": 25362.0,
-      "polarRadiusKm": 25362.0,
+      "equatorialRadiusKm": 25559.0,
+      "polarRadiusKm": 24973.0,
       "bondAlbedo": 0.3,
       "geometricAlbedo": 0.51,
       "orbit": {
@@ -755,8 +755,9 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Inferred",
-          "source": "assumed spherical: no separate polar radius published",
+          "class": "Measured",
+          "source": "JPL Horizons body constants",
+          "reference": "https://ssd.jpl.nasa.gov/horizons/",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -810,8 +811,8 @@
       ],
       "parent": "sun",
       "gravitationalParameter": 6835099.97,
-      "equatorialRadiusKm": 24624.0,
-      "polarRadiusKm": 24624.0,
+      "equatorialRadiusKm": 24766.0,
+      "polarRadiusKm": 24342.0,
       "bondAlbedo": 0.29,
       "geometricAlbedo": 0.41,
       "orbit": {
@@ -863,8 +864,9 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Inferred",
-          "source": "assumed spherical: no separate polar radius published",
+          "class": "Measured",
+          "source": "JPL Horizons body constants",
+          "reference": "https://ssd.jpl.nasa.gov/horizons/",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -998,7 +1000,7 @@
       "parent": "mars",
       "gravitationalParameter": 0.0007087546066894452,
       "equatorialRadiusKm": 13.0,
-      "polarRadiusKm": 11.08,
+      "polarRadiusKm": 13.0,
       "bondAlbedo": 0.071,
       "geometricAlbedo": 0.06,
       "orbit": {
@@ -1030,9 +1032,8 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Measured",
-          "source": "JPL Horizons body constants",
-          "reference": "https://ssd.jpl.nasa.gov/horizons/",
+          "class": "Inferred",
+          "source": "assumed spherical: the published equatorial and volumetric mean radii imply a flattening of 0.38, which means the body is irregular rather than an oblate spheroid, so no polar radius can be derived from them",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -1070,7 +1071,7 @@
       "parent": "mars",
       "gravitationalParameter": 9.615569648120313e-05,
       "equatorialRadiusKm": 7.8,
-      "polarRadiusKm": 6.27,
+      "polarRadiusKm": 7.8,
       "bondAlbedo": 0.068,
       "geometricAlbedo": 0.06,
       "orbit": {
@@ -1102,9 +1103,8 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Measured",
-          "source": "JPL Horizons body constants",
-          "reference": "https://ssd.jpl.nasa.gov/horizons/",
+          "class": "Inferred",
+          "source": "assumed spherical: the published equatorial and volumetric mean radii imply a flattening of 0.48, which means the body is irregular rather than an oblate spheroid, so no polar radius can be derived from them",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -2472,7 +2472,7 @@
       "parent": "sun",
       "gravitationalParameter": 4.892e-09,
       "equatorialRadiusKm": 0.2825,
-      "polarRadiusKm": 0.2451,
+      "polarRadiusKm": 0.2825,
       "bondAlbedo": 0.017,
       "geometricAlbedo": 0.044,
       "orbit": {
@@ -2504,9 +2504,8 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Measured",
-          "source": "JPL Horizons body constants",
-          "reference": "https://ssd.jpl.nasa.gov/horizons/",
+          "class": "Inferred",
+          "source": "assumed spherical: the published equatorial and volumetric mean radii imply a flattening of 0.35, which means the body is irregular rather than an oblate spheroid, so no polar radius can be derived from them",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {
@@ -2545,7 +2544,7 @@
       "parent": "sun",
       "gravitationalParameter": 1.468e-05,
       "equatorialRadiusKm": 8.0,
-      "polarRadiusKm": 5.5,
+      "polarRadiusKm": 8.0,
       "bondAlbedo": 0.04,
       "orbit": {
         "semiLatusRectumKm": 168447460.86198533,
@@ -2575,9 +2574,8 @@
           "retrieved": "2026-07-30"
         },
         "polarRadiusKm": {
-          "class": "Measured",
-          "source": "JPL Horizons body constants",
-          "reference": "https://ssd.jpl.nasa.gov/horizons/",
+          "class": "Inferred",
+          "source": "assumed spherical: the published equatorial and volumetric mean radii imply a flattening of 0.68, which means the body is irregular rather than an oblate spheroid, so no polar radius can be derived from them",
           "retrieved": "2026-07-30"
         },
         "bondAlbedo": {

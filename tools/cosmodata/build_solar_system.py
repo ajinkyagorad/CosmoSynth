@@ -71,6 +71,74 @@ def seconds_past_j2000(julian_date_tdb: float) -> float:
     return (julian_date_tdb - J2000_JD) * SECONDS_PER_DAY
 
 
+#: Past this flattening the oblate-spheroid model is not describing the body, and the numbers
+#: that fed it were not measuring one either. Mars is 0.0059 and Saturn, the flattest thing
+#: here, is 0.098; the small irregulars come out at 0.2 to 0.7 because Horizons writes their
+#: shape as "Radius (km) = 13.1 x 11.1 x 9.3" and the scraper reads the longest semi-axis.
+#: Those get left spherical, which is at least a stated assumption rather than a derivation
+#: from a quantity that does not mean what the formula needs it to mean.
+MAX_DERIVED_FLATTENING = 0.15
+
+
+def _polar_radius(equatorial_radius: float, mean_radius: Optional[float],
+                  published_polar: Optional[float] = None,
+                  published_flattening: Optional[float] = None):
+    """Polar radius and its provenance, from what Horizons actually publishes.
+
+    **Where Horizons publishes one, use it.** It does for the four giant planets, and this used
+    to ignore it completely: the scraper collected ``polarRadiusKm`` and the caller never read
+    the value, choosing between the mean and the equatorial radius instead. Combined with the
+    equatorial pattern not matching "Equat. radius", that made Jupiter 69911 x 69911 km — a
+    perfect sphere, when its real flattening is 0.065 and is one of the most visible things
+    about it. The published pair is 71492 x 66854.
+
+    **Horizons does not publish a polar radius for most bodies, including Mars.** It publishes
+    an equatorial radius and a *volumetric mean* radius, and this used to take the mean as the
+    polar one whenever it was the smaller of the two — and label it Measured. Mars shipped with
+    a polar radius of 3389.92 km, which is its volumetric mean; the IAU value is 3376.2, so the
+    figure was 13.7 km out and claimed a source that did not say it. Earth shipped at 6371.01
+    against a true 6356.75, out by 14.3 km.
+
+    The mean radius does carry the information, though, because it is defined as the radius of
+    a sphere of equal volume: R_vol = (a^2 c)^(1/3), so c = R_vol^3 / a^2 exactly. That gives
+    6356.78 for Earth — 28 metres from the WGS 84 value — and 3377.4 for Mars, 1.2 km from the
+    IAU figure, the residual being that Mars is triaxial and not quite the spheroid this
+    assumes. Both are an order of magnitude better than what they replace, and both are
+    *derived*, so they are labelled Inferred and say what they were derived from.
+
+    Note that this leaves every volumetric quantity untouched: the mean radius reconstructed
+    from the new pair is the one it came from, by construction. Only the flattening and the
+    surface-point radius change, which are precisely the two things that were wrong.
+    """
+    if published_polar and 0.0 < published_polar <= equatorial_radius:
+        return published_polar, measured("JPL Horizons body constants")
+
+    # Horizons publishes a flattening for Earth and Mars even though it publishes no polar
+    # radius for either, and c = a(1 - f) is that same measurement rearranged rather than a
+    # model of anything. It is also better than the volumetric derivation below: Earth comes
+    # out at 6356.752 km, the WGS 84 value exactly, against 6356.780 derived, and Mars at
+    # 3376.19 against the IAU 3376.20 — where the derivation gives 3377.4, because Mars is
+    # triaxial and the derivation assumes it is not.
+    if published_flattening and 0.0 < published_flattening < MAX_DERIVED_FLATTENING:
+        return equatorial_radius * (1.0 - published_flattening), measured("JPL Horizons body constants")
+
+    if not mean_radius or mean_radius >= equatorial_radius:
+        return equatorial_radius, inferred("assumed spherical: no separate polar radius published")
+
+    derived = mean_radius ** 3 / equatorial_radius ** 2
+    flattening = (equatorial_radius - derived) / equatorial_radius
+
+    if flattening > MAX_DERIVED_FLATTENING:
+        return equatorial_radius, inferred(
+            f"assumed spherical: the published equatorial and volumetric mean radii imply a "
+            f"flattening of {flattening:.2f}, which means the body is irregular rather than an "
+            "oblate spheroid, so no polar radius can be derived from them")
+
+    return derived, inferred(
+        "derived from the published equatorial and volumetric mean radii assuming an oblate "
+        "spheroid, c = Rvol^3 / a^2; JPL Horizons publishes no polar radius for this body")
+
+
 def build_body(entry: Dict[str, Any], delay: float) -> Optional[Dict[str, Any]]:
     """Fetch one body and assemble its catalogue record."""
     identifier = entry["id"]
@@ -116,19 +184,41 @@ def build_body(entry: Dict[str, Any], delay: float) -> Optional[Dict[str, Any]]:
 
     # --- Radii --------------------------------------------------------------------
     mean_radius = constants.get("meanRadiusKm")
-    equatorial_radius = constants.get("equatorialRadiusKm") or mean_radius
+    published_equatorial = constants.get("equatorialRadiusKm")
+    equatorial_radius = published_equatorial or mean_radius
+
+    # A body whose radii came from the override table did not get them from Horizons, and its
+    # provenance must not say it did — those four are overridden precisely because Horizons'
+    # prose for them cannot be parsed safely.
+    radius_source = (measured(override["_source"], "") if override and "equatorialRadiusKm" in override
+                     else measured("JPL Horizons body constants"))
 
     if equatorial_radius:
         record["equatorialRadiusKm"] = equatorial_radius
-        # Where only a mean radius is published, treating the body as a sphere is an
-        # assumption, not a measurement, so it is labelled as inferred.
-        record["polarRadiusKm"] = mean_radius if mean_radius and mean_radius < equatorial_radius else equatorial_radius
-        provenance["equatorialRadiusKm"] = measured("JPL Horizons body constants")
-        provenance["polarRadiusKm"] = (
-            measured("JPL Horizons body constants")
-            if mean_radius and mean_radius < equatorial_radius
-            else inferred("assumed spherical: no separate polar radius published")
-        )
+        # Falling back to the mean radius is a decision, not a measurement, and saying
+        # "JPL Horizons body constants" for it claims a source that published something else.
+        provenance["equatorialRadiusKm"] = (
+            radius_source if published_equatorial
+            else inferred("no equatorial radius published; the volumetric mean radius is used "
+                          "and the body is treated as a sphere"))
+
+        polar_radius, polar_provenance = _polar_radius(
+            equatorial_radius, mean_radius, constants.get("polarRadiusKm"),
+            constants.get("flattening"))
+        if polar_provenance["class"] == "Measured":
+            polar_provenance = radius_source
+        record["polarRadiusKm"] = polar_radius
+        provenance["polarRadiusKm"] = polar_provenance
+
+        # Where Horizons states the flattening as well, it is an independent check on the pair
+        # above — a different field, printed by the same source, that must agree with them.
+        # This is the assertion that would have caught the giants being perfect spheres.
+        published_flattening = constants.get("flattening")
+        if published_flattening and equatorial_radius > 0.0:
+            derived = (equatorial_radius - polar_radius) / equatorial_radius
+            if abs(derived - published_flattening) > 1e-4:
+                print(f"    ! {identifier}: radii imply a flattening of {derived:.5f} but Horizons "
+                      f"publishes {published_flattening:.5f}", flush=True)
 
     # --- Albedo -------------------------------------------------------------------
     if "bondAlbedo" in entry:

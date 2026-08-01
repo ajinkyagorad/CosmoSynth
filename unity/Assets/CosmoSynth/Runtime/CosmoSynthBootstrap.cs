@@ -28,6 +28,11 @@ namespace CosmoSynth.Runtime
 
         [SerializeField] private string _exoplanetPath = "CosmoSynth/catalog/exoplanets.json";
 
+        [Tooltip("Also load the spacecraft: real trajectories from JPL, real models from NASA.")]
+        [SerializeField] private bool _loadSpacecraft = true;
+
+        [SerializeField] private string _spacecraftPath = "CosmoSynth/catalog/spacecraft.json";
+
         [Header("Start conditions")]
         [Tooltip("ISO-8601 UTC start instant. Empty means the real current time.")]
         [SerializeField] private string _startEpochUtc = "";
@@ -107,7 +112,10 @@ namespace CosmoSynth.Runtime
 
             _clock = host.AddComponent<SimulationClock>();
             var origin = host.AddComponent<FloatingOrigin>();
-            origin.Focus = null;   // in MR the user does not fly, so the origin never rebases
+            // No rebase focus: travel is applied to the origin itself (XrLocomotion and the grab
+            // gesture both move OriginKm), so render positions are already relative to the
+            // viewer and never accumulate the float error a rebase exists to clear.
+            origin.Focus = null;
 
             Simulation = host.AddComponent<UniverseSimulation>();
             Simulation.SizeCompression = _sizeCompression;
@@ -118,9 +126,18 @@ namespace CosmoSynth.Runtime
                 _clock.Now = epoch;
             }
 
+            // The controller bindings, read once per frame and handed out from one place. Added
+            // before anything that consumes input; it also runs at a negative execution order, so
+            // its edge flags are already current when the consumers look at them.
+            host.AddComponent<XrInput>();
+
             host.AddComponent<TabletopManipulator>();
             var handInput = host.AddComponent<XrHandInput>();
             handInput.RecenterRequested += Recenter;
+
+            // Thumbstick flight. The grab gesture above is for placing the universe precisely;
+            // this is for going somewhere, and it is the control users reach for first.
+            host.AddComponent<XrLocomotion>();
 
             // Always-visible marker at the anchor. Added before the catalogue loads, so there is
             // something in the headset even if loading fails entirely.
@@ -137,6 +154,15 @@ namespace CosmoSynth.Runtime
 
             // Surface textures, generated on worker threads and applied a body at a time.
             host.AddComponent<PlanetTextureBaker>();
+
+            // Spacecraft geometry, streamed out of StreamingAssets a mesh at a time.
+            host.AddComponent<SpacecraftModelLoader>();
+
+            // Names for whatever is on screen. Parented under the simulation, so labels travel
+            // with the universe when the anchor is moved, exactly as the bodies do.
+            var labelObject = new GameObject("Body Labels");
+            labelObject.transform.SetParent(host.transform, false);
+            labelObject.AddComponent<BodyLabelLayer>();
 
             if (_showHud) host.AddComponent<ProvenanceHud>();
 
@@ -166,6 +192,16 @@ namespace CosmoSynth.Runtime
             yield return Simulation.ReadStreamingAsset(_catalogPath, result => json = result);
 
             bool loaded = !string.IsNullOrEmpty(json) && Simulation.LoadCatalogFromJson(json);
+
+            // The spacecraft merge before the exoplanets, because they hang off Solar System
+            // bodies — a lander's position is only meaningful once Mars is in the tree — and
+            // because 24 things in the room matter more than 470 stars light years away.
+            if (loaded && _loadSpacecraft)
+            {
+                string spacecraftJson = null;
+                yield return Simulation.ReadStreamingAsset(_spacecraftPath, result => spacecraftJson = result);
+                if (!string.IsNullOrEmpty(spacecraftJson)) Simulation.MergeCatalogFromJson(spacecraftJson);
+            }
 
             // Exoplanets are a second file, loaded after and merged in. Keeping them separate
             // means a Solar System build ships 87 kB instead of 2.2 MB, and the headset can skip
@@ -341,8 +377,25 @@ namespace CosmoSynth.Runtime
             if (Simulation != null) Simulation.CatalogLoaded -= OnCatalogLoaded;
         }
 
+        private readonly System.Collections.Generic.List<GameObject> _orbitLines =
+            new System.Collections.Generic.List<GameObject>();
+
         private void CreateOrbitLines()
         {
+            // Clear first.
+            //
+            // This runs once per catalogue load and the catalogue loads twice — once for the
+            // Solar System and again when the exoplanets merge in — so without this every orbit
+            // existed twice. The play-mode report says so plainly: 60 line renderers for 30
+            // orbits, each pair drawn on top of itself. Two semi-transparent lines at the same
+            // place composite to roughly twice the intended alpha, so the paths were both heavier
+            // than designed and twice the per-frame cost, and neither symptom named its cause.
+            for (int i = 0; i < _orbitLines.Count; i++)
+            {
+                if (_orbitLines[i] != null) Destroy(_orbitLines[i]);
+            }
+            _orbitLines.Clear();
+
             // Only for the focused system.
             //
             // Every orbit line is a 256-vertex LineRenderer rebuilt each frame; drawing one for
@@ -358,6 +411,7 @@ namespace CosmoSynth.Runtime
 
                 var lineObject = new GameObject($"Orbit_{view.Body.Id}");
                 lineObject.transform.SetParent(Simulation.transform, worldPositionStays: false);
+                _orbitLines.Add(lineObject);
 
                 var line = lineObject.AddComponent<OrbitLineRenderer>();
 

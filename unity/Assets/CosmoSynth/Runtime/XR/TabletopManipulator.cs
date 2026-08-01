@@ -160,13 +160,13 @@ namespace CosmoSynth.Runtime
 
             // Scale by the ratio of hand separations, raised to a power.
             //
-            // A plain ratio is only about 16x across the full range of arm movement, so crossing
-            // the twenty-two orders of magnitude between a handheld globe and the nearest stars
-            // would take dozens of separate grabs — which reads as the zoom being restricted to
-            // solar-system distances rather than as it being slow. Cubing the ratio gives ~4000x
-            // per gesture, so two or three pulls span the whole range, and small adjustments
-            // near ratio 1 stay fine-grained because the curve is flat there.
-            double ratio = System.Math.Pow(span / _grabSpan, 3.0);
+            // A plain ratio is only about 16x across the full range of arm movement, which felt
+            // like the zoom was walled off at solar-system distances. Cubing it fixed the range
+            // and overshot the feel: ~4000x per gesture means a hand tremor is a visible lurch,
+            // and the universe leaps past whatever the user was aiming at. Squaring gives ~250x
+            // per pull — still only a handful of gestures across the whole catalogue, now that
+            // the thumbstick carries actual travel and this gesture only has to handle scale.
+            double ratio = System.Math.Pow(span / _grabSpan, 2.0);
             _targetUnitsPerKm = MathD.Clamp(_grabUnitsPerKm * ratio, _minimumUnitsPerKm, _maximumUnitsPerKm);
 
             // Keep the chosen anchor pinned, so the world scales about it.

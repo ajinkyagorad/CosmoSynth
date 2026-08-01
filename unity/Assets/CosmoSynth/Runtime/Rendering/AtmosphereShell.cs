@@ -31,6 +31,7 @@ namespace CosmoSynth.Runtime
         private CelestialBodyView _body;
         private Transform _star;
         private Material _material;
+        private MeshRenderer _renderer;
         private float _relativeScale = 1.02f;
 
         /// <summary>
@@ -88,6 +89,19 @@ namespace CosmoSynth.Runtime
         private void LateUpdate()
         {
             if (_body == null) return;
+
+            // An atmosphere belongs to a planet that is actually being drawn.
+            //
+            // A body far enough away is pinned to the sky sphere and switches its own sphere
+            // off, but it still reports a RenderedRadius — the one the minimum-visible-size
+            // clamp produced at horizon distance, which is enormous. Sizing from that alone
+            // wrapped every distant planet in a translucent shell several units across and
+            // composited eight of them into a dome over half the sky. The planet was correctly
+            // invisible; its air was not.
+            if (_renderer == null) _renderer = GetComponent<MeshRenderer>();
+            bool visible = _body.IsGeometryDrawn;
+            if (_renderer != null && _renderer.enabled != visible) _renderer.enabled = visible;
+            if (!visible) return;
 
             // RenderedRadius is the sphere's world radius, so the shell is expressed in the same
             // terms and inherits the clamp and the render scale automatically.

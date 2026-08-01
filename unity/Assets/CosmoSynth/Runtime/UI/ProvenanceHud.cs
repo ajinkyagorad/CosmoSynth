@@ -33,16 +33,8 @@ namespace CosmoSynth.Runtime
         private Vector2 _detailScroll;
         private GUIStyle _headerStyle;
         private GUIStyle _monoStyle;
-
-        private static readonly Dictionary<ProvenanceClass, Color> ClassColors =
-            new Dictionary<ProvenanceClass, Color>
-            {
-                { ProvenanceClass.Measured, new Color(0.45f, 0.85f, 0.55f) },
-                { ProvenanceClass.Inferred, new Color(0.55f, 0.75f, 0.95f) },
-                { ProvenanceClass.Procedural, new Color(0.95f, 0.75f, 0.40f) },
-                { ProvenanceClass.Fictional, new Color(0.90f, 0.55f, 0.85f) },
-                { ProvenanceClass.Unknown, new Color(0.70f, 0.70f, 0.70f) },
-            };
+        private GUIStyle _panelStyle;
+        private Texture2D _panelBackground;
 
         private void Update()
         {
@@ -60,26 +52,60 @@ namespace CosmoSynth.Runtime
 
             EnsureStyles();
 
-            GUILayout.BeginArea(new Rect(10, 10, 320, Screen.height - 20), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(16, 16, 340, Screen.height - 32), _panelStyle);
             DrawStatus();
-            GUILayout.Space(6);
+            GUILayout.Space(10);
             DrawBodyList();
             GUILayout.EndArea();
 
             if (!string.IsNullOrEmpty(_selectedId))
             {
-                GUILayout.BeginArea(new Rect(Screen.width - 430, 10, 420, Screen.height - 20), GUI.skin.box);
+                GUILayout.BeginArea(new Rect(Screen.width - 452, 16, 436, Screen.height - 32), _panelStyle);
                 DrawDetail(_simulation.Catalog.Get(_selectedId));
                 GUILayout.EndArea();
             }
         }
 
+        /// <summary>
+        /// Styles matching the world-space surfaces.
+        ///
+        /// The default <c>GUI.skin.box</c> is the grey Unity chrome, which against a black sky is
+        /// the loudest thing on screen and belongs to a different application than everything
+        /// else here. Colours come from <see cref="CosmoTheme"/>, so this and the headset panels
+        /// cannot drift apart the way the two provenance tables had.
+        /// </summary>
         private void EnsureStyles()
         {
             if (_headerStyle != null) return;
 
-            _headerStyle = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = 13 };
-            _monoStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, wordWrap = true };
+            _panelBackground = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            _panelBackground.SetPixel(0, 0, CosmoTheme.Surface);
+            _panelBackground.Apply();
+
+            _panelStyle = new GUIStyle(GUI.skin.box)
+            {
+                normal = { background = _panelBackground },
+                padding = new RectOffset(14, 14, 12, 12)
+            };
+
+            _headerStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                fontSize = 14,
+                normal = { textColor = CosmoTheme.TextPrimary }
+            };
+
+            _monoStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12,
+                wordWrap = true,
+                normal = { textColor = CosmoTheme.TextSecondary }
+            };
+        }
+
+        private void OnDestroy()
+        {
+            if (_panelBackground != null && Application.isPlaying) Destroy(_panelBackground);
         }
 
         private void DrawStatus()
@@ -104,7 +130,7 @@ namespace CosmoSynth.Runtime
             if (_simulation.IsPresentationScaled)
             {
                 Color previous = GUI.color;
-                GUI.color = ClassColors[ProvenanceClass.Procedural];
+                GUI.color = CosmoTheme.Warning;
                 GUILayout.Label("SIZES NOT TO SCALE (presentation mode)", _monoStyle);
                 GUI.color = previous;
             }
@@ -122,7 +148,7 @@ namespace CosmoSynth.Runtime
                 GUILayout.Space(depth * 12);
 
                 Color previous = GUI.color;
-                GUI.color = ClassColors[body.Provenance.WeakestClass()];
+                GUI.color = CosmoTheme.Provenance(body.Provenance.WeakestClass());
 
                 if (GUILayout.Button(body.Name ?? body.Id, GUI.skin.label))
                 {
@@ -234,7 +260,7 @@ namespace CosmoSynth.Runtime
             foreach (var entry in body.Provenance.Summary())
             {
                 Color previous = GUI.color;
-                GUI.color = ClassColors[entry.Key];
+                GUI.color = CosmoTheme.Provenance(entry.Key);
                 GUILayout.Label($"  {entry.Key}: {entry.Value} field(s)", _monoStyle);
                 GUI.color = previous;
             }
@@ -248,7 +274,7 @@ namespace CosmoSynth.Runtime
             FieldProvenance provenance = body.Provenance.Get(provenanceKey);
 
             Color previous = GUI.color;
-            GUI.color = ClassColors[provenance.Class];
+            GUI.color = CosmoTheme.Provenance(provenance.Class);
 
             GUILayout.Label($"{label}: {value}", _monoStyle);
 

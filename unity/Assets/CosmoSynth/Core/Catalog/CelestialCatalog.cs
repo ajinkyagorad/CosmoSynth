@@ -204,16 +204,50 @@ namespace CosmoSynth.Core
         {
             if (!_byId.TryGetValue(id, out var body)) return;
 
-            // A body with an orbit follows it; a root with a measured position sits there; a
-            // root without one is the frame's origin.
-            IEphemerisSource ephemeris = body.Orbit.HasValue
-                ? (IEphemerisSource)new KeplerEphemeris(body.Orbit.Value)
-                : new FixedEphemeris(body.PositionKm ?? Double3.Zero);
-
-            var frame = parentFrame.CreateChild(body.Id, ephemeris);
+            var frame = parentFrame.CreateChild(body.Id, EphemerisFor(body));
             frames[body.Id] = frame;
 
             foreach (string childId in ChildIdsOf(id)) AttachFrame(childId, frame, frames);
+        }
+
+        /// <summary>
+        /// Choose how a body's origin moves relative to its parent.
+        ///
+        /// The order is by strength of evidence, not convenience. A sampled trajectory is
+        /// measured state vectors and beats elements fitted to them; a surface site is exact;
+        /// elements are a model; a fixed position is a body that does not move in this
+        /// catalogue at all.
+        /// </summary>
+        private IEphemerisSource EphemerisFor(CelestialBody body)
+        {
+            if (body.Trajectory != null) return body.Trajectory.CreateEphemeris();
+
+            if (body.Site.HasValue)
+            {
+                // The site is expressed on the *parent's* ellipsoid and carried by the
+                // parent's rotation, so both come from the parent, not from the lander.
+                CelestialBody host = Get(body.ParentId);
+                if (host != null && host.Orientation.HasValue)
+                {
+                    double equatorial = host.EquatorialRadiusKm ?? 0.0;
+                    double polar = host.PolarRadiusKm ?? equatorial;
+                    return new SurfaceFixedEphemeris(
+                        host.Orientation.Value,
+                        body.Site.Value.BodyFixedPositionKm(equatorial, polar));
+                }
+
+                // Without the host's rotation model there is no way to turn a latitude into a
+                // position, and every remaining option puts the lander at the parent's centre —
+                // buried at the core, drawn inside the planet, and indistinguishable from a
+                // model that failed to load. Nothing here can fix that, so the only useful
+                // thing to do is make sure it is reported: Validate() checks for exactly this
+                // case. The earlier comment claimed it already did, and it did not — it
+                // reported a missing *parent*, which is a different fault.
+            }
+
+            if (body.Orbit.HasValue) return new KeplerEphemeris(body.Orbit.Value);
+
+            return new FixedEphemeris(body.PositionKm ?? Double3.Zero);
         }
 
         // ---- Validation ------------------------------------------------------
@@ -232,6 +266,28 @@ namespace CosmoSynth.Core
 
                 if (!string.IsNullOrEmpty(body.ParentId) && !_byId.ContainsKey(body.ParentId))
                     problems.Add($"{body.Id}: parent '{body.ParentId}' is not in the catalogue.");
+
+                // A landing site is a latitude and a longitude, which are meaningless without
+                // the rotation model and the ellipsoid they are quoted against — and both
+                // belong to the host, not to the lander. Missing either, EphemerisFor has no
+                // choice but to leave the body at its parent's centre, buried inside it. That
+                // is not a difference anyone can see, so it has to be said here.
+                if (body.Site.HasValue && _byId.TryGetValue(body.ParentId ?? string.Empty, out var ground))
+                {
+                    if (!ground.Orientation.HasValue)
+                    {
+                        problems.Add(
+                            $"{body.Id}: sits on '{ground.Id}', which has no rotation model, so its " +
+                            "latitude and longitude cannot be turned into a position and it would be " +
+                            "placed at the centre of the body it is standing on.");
+                    }
+                    if (!ground.EquatorialRadiusKm.HasValue)
+                    {
+                        problems.Add(
+                            $"{body.Id}: sits on '{ground.Id}', whose radius is unknown, so there is no " +
+                            "surface to put it on.");
+                    }
+                }
 
                 // A body's orbit must be governed by its parent's mass. Getting this wrong is
                 // easy when merging sources and produces an orbit that looks right but runs at
@@ -268,12 +324,15 @@ namespace CosmoSynth.Core
 
                 // A body orbiting inside its parent's surface is a data error, not a scenario.
                 if (body.Orbit.HasValue && _byId.TryGetValue(body.ParentId ?? string.Empty, out var primary) &&
-                    primary.EquatorialRadiusKm.HasValue &&
-                    body.Orbit.Value.PeriapsisKm < primary.EquatorialRadiusKm.Value)
+                    primary.EquatorialRadiusKm.HasValue)
                 {
-                    problems.Add(
-                        $"{body.Id}: periapsis {body.Orbit.Value.PeriapsisKm:G6} km is inside {primary.Id}'s " +
-                        $"radius of {primary.EquatorialRadiusKm.Value:G6} km.");
+                    double surface = SurfaceRadiusUnderPeriapsis(body.Orbit.Value, primary);
+                    if (body.Orbit.Value.PeriapsisKm < surface)
+                    {
+                        problems.Add(
+                            $"{body.Id}: periapsis {body.Orbit.Value.PeriapsisKm:G6} km is inside {primary.Id}'s " +
+                            $"surface, which is {surface:G6} km under the point periapsis occurs over.");
+                    }
                 }
             }
 
@@ -294,6 +353,47 @@ namespace CosmoSynth.Core
             }
 
             return problems;
+        }
+
+        /// <summary>
+        /// Radius of <paramref name="primary"/>'s surface directly under an orbit's periapsis.
+        ///
+        /// The comparison this feeds used to be against the equatorial radius, which is only the
+        /// right question for an equatorial orbit. A flattened planet's surface is thousands of
+        /// kilometres closer to its centre at the poles — Jupiter is 71 492 km across the
+        /// equator and 66 854 km through the poles — so a polar orbiter can pass well clear of
+        /// the cloud tops at a radius that is "inside" the equatorial figure.
+        ///
+        /// Juno is the case that found it. Its perijove radius is 71 491 km, one kilometre under
+        /// Jupiter's equatorial radius and comfortably outside the planet, because perijove
+        /// occurs at high northern latitude where the surface is far lower. The old test failed
+        /// it the moment Jupiter stopped being modelled as a sphere — the check was wrong, not
+        /// the data, and the fix is to ask where periapsis actually is rather than to widen a
+        /// bound until the complaint stops.
+        ///
+        /// Needs the primary's pole to know what latitude means. Without one, the polar radius
+        /// is the conservative answer: it is the smallest the body ever is, so nothing correct
+        /// is ever reported, at the cost of missing an equatorial orbit that grazes.
+        /// </summary>
+        private static double SurfaceRadiusUnderPeriapsis(OrbitalElements orbit, CelestialBody primary)
+        {
+            double equatorial = primary.EquatorialRadiusKm ?? 0.0;
+            double polar = primary.PolarRadiusKm ?? equatorial;
+            if (polar >= equatorial || !primary.Orientation.HasValue) return polar;
+
+            // Latitude of the periapsis direction, measured from the primary's own equator.
+            // The pole drifts by a tenth of a degree per century, so any epoch will do.
+            Double3 pole = primary.Orientation.Value.PoleDirectionAt(new CosmicTime(0.0));
+            Double3 direction = orbit.PeriapsisDirection;
+            if (pole.SqrMagnitude <= 0.0 || direction.SqrMagnitude <= 0.0) return polar;
+
+            double sinLatitude = MathD.Clamp(
+                Double3.Dot(pole.Normalized, direction.Normalized), -1.0, 1.0);
+            double cosLatitude = System.Math.Sqrt(System.Math.Max(0.0, 1.0 - sinLatitude * sinLatitude));
+
+            // Radius of the reference ellipsoid along that direction.
+            double horizontal = cosLatitude / equatorial, vertical = sinLatitude / polar;
+            return 1.0 / System.Math.Sqrt(horizontal * horizontal + vertical * vertical);
         }
 
         // ---- Serialisation ---------------------------------------------------

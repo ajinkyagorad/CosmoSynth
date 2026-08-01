@@ -49,6 +49,9 @@ namespace CosmoSynth.Runtime
         /// <summary>The furthest anything can be drawn, in render units.</summary>
         public float FarDistance { get; private set; } = 5e5f;
 
+        /// <summary>The far band's camera. Anything compositing a frame by hand needs both.</summary>
+        public Camera FarCamera => _far;
+
         /// <summary>
         /// Build the far camera as a child of the near one, so it inherits the tracked head pose
         /// without a second pose driver competing for it.
