@@ -1,0 +1,133 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Compile-check for the Unity runtime layer, without opening the Unity Editor.
+
+    CosmoSynth.Core is engine-free and fully unit-tested by the sibling project. The runtime
+    layer cannot be, because it inherits from MonoBehaviour and needs a live engine. But most
+    of what goes wrong in Unity code is not behavioural at all — it is a misremembered API, a
+    method that moved between versions, a signature that changed. Referencing the editor's own
+    UnityEngine assemblies catches every one of those in about a second, which is the
+    difference between finding a typo now and finding it after a multi-minute editor import.
+
+    This builds a library, never runs it. Behavioural verification still needs the Editor.
+
+    Only the always-present engine modules are referenced. Code that needs a package (URP,
+    the XR Interaction Toolkit, the Input System) is guarded behind a define so that it
+    compiles here and lights up inside Unity — see the notes in the runtime sources.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>CosmoSynth.Runtime.Compile</AssemblyName>
+    <RootNamespace>CosmoSynth.Runtime</RootNamespace>
+    <Nullable>disable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- Unity's own assemblies are not signed for netstandard reference use; silence the noise. -->
+    <NoWarn>$(NoWarn);CS1701;CS1702;CS0436</NoWarn>
+    <UnityManaged>$(HOME)/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Managed/UnityEngine</UnityManaged>
+    <!--
+      Package assemblies (XR, Input System, AR Foundation) are compiled by Unity into
+      Library/ScriptAssemblies. They only exist after the editor has imported the project at
+      least once, so the references below are conditional: on a clean checkout this project
+      still builds and covers the engine-only code, and once Unity has run it covers the XR
+      layer too.
+    -->
+    <UnityScriptAssemblies>$(MSBuildThisFileDirectory)../../unity/Library/ScriptAssemblies</UnityScriptAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../unity/Assets/CosmoSynth/Core/**/*.cs">
+      <Link>Core/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <Compile Include="../../unity/Assets/CosmoSynth/Runtime/**/*.cs">
+      <Link>Runtime/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(UnityManaged)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(UnityManaged)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(UnityManaged)/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(UnityManaged)/UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(UnityManaged)/UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(UnityManaged)/UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>$(UnityManaged)/UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(UnityManaged)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.XRModule">
+      <HintPath>$(UnityManaged)/UnityEngine.XRModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.SubsystemsModule">
+      <HintPath>$(UnityManaged)/UnityEngine.SubsystemsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(UnityManaged)/UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(UnityManaged)/UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- XR / Input System / AR Foundation, present only after Unity has imported the project. -->
+  <ItemGroup Condition="Exists('$(UnityScriptAssemblies)')">
+    <Reference Include="Unity.InputSystem">
+      <HintPath>$(UnityScriptAssemblies)/Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.CoreUtils">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.CoreUtils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.Hands">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.Hands.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.ARFoundation">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.ARFoundation.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.Management">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.Management.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.OpenXR">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.OpenXR.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.ARSubsystems">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.ARSubsystems.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

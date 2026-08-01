@@ -1,0 +1,23 @@
+# ninja log v5
+4	1011	1785516646104760311	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	f640c5c00fc19dd9
+5	105	1785516645204747094	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	5a8d4e9be563a163
+1016	1041	1785516646141760854	/home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/1c3v4u6g/obj/arm64-v8a/libgame.so	c4a364dfa513169b
+5	763	1785516645852756610	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	3f5dffa213c175a4
+4	1016	1785516646109760385	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	8267beecf9ad034e
+4	693	1785516645778755524	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	169c989789918f16
+4	785	1785516645875756948	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	42a0ab55a1762d35
+4	810	1785516645905757389	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	6f32460d5078f0a5
+105	157	1785516645250747770	/home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/1c3v4u6g/obj/arm64-v8a/libswappywrapper.so	c4d1dccb2a2ae1ed
+5	694	1785516645779755538	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	49f91dcdf47c2f81
+5	867	1785516645961758211	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	5e1c0b849d2328b3
+6	128	1785516948071271889	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	5a8d4e9be563a163
+129	202	1785516948139272910	/home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/1c3v4u6g/obj/arm64-v8a/libswappywrapper.so	c4d1dccb2a2ae1ed
+5	835	1785516948760282234	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	6f32460d5078f0a5
+6	836	1785516948776282474	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	5e1c0b849d2328b3
+5	855	1785516948793282729	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	169c989789918f16
+6	863	1785516948808282954	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	3f5dffa213c175a4
+6	890	1785516948832283314	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	49f91dcdf47c2f81
+5	935	1785516948874283945	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	42a0ab55a1762d35
+5	982	1785516948925284711	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	8267beecf9ad034e
+4	994	1785516948936284876	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	f640c5c00fc19dd9
+994	1021	1785516948970285387	/home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/1c3v4u6g/obj/arm64-v8a/libgame.so	c4a364dfa513169b

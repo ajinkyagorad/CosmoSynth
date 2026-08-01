@@ -1,0 +1,62 @@
+# ---- Unity ----------------------------------------------------------------
+# Everything Unity regenerates from Assets/ and Packages/. Library/ in particular is a
+# multi-gigabyte import cache and must never be committed.
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/[Mm]emoryCaptures/
+unity/[Rr]ecordings/
+
+# Generated IDE project files.
+unity/*.csproj
+unity/*.sln
+unity/*.user
+unity/*.userprefs
+unity/*.pidb
+unity/*.booproj
+unity/*.svd
+unity/*.unityproj
+.vs/
+.idea/
+.vscode/
+
+# Unity crash and build artefacts.
+sysinfo.txt
+*.stackdump
+crashlytics-build.properties
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ---- .NET -----------------------------------------------------------------
+bin/
+obj/
+*.dll
+*.pdb
+!unity/Assets/**/*.dll
+
+# ---- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# ---- Data -----------------------------------------------------------------
+# Raw archive downloads are large and reproducible from the importers; the derived
+# catalogues under StreamingAssets are small, reviewable and deliberately committed.
+data/raw/
+data/cache/
+*.bsp
+*.bpc
+*.tpc
+
+# ---- OS -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*~

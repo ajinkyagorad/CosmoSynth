@@ -1,0 +1,1 @@
+/home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/1c3v4u6g/obj/arm64-v8a

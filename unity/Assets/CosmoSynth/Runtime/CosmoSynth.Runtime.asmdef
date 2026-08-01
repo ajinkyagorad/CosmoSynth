@@ -1,0 +1,24 @@
+{
+  "name": "CosmoSynth.Runtime",
+  "rootNamespace": "CosmoSynth.Runtime",
+  "references": [
+    "CosmoSynth.Core",
+    "Unity.XR.CoreUtils",
+    "Unity.XR.Management",
+    "Unity.XR.OpenXR",
+    "Unity.XR.Hands",
+    "Unity.XR.Interaction.Toolkit",
+    "Unity.XR.ARFoundation",
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
