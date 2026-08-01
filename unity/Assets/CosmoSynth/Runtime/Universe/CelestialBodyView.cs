@@ -39,6 +39,18 @@ namespace CosmoSynth.Runtime
         /// <summary>Apparent diameter in pixels for the active camera, this frame.</summary>
         public double ApparentDiameterPixels { get; private set; }
 
+        /// <summary>
+        /// Point this view at a new frame after the tree has been rebuilt.
+        ///
+        /// Adding or removing a body rebuilds the whole reference-frame tree, which orphans every
+        /// existing view's frame reference. Rebinding is what makes it possible to add eight
+        /// bodies without destroying and recreating the other two hundred and thirty-five — and
+        /// that matters for more than performance: recreating them all means calling SetCatalog,
+        /// which raises CatalogLoaded, which re-anchors the viewer. Generating a star system
+        /// would teleport you back to Earth, which is precisely what it did.
+        /// </summary>
+        public void Rebind(ReferenceFrame frame) => _frame = frame;
+
         public void Initialise(UniverseSimulation simulation, CelestialBody body, ReferenceFrame frame,
             CosmicTime now)
         {

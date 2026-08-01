@@ -73,6 +73,39 @@ Two missions were dropped rather than approximated. New Horizons has a JPL ephem
 model in the repository, and substituting another probe's body would have put something that is
 not New Horizons at New Horizons' position under its name.
 
+### HYG star database — <https://codeberg.org/astronexus/hyg>
+
+The 119 613 real stars in the sky field, at measured positions. Fetched by
+`tools/cosmodata/build_starfield.py`, written as a flat binary
+(`StreamingAssets/CosmoSynth/sky/stars.csstars`, 2.9 MB, 24 bytes a star, sorted brightest
+first) plus the 548 with proper names.
+
+**Licence: CC BY-SA 4.0 — attribution AND share-alike.** This is the strongest claim on
+anything in this project; every other source here is public-domain government work. Two
+consequences, recorded now rather than discovered during a licence audit:
+
+- The attribution must travel with the build, not merely live in a source file.
+- The derived catalogue the importer writes is an **adaptation of a ShareAlike work**, so that
+  file carries the same licence. It does not follow that the application does — the app is not
+  an adaptation of a star catalogue — but that is a question for a lawyer, and it is exactly the
+  kind of thing this document exists to raise before it becomes expensive.
+
+Required attribution: *HYG star database v4.4 (astronexus), CC BY-SA 4.0 — compiled from the
+Hipparcos, Yale Bright Star and Gliese catalogues.* The underlying astrometry is ESA and Yale
+work; HYG is the compilation.
+
+Two honesty notes carried into the data itself:
+
+- **Temperature is inferred, never measured.** It comes from the B-V colour index through
+  Ballesteros' formula (EPL 97 34008, 2012), and for the 1890 stars with no published colour
+  index it comes from the spectral class alone — a weaker claim still, and flagged separately in
+  the record so the runtime can tell the two apart.
+- **10 224 stars have no usable parallax.** HYG writes 100 000 pc as a sentinel. These are kept
+  and flagged rather than dropped or placed at 100 000 pc: their *direction* is measured and
+  their distance is not known at all, which is precisely the case the sky-sphere treatment
+  already exists for. Dropping them would delete a tenth of the sky; placing them would invent a
+  distance.
+
 ### Spacecraft trajectories — JPL Horizons
 
 The same service as the planets, queried for spacecraft NAIF identifiers. Coverage is
@@ -141,7 +174,7 @@ Listed with the licence question that has to be answered before each is shipped.
 | Small bodies | [JPL SBDB](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | Same terms as Horizons |
 | Minor planet orbits | [Minor Planet Center](https://www.minorplanetcenter.net/) | **Check carefully.** MPC is IAU-operated with its own data-use policy, not automatically NASA-equivalent |
 | Exoplanets | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) | Operated by Caltech/IPAC under NASA contract. Acknowledgement text is specified — use theirs verbatim |
-| Stars | [ESA Gaia Archive](https://gea.esac.esa.int/archive/) | **ESA, not NASA.** Gaia data is released under CC BY-SA 3.0 IGO with a specific required acknowledgement. Do not assume NASA-style public domain |
+| Stars (deeper than HYG) | [ESA Gaia Archive](https://gea.esac.esa.int/archive/) | **ESA, not NASA.** CC BY-SA 3.0 IGO with a specific required acknowledgement. HYG (now shipped, see above) covers the naked-eye and telescopic sky; Gaia is what a fainter or more distant catalogue would need |
 | Star identity | [SIMBAD](https://simbad.cds.unistra.fr/simbad/) | CDS-operated. Requires the CDS acknowledgement; bulk use has its own conditions |
 | Galaxies | [NASA/IPAC NED](https://ned.ipac.caltech.edu/) | Caltech/IPAC under NASA contract; specified acknowledgement |
 | Telescope imagery | [MAST](https://archive.stsci.edu/) | Mission-dependent. Hubble and JWST public data are generally free to use; **individual images may have photographer or processing credits** |
@@ -179,8 +212,11 @@ python3 tools/cosmodata/build_solar_system.py
 # The validation fixture (10 bodies, 260 state vectors, ~104 kB)
 python3 tools/cosmodata/fetch_validation_fixture.py
 
-# The spacecraft: trajectories from JPL, models from NASA (24 craft, ~470 kB + ~2 MB of meshes)
+# The spacecraft: trajectories from JPL, models from NASA (24 craft, ~956 kB + ~2 MB of meshes)
 python3 tools/cosmodata/build_spacecraft.py
+
+# The real sky: 119613 stars from HYG (~2.9 MB). CC BY-SA 4.0 — read the licence note above.
+python3 tools/cosmodata/build_starfield.py
 
 # ...just the trajectories, leaving the committed meshes alone
 python3 tools/cosmodata/build_spacecraft.py --skip-models

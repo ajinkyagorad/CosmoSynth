@@ -320,6 +320,80 @@ namespace CosmoSynth.Runtime
             return true;
         }
 
+
+        /// <summary>
+        /// Merge extra bodies into the live catalogue and create views for just those, leaving
+        /// every existing view alone.
+        ///
+        /// Deliberately does <b>not</b> raise <see cref="CatalogLoaded"/>. That event means "a
+        /// whole catalogue arrived, re-frame the scene", and the bootstrap responds by anchoring
+        /// the viewer on the focus body — correct at startup and catastrophic when a star system
+        /// is generated in flight, because arriving somewhere would immediately throw you back
+        /// to Earth. Returns the number of bodies added.
+        /// </summary>
+        public int AddBodies(CelestialCatalog addition)
+        {
+            if (addition == null || Catalog == null) return 0;
+
+            int added = Catalog.MergeFrom(addition);
+            if (added == 0) return 0;
+
+            RebuildFramesKeepingViews();
+
+            CosmicTime now = _clock.Now;
+            foreach (CelestialBody body in Catalog.Traverse())
+            {
+                if (_views.ContainsKey(body.Id)) continue;
+                CreateView(body);
+            }
+
+            _bodyCount = Catalog.Count;
+            return added;
+        }
+
+        /// <summary>Remove named bodies and destroy only their views.</summary>
+        public int RemoveBodies(IEnumerable<string> ids)
+        {
+            if (ids == null || Catalog == null) return 0;
+
+            int removed = 0;
+            foreach (string id in ids)
+            {
+                if (!Catalog.Remove(id)) continue;
+                removed++;
+
+                if (_views.TryGetValue(id, out CelestialBodyView view))
+                {
+                    if (view != null) Destroy(view.gameObject);
+                    _views.Remove(id);
+                    if (FocusBody == view) FocusBody = null;
+                }
+            }
+
+            if (removed == 0) return 0;
+
+            Catalog.Rebuild();
+            RebuildFramesKeepingViews();
+            _bodyCount = Catalog.Count;
+            return removed;
+        }
+
+        /// <summary>
+        /// Rebuild the reference-frame tree and re-point the surviving views at it.
+        ///
+        /// The tree is rebuilt wholesale because parentage may have changed anywhere; the views
+        /// are kept because destroying them is what forces a full re-anchor. A view whose body
+        /// has gone keeps a null frame and simply stops updating.
+        /// </summary>
+        private void RebuildFramesKeepingViews()
+        {
+            _rootFrame = Catalog.BuildFrameTree();
+            foreach (KeyValuePair<string, CelestialBodyView> entry in _views)
+            {
+                if (entry.Value != null) entry.Value.Rebind(_rootFrame.Find(entry.Key));
+            }
+        }
+
         private void CreateView(CelestialBody body)
         {
             var host = new GameObject(body.Name ?? body.Id);

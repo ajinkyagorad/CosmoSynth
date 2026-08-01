@@ -33,8 +33,8 @@ namespace CosmoSynth.EditorTools
         private const string OutputDirectory = "/home/triton/builds/cosmosynth";
 
         /// <summary>Bumped by hand; also written into the APK filename and the notes sidecar.</summary>
-        private const string Version = "1.7.2";
-        private const int VersionCode = 14;
+        private const string Version = "1.9.0";
+        private const int VersionCode = 16;
 
         [MenuItem("CosmoSynth/Build Android APK", priority = 10)]
         public static void BuildAndroid()

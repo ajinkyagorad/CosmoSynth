@@ -124,7 +124,13 @@ namespace CosmoSynth.EditorTools
 
                 // Always, not only when a view action fired: the resize alone has to reach every
                 // transform, and bodies are placed in LateUpdate.
-                _framesAfterAction = 20;
+                //
+                // Flying to a star needs far longer. NearbyStarSystems checks twice a second and
+                // batchmode frames are unthrottled, so twenty of them can pass in a few
+                // milliseconds — the capture would photograph the moment before the system was
+                // generated and report, wrongly, that nothing happened.
+                _framesAfterAction = SessionState.GetString(ViewKey, "default")
+                    .StartsWith("star", StringComparison.Ordinal) ? 600 : 20;
                 return;
             }
 
@@ -210,8 +216,96 @@ namespace CosmoSynth.EditorTools
         /// is the whole failure mode the play-mode harness exists to avoid.
         /// </summary>
         /// <returns>True if something was changed and the app should run on before capture.</returns>
+        /// <summary>
+        /// Put the viewer at a catalogued star and let the simulation react.
+        ///
+        /// Moves the floating origin rather than the camera: everything is placed relative to
+        /// the origin, so moving the camera alone would leave the universe where it was and
+        /// prove nothing. Offset slightly so the viewer is beside the star rather than inside
+        /// it, which is where a star's own geometry would fill the entire view.
+        /// </summary>
+        private static bool FlyToStar(int starIndex)
+        {
+            var sky = UnityEngine.Object.FindAnyObjectByType<CosmoSynth.Runtime.SkyAndRings>();
+            var simulation = UnityEngine.Object.FindAnyObjectByType<UniverseSimulation>();
+
+            if (sky?.Stars == null || simulation == null)
+            {
+                Log("star catalogue has not streamed in yet — cannot fly to a star");
+                return false;
+            }
+
+            StarCatalog stars = sky.Stars;
+            int found = -1, seen = 0;
+            for (int i = 0; i < stars.Count; i++)
+            {
+                if ((stars.Stars[i].Flags & StarFlags.DistanceUnknown) != 0) continue;
+                if (seen++ == starIndex) { found = i; break; }
+            }
+
+            if (found < 0)
+            {
+                Log($"no star at index {starIndex} with a known distance");
+                return false;
+            }
+
+            CatalogStar star = stars.Stars[found];
+            Double3 starKm = star.PositionParsecs * Constants.Parsec;
+
+            // Forty astronomical units to one side — about Neptune's distance from the Sun.
+            //
+            // A tenth of a parsec was the first choice and it generated the system correctly
+            // while showing absolutely nothing: three trillion kilometres is far enough that a
+            // star is a point and its planets are not even that. Being inside the generation
+            // radius and being able to see the result are different requirements, and only the
+            // capture reveals the second one.
+            // Half an astronomical unit. Forty was tried first and is the right distance to be
+            // *in* the system and the wrong one to photograph it: the star itself came out at a
+            // quarter of a pixel. Distance and framing are separate problems and the capture is
+            // what tells them apart.
+            const double astronomicalUnitKm = 1.495978707e8;
+            Double3 offset = new Double3(0.5 * astronomicalUnitKm, 0.0, 0.0);
+            Double3 destination = starKm + offset;
+
+            simulation.Origin.SetOrigin(destination);
+
+            // And tell the navigator, or it puts the viewer straight back.
+            //
+            // On the desktop path UniverseNavigator owns the origin and rewrites it from its own
+            // stored position at the end of every Update. Setting the origin alone was silently
+            // undone within a frame, and the harness reported "no star within range" from a
+            // viewpoint that had never moved — a false negative that looked exactly like the
+            // feature not working.
+            var navigator = UnityEngine.Object.FindAnyObjectByType<CosmoSynth.Runtime.UniverseNavigator>();
+            if (navigator != null) navigator.AbsolutePositionKm = destination;
+
+            // Scale for the system, not for the hologram.
+            //
+            // Arriving is not the same as being able to see. The render scale is still set for
+            // Earth held at arm's length, and at that scale forty astronomical units is a
+            // quarter of a million render units — far past the horizon where everything is
+            // pinned to the sky sphere as a point. The first capture from here generated all
+            // eight bodies correctly and drew none of them.
+            simulation.Origin.SetUnitsPerKm(
+                ScaleSpace.HologramUnitsPerKm(offset.Magnitude, 0.9));
+
+            Log($"flew to catalogue star {found} (mag {star.ApparentMagnitude:F2}, " +
+                $"{star.DistanceParsecs:F2} pc, {star.TemperatureK:F0} K) at {starKm.ToString("G6")} km");
+            return true;
+        }
+
         private static bool ApplyViewAction(string view)
         {
+            // "star<N>" — fly the viewer to the Nth brightest catalogued star with a known
+            // distance, so the universe layer can be verified here rather than by asking
+            // somebody to put a headset on. This is the whole point of the harness: a claim that
+            // approaching a star grows worlds is checkable, and an unchecked claim is a guess.
+            if (view.StartsWith("star", StringComparison.Ordinal) &&
+                int.TryParse(view.Substring(4), out int starIndex))
+            {
+                return FlyToStar(starIndex);
+            }
+
             if (!view.StartsWith("rung", StringComparison.Ordinal)) return false;
             if (!int.TryParse(view.Substring(4), out int rung)) return false;
 
@@ -330,6 +424,15 @@ namespace CosmoSynth.EditorTools
 
             var modelLoader = UnityEngine.Object.FindAnyObjectByType<SpacecraftModelLoader>();
             if (modelLoader != null) report.AppendLine($"  spacecraft {modelLoader.StatusLine()}");
+
+            var nearby = UnityEngine.Object.FindAnyObjectByType<CosmoSynth.Runtime.NearbyStarSystems>();
+            if (nearby != null) report.AppendLine($"  {nearby.StatusLine()}");
+
+            var skyForReport = UnityEngine.Object.FindAnyObjectByType<CosmoSynth.Runtime.SkyAndRings>();
+            report.AppendLine(skyForReport?.Stars != null
+                ? $"  star catalogue: {skyForReport.Stars.Count} loaded, brightest mag " +
+                  $"{skyForReport.Stars.Stars[0].ApparentMagnitude:F2}"
+                : "  star catalogue: NOT LOADED (invented sky)");
 
             AppendSpacecraft(report, simulation);
 

@@ -158,6 +158,10 @@ namespace CosmoSynth.Runtime
             // Spacecraft geometry, streamed out of StreamingAssets a mesh at a time.
             host.AddComponent<SpacecraftModelLoader>();
 
+            // Worlds around whichever real star you are nearest to, generated on arrival from
+            // that star's own measured position and discarded when you leave.
+            host.AddComponent<NearbyStarSystems>();
+
             // Names for whatever is on screen. Parented under the simulation, so labels travel
             // with the universe when the anchor is moved, exactly as the bodies do.
             var labelObject = new GameObject("Body Labels");

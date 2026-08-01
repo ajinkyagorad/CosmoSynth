@@ -21,11 +21,26 @@ namespace CosmoSynth.Runtime
         [Tooltip("Number of background stars. Procedural — no real catalogue is loaded.")]
         [SerializeField] private int _starCount = 3200;
 
+        [Tooltip("How many real stars to draw, brightest first. The catalogue holds 119613 down " +
+                 "to magnitude 13; a headset draws the bright end of it.")]
+        [SerializeField] private int _catalogStarBudget = 9000;
+
         [Tooltip("Radius of the star sphere in render units. Sits beyond everything else.")]
         [SerializeField] private float _starSphereRadius = 900f;
 
         [Header("Rings")]
         [SerializeField] private int _ringSegments = 128;
+
+        /// <summary>The real sky, once it has streamed in. Null until then, and on failure.</summary>
+        private StarCatalog _catalog;
+
+        /// <summary>
+        /// The loaded star catalogue, or null until it arrives. Read lazily by anything that
+        /// needs the stars — resolving it in Awake would cache a null forever, which is the
+        /// shape of three bugs this project has already shipped.
+        /// </summary>
+        public StarCatalog Stars => _catalog;
+        private GameObject _starField;
 
         private readonly List<Material> _materials = new List<Material>();
         private readonly List<GameObject> _created = new List<GameObject>();
@@ -57,6 +72,15 @@ namespace CosmoSynth.Runtime
             Clear();
 
             BuildStarField(anchor);
+
+            // The real sky, once. Build() runs again on every catalogue merge; the file does not
+            // change between those and re-reading 2.9 MB three times would be pure waste.
+            if (!_catalogRequested && isActiveAndEnabled)
+            {
+                _catalogRequested = true;
+                StartCoroutine(LoadStarCatalogRoutine(simulation, anchor));
+            }
+
             BuildRings(simulation);
             BuildStarLight(simulation, anchor);
             BuildAtmospheres(simulation);
@@ -106,6 +130,12 @@ namespace CosmoSynth.Runtime
         // for the top handful rather than only ever asymptotically approached.
 
         /// <summary>Uniform draw above which a star starts to get a halo at all.</summary>
+        /// <summary>Apparent magnitude at which a catalogued star starts earning a halo.</summary>
+        private const float CatalogBrightMagnitudeFloor = 3.4f;
+
+        /// <summary>...and the magnitude at which it gets the full treatment. Sirius is -1.44.</summary>
+        private const float CatalogBrightMagnitudeCeiling = -1.5f;
+
         private const float BrightStarFloor = 0.965f;
 
         /// <summary>Uniform draw at which the halo, second core and spikes are at full strength.</summary>
@@ -152,137 +182,239 @@ namespace CosmoSynth.Runtime
             triangles.Add(b); triangles.Add(b + 3); triangles.Add(b + 2);
         }
 
-        private void BuildStarField(Transform anchor)
+        /// <summary>
+        /// Emit one star's geometry. The single place a star becomes triangles, so the invented
+        /// sky and the measured one cannot drift apart in appearance — the defect StarSprite's
+        /// own docstring warned about and which happened anyway when the two populations kept
+        /// separate size and brightness rules.
+        /// </summary>
+        /// <param name="direction">Unit vector toward the star, ICRF.</param>
+        /// <param name="rank">Normalised brightness, 0 at the visibility floor and 1 at the top.
+        /// Drives both the drawn size and the colour intensity, because a star has one apparent
+        /// magnitude and on a display both channels are expressions of it.</param>
+        /// <param name="bright">How far into the bright end this star is, 0 to 1. Graded
+        /// separately from <paramref name="rank"/> because rank saturates at the very top and
+        /// therefore cannot order the handful of stars that get a halo and spikes.</param>
+        private void EmitStar(List<Vector3> vertices, List<Color> colors, List<Vector2> uvs,
+            List<int> triangles, Double3 direction, float rank, float bright, double temperatureK)
+        {
+            float size = _starSphereRadius * StarLook.QuadRadians(rank) * 0.5f;
+
+            // Colour from a black-body temperature drawn across the main sequence: many cool
+            // red dwarfs, few hot blue stars.
+            Double3 rgb = PlanetGenerator.BlackBodyColor(temperatureK);
+
+            // Magnitude goes into the RGB, not the alpha.
+            //
+            // It was in the alpha, and the alpha was doing nothing. Measured across forty
+            // stars in a captured frame, every one of them peaked at 63/255 in its brightest
+            // channel — the faintest six-pixel star and the brightest nineteen-pixel one
+            // alike — so the dial that was supposed to carry the entire magnitude range was
+            // carrying none of it, and size had been enlarged to compensate for a signal
+            // that had simply been disconnected. An additive blend consumes colour, not
+            // coverage; see StarLook.
+            var colour = StarLook.Colour(rgb, rank);
+
+            // Camera-facing quad. Billboarding in a shader would be better; at this count the
+            // difference is not measurable and a fixed quad needs no custom shader.
+            var centre = new Vector3((float)direction.x, (float)direction.z, (float)direction.y)
+                     * _starSphereRadius;
+
+            Vector3 forward = centre.normalized;
+            Vector3 right = Vector3.Cross(forward, Vector3.up).normalized;
+            if (right.sqrMagnitude < 1e-9f) right = Vector3.right;
+            Vector3 up = Vector3.Cross(forward, right).normalized;
+
+            AddQuad(vertices, colors, uvs, triangles, centre, right * size, up * size, colour);
+
+            // ---- The bright end, which one quad cannot reach --------------------------
+            //
+            // Measured across three renders with completely different quad sizes and
+            // profiles, the brightest a SINGLE additive star quad ever gets is about 0.27 of
+            // full scale — 69/255 in the last frame, with three separate stars landing on
+            // exactly that value. Widening the core removed the width-dependence of the gain
+            // (it is now flat at 0.25 to 0.27 from the faintest star to the brightest) but it
+            // did not raise the ceiling. So no amount of size or colour tuning produces a
+            // star that stands out, and the sky stays a field where everything is within a
+            // factor of two of everything else.
+            //
+            // Additive geometry sums in the framebuffer, so overlapping quads is the way
+            // past it — and it is not a workaround, it is what the thing actually looks like.
+            // A bright point source is a saturated core, an extended halo several times
+            // wider, and diffraction spikes. Drawing those as separate pieces decouples "how
+            // bright" from "how big", which is precisely the tension that made the first
+            // attempt cotton wool: brightness had been gated by width, and width was what
+            // ruined it.
+            //
+            // Driven by the raw uniform draw rather than by rank. Rank is rank = u^2.2, which
+            // saturates against 1.0 for the top few stars — that is why three of them
+            // rendered at identical values — so it cannot grade the very top. u can.
+            if (bright <= 0.01f) return;
+
+            // Second core, exactly on the first. This is the part that actually breaks the
+            // ceiling: two overlapping cores reach ~0.54 where one reaches ~0.27.
+            Color core = colour * bright; core.a = 1f;
+            AddQuad(vertices, colors, uvs, triangles, centre, right * size, up * size, core);
+
+            // The halo: wide and faint. It is what reads as "bright" at a glance, because the
+            // eye judges a point source by the glow around it long before it can resolve the
+            // core, and it adds to the centre as well.
+            Color halo = colour * (bright * HaloBrightness); halo.a = 1f;
+            AddQuad(vertices, colors, uvs, triangles, centre,
+                right * (size * HaloScale), up * (size * HaloScale), halo);
+
+            // Diffraction spikes, from geometry alone — no new shader, no new texture.
+            //
+            // The sprite is radially symmetric, so a quad stretched long in one axis and thin
+            // in the other samples it as an elongated Gaussian, which is exactly what a spike
+            // looks like. Two crossed ones give the four-point star. Confined to this handful
+            // because spikes on every star is the look that destroys a sky rather than making
+            // one: they are a property of the instrument, and instruments only show them on
+            // sources bright enough to saturate.
+            Color spike = colour * (bright * SpikeBrightness); spike.a = 1f;
+            AddQuad(vertices, colors, uvs, triangles, centre,
+                right * (size * SpikeLength), up * (size * SpikeWidth), spike);
+            AddQuad(vertices, colors, uvs, triangles, centre,
+                right * (size * SpikeWidth), up * (size * SpikeLength), spike);
+        }
+
+        /// <summary>Path under StreamingAssets to the real star catalogue.</summary>
+        private const string CatalogPath = "CosmoSynth/sky/stars.csstars";
+
+        private bool _catalogRequested;
+
+        /// <summary>
+        /// Stream the real sky in, then rebuild the field with it.
+        ///
+        /// Asynchronous because on Android StreamingAssets lives compressed inside the APK and
+        /// only UnityWebRequest can reach it — and read once rather than per Build(), because
+        /// Build runs again on every catalogue merge and the file is 2.9 MB. Until it lands the
+        /// invented sky is on screen, which is the same graceful degradation the spacecraft
+        /// meshes use: something correct-looking immediately, the truth a moment later.
+        /// </summary>
+        private System.Collections.IEnumerator LoadStarCatalogRoutine(UniverseSimulation simulation,
+            Transform anchor)
+        {
+            byte[] data = null;
+            yield return simulation.ReadStreamingAssetBytes(CatalogPath, result => data = result);
+
+            if (data == null)
+            {
+                Debug.LogWarning(
+                    $"[CosmoSynth] no star catalogue at StreamingAssets/{CatalogPath}; keeping the " +
+                    "invented sky. Build it with 'python3 tools/cosmodata/build_starfield.py'.");
+                yield break;
+            }
+
+            try
+            {
+                _catalog = StarCatalog.Parse(data, _catalogStarBudget);
+            }
+            catch (System.Exception exception)
+            {
+                // A malformed catalogue must not take the sky with it. The invented field is
+                // already drawn and stays drawn.
+                Debug.LogError($"[CosmoSynth] star catalogue is unreadable: {exception.Message}");
+                yield break;
+            }
+
+            // Rebuild only the star field. Calling Build() again would tear down and recreate the
+            // rings, the star light and every atmosphere shell for no reason.
+            if (_starField != null) Destroy(_starField);
+            BuildStarField(anchor);
+        }
+
+        /// <summary>
+        /// The real sky: 119 613 catalogued stars at measured positions, brightest first.
+        ///
+        /// Only a prefix is drawn. The catalogue reaches magnitude 13, which no headset can
+        /// show and no eye could see, so the budget buys the bright end — and because the file
+        /// is sorted by magnitude the choice is a length rather than a search. Magnitude 6 is
+        /// the naked-eye limit and about five thousand stars reach it, which is *fewer* than
+        /// the invented field this replaces: the real sky costs nothing extra.
+        ///
+        /// Distance is deliberately discarded here. These are painted on the sky sphere at a
+        /// fixed radius because from anywhere inside the solar system the parallax of even the
+        /// nearest star is far below one pixel — the direction is the whole of what is visible.
+        /// The measured distance stays in the catalogue for anything that needs it, and it is
+        /// what the interstellar phase will fly along.
+        /// </summary>
+        private void EmitCatalogSky(List<Vector3> vertices, List<Color> colors,
+            List<Vector2> uvs, List<int> triangles)
+        {
+            int drawn = System.Math.Min(_catalog.Count, _catalogStarBudget);
+
+            for (int i = 0; i < drawn; i++)
+            {
+                CatalogStar star = _catalog.Stars[i];
+
+                float rank = StarLook.BrightnessFromMagnitude(star.ApparentMagnitude);
+
+                // The bright end is graded by magnitude, not by the rank above, for the same
+                // reason the invented sky grades it by the raw draw: rank saturates at the top
+                // and cannot order the few stars that earn a halo and spikes. Real magnitudes
+                // order themselves — this window puts roughly the fifty brightest stars in,
+                // which is about what a dark sky shows as obviously bright.
+                float bright = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(
+                    CatalogBrightMagnitudeFloor, CatalogBrightMagnitudeCeiling,
+                    (float)star.ApparentMagnitude));
+
+                EmitStar(vertices, colors, uvs, triangles,
+                    star.Direction, rank, bright, star.TemperatureK);
+            }
+
+            Debug.Log($"[CosmoSynth] star field: {drawn} real stars of {_catalog.Count} " +
+                      $"(to magnitude {_catalog.Stars[drawn - 1].ApparentMagnitude:F1}), " +
+                      $"{vertices.Count} vertices");
+        }
+
+        /// <summary>
+        /// The fallback sky, used only when the catalogue is missing or unreadable.
+        ///
+        /// Kept rather than deleted: a headset showing no stars at all because a file failed to
+        /// load looks like a broken app, and this project has shipped that failure before. It is
+        /// statistically plausible and honestly labelled — but it is not the sky, and the
+        /// provenance says Procedural where the catalogue says Measured.
+        /// </summary>
+        private void EmitInventedSky(List<Vector3> vertices, List<Color> colors,
+            List<Vector2> uvs, List<int> triangles)
         {
             var random = new DeterministicRandom(20260730);
-
-            // Lists, not fixed arrays: the brightest stars are drawn with more than one quad.
-            var vertices = new List<Vector3>(_starCount * 5);
-            var colors = new List<Color>(_starCount * 5);
-            var uvs = new List<Vector2>(_starCount * 5);
-            var triangles = new List<int>(_starCount * 8);
 
             for (int i = 0; i < _starCount; i++)
             {
                 Double3 direction = random.OnUnitSphere();
-                var centre = new Vector3((float)direction.x, (float)direction.z, (float)direction.y)
-                             * _starSphereRadius;
+                double draw = random.Unit();
 
-                double magnitudeDraw = random.Unit();
+                // ONE rank, driving both size and brightness. Splitting them into independent
+                // draws made the bright end impossible rather than rare: rendered peak depends
+                // on drawn width, so a star only lands conspicuously bright when it draws high
+                // on both, which over the stars in view happens about once.
+                float rank = (float)System.Math.Pow(draw, 2.2);
 
-                // ONE rank, driving both size and brightness.
-                //
-                // Splitting them into two independent draws was a mistake worth recording,
-                // because the reasoning for it sounded right: size and brightness are different
-                // questions, so give them different distributions. They are not different
-                // questions. A star has one apparent magnitude, and on a display both channels
-                // are expressions of it.
-                //
-                // Decorrelating them broke the bright end in a way that is obvious in hindsight.
-                // The rendered peak of a dot depends heavily on how wide it is drawn, so a star
-                // only lands conspicuously bright when it draws high on BOTH — and with two
-                // independent draws over the three hundred stars in view, that happens about
-                // once. The captured frame showed exactly that: a single star at 72 out of 255,
-                // the next at 46, and everything else clustered near the floor. The bright end
-                // had not been made rare, it had been made impossible.
-                //
-                // 2.2 rather than the 3.2 it started at: steep enough that big bright stars stay
-                // rare and the sky reads as mostly faint ones, shallow enough that the top of the
-                // range is actually reached by something in view.
-                double rank = System.Math.Pow(magnitudeDraw, 2.2);
-
-                // Angular, not linear.
-                //
-                // This used to read `_starSphereRadius * (0.0055f + brightness * 0.0075f)`, and
-                // writing it as a fraction of the sphere's radius is what hid the defect: the
-                // radius is 900 because that is where the depth bands put it, so the quantity
-                // that actually matters — the angle the star subtends — was never on the page.
-                // Those constants meant 11 dmm to 26 dmm. The full Moon is 9.1. Every single one
-                // of the 2500 background stars was being drawn larger than the Moon, which is
-                // exactly what "square looking patches at distance" turns into once the patches
-                // are given a round falloff: cotton wool.
-                //
-                // StarLook states it in dmm, the same unit CosmoTheme states type in, and the
-                // catalogue stars on the same sky read the same table.
-                float size = _starSphereRadius * StarLook.QuadRadians((float)rank) * 0.5f;
-
-                // Colour from a black-body temperature drawn across the main sequence: many cool
-                // red dwarfs, few hot blue stars.
-                double temperature = 2600.0 + System.Math.Pow(random.Unit(), 2.6) * 22000.0;
-                Double3 rgb = PlanetGenerator.BlackBodyColor(temperature);
-
-                // Magnitude goes into the RGB, not the alpha.
-                //
-                // It was in the alpha, and the alpha was doing nothing. Measured across forty
-                // stars in a captured frame, every one of them peaked at 63/255 in its brightest
-                // channel — the faintest six-pixel star and the brightest nineteen-pixel one
-                // alike — so the dial that was supposed to carry the entire magnitude range was
-                // carrying none of it, and size had been enlarged to compensate for a signal
-                // that had simply been disconnected. An additive blend consumes colour, not
-                // coverage; see StarLook.
-                var colour = StarLook.Colour(rgb, (float)rank);
-
-                // Camera-facing quad. Billboarding in a shader would be better; at this count the
-                // difference is not measurable and a fixed quad needs no custom shader.
-                Vector3 forward = centre.normalized;
-                Vector3 right = Vector3.Cross(forward, Vector3.up).normalized;
-                if (right.sqrMagnitude < 1e-9f) right = Vector3.right;
-                Vector3 up = Vector3.Cross(forward, right).normalized;
-
-                AddQuad(vertices, colors, uvs, triangles, centre, right * size, up * size, colour);
-
-                // ---- The bright end, which one quad cannot reach --------------------------
-                //
-                // Measured across three renders with completely different quad sizes and
-                // profiles, the brightest a SINGLE additive star quad ever gets is about 0.27 of
-                // full scale — 69/255 in the last frame, with three separate stars landing on
-                // exactly that value. Widening the core removed the width-dependence of the gain
-                // (it is now flat at 0.25 to 0.27 from the faintest star to the brightest) but it
-                // did not raise the ceiling. So no amount of size or colour tuning produces a
-                // star that stands out, and the sky stays a field where everything is within a
-                // factor of two of everything else.
-                //
-                // Additive geometry sums in the framebuffer, so overlapping quads is the way
-                // past it — and it is not a workaround, it is what the thing actually looks like.
-                // A bright point source is a saturated core, an extended halo several times
-                // wider, and diffraction spikes. Drawing those as separate pieces decouples "how
-                // bright" from "how big", which is precisely the tension that made the first
-                // attempt cotton wool: brightness had been gated by width, and width was what
-                // ruined it.
-                //
-                // Driven by the raw uniform draw rather than by rank. Rank is rank = u^2.2, which
-                // saturates against 1.0 for the top few stars — that is why three of them
-                // rendered at identical values — so it cannot grade the very top. u can.
                 float bright = Mathf.SmoothStep(0f, 1f,
-                    Mathf.InverseLerp(BrightStarFloor, BrightStarCeiling, (float)magnitudeDraw));
-                if (bright <= 0.01f) continue;
+                    Mathf.InverseLerp(BrightStarFloor, BrightStarCeiling, (float)draw));
 
-                // Second core, exactly on the first. This is the part that actually breaks the
-                // ceiling: two overlapping cores reach ~0.54 where one reaches ~0.27.
-                Color core = colour * bright; core.a = 1f;
-                AddQuad(vertices, colors, uvs, triangles, centre, right * size, up * size, core);
+                double temperature = 2600.0 + System.Math.Pow(random.Unit(), 2.6) * 22000.0;
 
-                // The halo: wide and faint. It is what reads as "bright" at a glance, because the
-                // eye judges a point source by the glow around it long before it can resolve the
-                // core, and it adds to the centre as well.
-                Color halo = colour * (bright * HaloBrightness); halo.a = 1f;
-                AddQuad(vertices, colors, uvs, triangles, centre,
-                    right * (size * HaloScale), up * (size * HaloScale), halo);
-
-                // Diffraction spikes, from geometry alone — no new shader, no new texture.
-                //
-                // The sprite is radially symmetric, so a quad stretched long in one axis and thin
-                // in the other samples it as an elongated Gaussian, which is exactly what a spike
-                // looks like. Two crossed ones give the four-point star. Confined to this handful
-                // because spikes on every star is the look that destroys a sky rather than making
-                // one: they are a property of the instrument, and instruments only show them on
-                // sources bright enough to saturate.
-                Color spike = colour * (bright * SpikeBrightness); spike.a = 1f;
-                AddQuad(vertices, colors, uvs, triangles, centre,
-                    right * (size * SpikeLength), up * (size * SpikeWidth), spike);
-                AddQuad(vertices, colors, uvs, triangles, centre,
-                    right * (size * SpikeWidth), up * (size * SpikeLength), spike);
+                EmitStar(vertices, colors, uvs, triangles, direction, rank, bright, temperature);
             }
+
+            Debug.Log($"[CosmoSynth] star field: {_starCount} INVENTED stars " +
+                      "(catalogue missing — run tools/cosmodata/build_starfield.py)");
+        }
+
+        private void BuildStarField(Transform anchor)
+        {
+            // Lists, not fixed arrays: the brightest stars are drawn with more than one quad.
+            int budget = _catalog != null ? _catalog.Count : _starCount;
+            var vertices = new List<Vector3>(budget * 5);
+            var colors = new List<Color>(budget * 5);
+            var uvs = new List<Vector2>(budget * 5);
+            var triangles = new List<int>(budget * 8);
+
+            if (_catalog != null) EmitCatalogSky(vertices, colors, uvs, triangles);
+            else EmitInventedSky(vertices, colors, uvs, triangles);
 
             var mesh = new Mesh { name = "StarField", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.SetVertices(vertices);
@@ -292,6 +424,7 @@ namespace CosmoSynth.Runtime
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * _starSphereRadius * 4f);
 
             var starObject = Own(new GameObject("Star Field"));
+            _starField = starObject;
             starObject.transform.SetParent(anchor, false);
             starObject.AddComponent<MeshFilter>().sharedMesh = mesh;
 

@@ -132,7 +132,22 @@ namespace CosmoSynth.Runtime
         /// The local star gets its true angular size instead, which is a better answer than a
         /// bigger dot; see <c>CelestialBodyView.UpdateStarPointScale</c>.
         /// </summary>
+        /// <remarks>
+        /// Retuned when the real catalogue replaced the invented field, against a measurement.
+        /// The two populations have completely different magnitude distributions: the procedural
+        /// sky drew rank = u^2.2, whose median is 0.22, while the real sky to magnitude 6.5 has a
+        /// median star at about magnitude 5.8 — because a real sky is overwhelmingly faint stars,
+        /// which is the whole reason the naked-eye limit is where it is. Under the previous
+        /// (6 - m) / 8 that median landed at 0.025, i.e. the floor, and the measured frame showed
+        /// it: 460 stars detected against the invented sky's 191, but p50 23 against 32 and
+        /// nothing at all above 100.
+        ///
+        /// So the window is narrowed to put the real median back where the tuned invented one
+        /// sat. Magnitude 1.5 and brighter now saturates this channel; those stars are told apart
+        /// by the halo and spikes instead, which is the correct division of labour — beyond a
+        /// point a brighter star is not a bigger dot, it is a dot with more around it.
+        /// </remarks>
         public static float BrightnessFromMagnitude(double apparentMagnitude) =>
-            Mathf.Clamp01((float)((6.0 - apparentMagnitude) / 8.0));
+            Mathf.Clamp01((float)((7.0 - apparentMagnitude) / 5.5));
     }
 }
