@@ -162,7 +162,7 @@ Three bugs the capture found that reading the code did not:
 
 ---
 
-## Phase 3 — seamless landing
+## Phase 3 — seamless landing  ◐ GEOMETRY DONE 2026-08-19
 
 Build terrain meshes from the cube-sphere quadtree so you can descend from orbit to the ground
 with no transition.
@@ -183,6 +183,29 @@ with no transition.
   broken planet, where today's smooth sphere reads as a finished one.
 
 **Proven by:** a continuous descent capture from orbit to ground with no popping and no seam.
+
+**Done so far — `Core/Procedural/TerrainMesh.cs`, six tests.** A cube-sphere tile becomes
+positions, normals and triangles, engine-free so it can run on a worker thread like the texture
+baker already does. Vertices are **tile-local**, which is the point of the type: absolute
+positions on Earth's surface quantise to about 60 cm in a 32-bit float, and a metre-scale
+landscape would snap every vertex to the same handful of values. Skirts are sized from the tile's
+own ground size rather than fixed.
+
+Two failures the tests caught, and they were different in kind:
+
+- **Every triangle was wound inside out** — 0 of 768 faced outward. A straight bug, invisible in
+  any numeric check that does not ask which way a surface points, and on screen it would have
+  looked like a planet that simply was not there.
+- **A seam of 58 mm between neighbouring tiles**, which turned out to be the *test* being wrong.
+  At level 3 a tile spans some twelve hundred kilometres, so its local coordinates still reach
+  600 km and a float resolves those to about seven centimetres; two neighbours rounding
+  independently differ by that much. The local frame buys precision **in proportion to how small
+  the tile is** — which is fine, because that is exactly the regime landing happens in. Retested
+  at level 10, where a tile is ten kilometres across, the two agree to under a micrometre.
+
+**Still to do:** the runtime — a quadtree that splits and merges by the screen-space error the
+tiles already compute, builds meshes on worker threads, and swaps them in without stalling a
+frame. That is where the frame-time risk lives, and it is most of the remaining work.
 
 ---
 
