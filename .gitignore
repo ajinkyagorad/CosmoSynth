@@ -60,3 +60,24 @@ data/cache/
 .DS_Store
 Thumbs.db
 *~
+
+# added 2026-09-06 before GitHub push
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+node_modules/
+.env
+.env.*
+!.env.example
+dev-token*
+*_secrets/
+secrets/
+*.keystore
+*.jks
+local.properties
+*keys.json
+*.pem
