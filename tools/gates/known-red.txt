@@ -1,0 +1,7 @@
+# Gates that are red on purpose, one id per line, Phase 0 only.
+#
+# A gate listed here is still run and still printed, but does not set gate-all.sh's exit
+# code. build.sh REFUSES to run at all while this file is non-empty: a build never goes
+# out past an excused gate.
+#
+# Empty on purpose. Add a line only with a written reason and a date to remove it by.

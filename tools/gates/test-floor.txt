@@ -1,0 +1,4 @@
+142
+# The number of tests that must pass. Raised by the integrator after each merge, so a
+# deleted test cannot pass silently: `N passed, 0 failed` with N below this line is red.
+# 142 is the VERIFIED count of the Core suite on 2026-09-11.
