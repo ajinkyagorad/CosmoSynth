@@ -125,7 +125,13 @@ namespace CosmoSynth.EditorTools
             }
         }
 
-        private static void ConfigurePlayerSettings()
+        /// <summary>
+        /// The player identity and backend. Public because <c>XrSetup.Configure</c> calls it:
+        /// it is a settings write, it belongs to the settings step (G1a), and G1b asserts it
+        /// afterwards from a separate editor launch. The values stay here, next to
+        /// <see cref="Version"/>, which is also where tools/build.sh greps for them.
+        /// </summary>
+        public static void ConfigurePlayerSettings()
         {
             PlayerSettings.companyName = "Triton";
             PlayerSettings.productName = ProductName;

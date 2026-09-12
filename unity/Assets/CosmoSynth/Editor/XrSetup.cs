@@ -121,6 +121,12 @@ namespace CosmoSynth.EditorTools
             EnsureUrp();
             EnsureFramePacing();
             EnsureBothInputHandlers();
+
+            // The player identity, from ServerBuild, so that G1b has something true to assert.
+            // Without this the version bump only lands during the build itself, and Diagnostics
+            // fails on every first run at a new version (see ServerBuild.ConfigurePlayerSettings).
+            ServerBuild.ConfigurePlayerSettings();
+
             EnsureShadersIncluded();
 
             AssetDatabase.SaveAssets();

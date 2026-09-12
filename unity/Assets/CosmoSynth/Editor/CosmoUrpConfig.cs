@@ -70,6 +70,18 @@ namespace CosmoSynth.EditorTools
             ("m_ShadowDistance", 0f),
         };
 
+        /// <summary>Per-level fields URP owns, forced off so the two cannot disagree.</summary>
+        public static readonly (string prop, int value)[] QualityLevelExpect =
+        {
+            ("pixelLightCount", 0),
+            ("shadows", 0),            // ShadowQuality.Disable
+            ("antiAliasing", 0),       // the URP asset owns MSAA
+            ("vSyncCount", 0),
+        };
+
+        /// <summary>The quality level Android builds run at, by name. See AndroidQualityLevelIndex.</summary>
+        public const string AndroidQualityLevelName = "Medium";
+
         public static readonly (string prop, int value)[] RendererExpect =
         {
             ("m_RenderingMode", 0),                   // Forward
@@ -121,25 +133,40 @@ namespace CosmoSynth.EditorTools
             EditorUtility.SetDirty(asset);
             AssetDatabase.SaveAssets();
 
-            int current = QualitySettings.GetQualityLevel();
-            for (int i = 0; i < QualitySettings.names.Length; i++)
+            // Quality levels, written through the serialized QualitySettings singleton.
+            //
+            // SetQualityLevel(i) followed by the instance properties is what the Worldfall port
+            // did, and in 6000.5.5f1 batchmode it persists NOTHING: after a complete run every
+            // level still read pixelLightCount 4 / shadows 2 / customRenderPipeline {fileID: 0},
+            // and GetRenderPipelineAssetAt returned null for all six. There is no public
+            // SetRenderPipelineAssetAt in this version (checked against the editor assemblies),
+            // so the serialized list is the only writer that sticks. Verify() reads it back off
+            // the YAML, which is also where settings_gate.py looks.
+            SerializedObject qs = QualitySettingsObject();
+            SerializedProperty levels = qs.FindProperty("m_QualitySettings");
+            for (int i = 0; i < levels.arraySize; i++)
             {
-                QualitySettings.SetQualityLevel(i, false);
-                QualitySettings.renderPipeline = asset;
+                SerializedProperty level = levels.GetArrayElementAtIndex(i);
+                level.FindPropertyRelative("customRenderPipeline").objectReferenceValue = asset;
 
                 // Everything URP now owns, switched off at the quality level so the two cannot
                 // disagree. MSAA in particular: a quality level asking for 2x while the URP asset
                 // asks for 4x is a value nobody chose.
-                QualitySettings.pixelLightCount = 0;
-                QualitySettings.shadows = UnityEngine.ShadowQuality.Disable;
-                QualitySettings.vSyncCount = 0;
-                QualitySettings.antiAliasing = 0;
+                foreach ((string prop, int value) in QualityLevelExpect)
+                {
+                    SerializedProperty p = level.FindPropertyRelative(prop);
+                    if (p == null) { Debug.LogWarning($"[XrSetup] urp quality[{i}]: no '{prop}'"); continue; }
+                    p.intValue = value;
+                }
             }
-            QualitySettings.SetQualityLevel(current, false);
+            qs.ApplyModifiedPropertiesWithoutUndo();
 
             GraphicsSettings.defaultRenderPipeline = asset;
-            SetAndroidDefaultQuality(current);
             AssetDatabase.SaveAssets();
+
+            // Last, and only now. SetAndroidDefaultQuality rewrites the YAML as text, so any
+            // in-memory change still unsaved at this point would overwrite it on the next save.
+            SetAndroidDefaultQuality(AndroidQualityLevelIndex());
 
             foreach (string line in Describe("after")) Debug.Log("[XrSetup] urp " + line);
 
@@ -231,16 +258,93 @@ namespace CosmoSynth.EditorTools
             if (GraphicsSettings.defaultRenderPipeline != asset)
                 problems.Add("GraphicsSettings.defaultRenderPipeline is not CS_URP");
 
+            // Two independent readbacks, because the defect this replaced was "wrote it,
+            // logged it, believed it": the engine's own view, and the YAML on disk, which is
+            // what settings_gate.py and the build actually consume.
             for (int i = 0; i < QualitySettings.names.Length; i++)
             {
                 if (QualitySettings.GetRenderPipelineAssetAt(i) != asset)
-                    problems.Add($"quality level {i} '{QualitySettings.names[i]}' not on CS_URP");
+                    problems.Add($"quality level {i} '{QualitySettings.names[i]}' not on CS_URP (engine)");
             }
 
+            string guid = AssetDatabase.AssetPathToGUID(UrpAssetPath);
+            SerializedObject qs = QualitySettingsObject();
+            SerializedProperty levels = qs.FindProperty("m_QualitySettings");
+            for (int i = 0; i < levels.arraySize; i++)
+            {
+                SerializedProperty level = levels.GetArrayElementAtIndex(i);
+                string name = level.FindPropertyRelative("name").stringValue;
+                if (level.FindPropertyRelative("customRenderPipeline").objectReferenceValue != asset)
+                    problems.Add($"quality level {i} '{name}' customRenderPipeline not CS_URP (serialized)");
+                foreach ((string prop, int value) in QualityLevelExpect)
+                {
+                    SerializedProperty p = level.FindPropertyRelative(prop);
+                    int got = p != null ? p.intValue : -1;
+                    if (got != value) problems.Add($"quality level {i} '{name}' {prop} = {got} (want {value})");
+                }
+            }
+            foreach (string bad in QualityLevelsWithoutRpGuid(guid))
+                problems.Add($"quality level {bad} on disk (QualitySettings.asset)");
+
             int android = ReadAndroidDefaultQuality();
-            if (android < 0 || android >= QualitySettings.names.Length) problems.Add("Android default quality unset");
-            report.Add($"verify quality levels on CS_URP: {QualitySettings.names.Length}, Android default={android}");
+            int wantAndroid = AndroidQualityLevelIndex();
+            if (android != wantAndroid)
+                problems.Add($"Android default quality is {android}, want {wantAndroid} ('{AndroidQualityLevelName}')");
+            report.Add($"verify quality levels on CS_URP: {levels.arraySize} serialized, " +
+                       $"guid {guid}, Android default={android} ('{AndroidQualityLevelName}')");
             return problems;
+        }
+
+        /// <summary>
+        /// The QualitySettings singleton as a SerializedObject. Per-level fields have no public
+        /// setter in this Unity version, and the instance properties do not persist in batchmode.
+        /// </summary>
+        private static SerializedObject QualitySettingsObject()
+        {
+            Object singleton = Unsupported.GetSerializedAssetInterfaceSingleton("QualitySettings");
+            if (singleton == null)
+            {
+                throw new System.InvalidOperationException(
+                    "QualitySettings singleton is not available: the quality levels cannot be written");
+            }
+            return new SerializedObject(singleton);
+        }
+
+        /// <summary>
+        /// The index of the Android default quality level, chosen by NAME. It used to be whatever
+        /// level the batchmode editor happened to have active, which silently moved this project
+        /// from Medium to Ultra on the first run - the drift the MSAA comment above exists to stop.
+        /// </summary>
+        public static int AndroidQualityLevelIndex()
+        {
+            string[] names = QualitySettings.names;
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (names[i] == AndroidQualityLevelName) return i;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Levels whose serialized customRenderPipeline does not carry this guid, read off the
+        /// YAML rather than out of memory. Empty when every level is on the asset.
+        /// </summary>
+        private static IEnumerable<string> QualityLevelsWithoutRpGuid(string guid)
+        {
+            string text = File.ReadAllText("ProjectSettings/QualitySettings.asset");
+            Match block = new Regex(@"^  m_QualitySettings:\n(.*?)(?=^  [A-Za-z_])",
+                                    RegexOptions.Multiline | RegexOptions.Singleline).Match(text);
+            if (!block.Success) { yield return "?: no m_QualitySettings block"; yield break; }
+            MatchCollection levels = new Regex(
+                @"^\s*- serializedVersion: \d+\n(.*?)(?=^\s*- serializedVersion: |\Z)",
+                RegexOptions.Multiline | RegexOptions.Singleline).Matches(block.Groups[1].Value);
+            for (int i = 0; i < levels.Count; i++)
+            {
+                Match rp = new Regex(@"customRenderPipeline:\s*\{fileID:\s*(\d+)(?:,\s*guid:\s*([0-9a-f]+))?")
+                    .Match(levels[i].Groups[1].Value);
+                string got = rp.Success && rp.Groups[1].Value != "0" ? rp.Groups[2].Value : "none";
+                if (got != guid) yield return $"{i} customRenderPipeline guid {got}";
+            }
         }
 
         /// <summary>The default renderer data of a URP asset, read through serialization (no public getter in URP 17).</summary>

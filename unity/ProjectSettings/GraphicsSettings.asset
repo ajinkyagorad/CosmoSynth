@@ -40,6 +40,15 @@ GraphicsSettings:
   - {fileID: 211, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 4800000, guid: 9184ef99663d63c55bc02c63f31e3951, type: 3}
   - {fileID: 4800000, guid: b4eb121fca1fc835da330e69393fc3da, type: 3}
+  - {fileID: 4800000, guid: 68529f98df0dd43dfb921fe0f1c06f44, type: 3}
+  - {fileID: 4800000, guid: 06f5e2aa9da21bb4c3ce4ba787c4657b, type: 3}
+  - {fileID: 4800000, guid: b7e2c9e199651a77ecce10a0c57f9db0, type: 3}
+  - {fileID: 4800000, guid: 1a1b11a7e8f81c57e479c8627c3c096b, type: 3}
+  - {fileID: 4800000, guid: 17c0d49b5f95b1cd535e811579c110cc, type: 3}
+  - {fileID: 4800000, guid: 635f60be8f6e3187fec58d6c87e9bf3a, type: 3}
+  - {fileID: 4800000, guid: 0e8ee4e5ac19557ad8989930b33d95a6, type: 3}
+  - {fileID: 4800000, guid: 09e8f2e1316dda2c8cacb5a068c0289d, type: 3}
+  - {fileID: 4800000, guid: f0ba774be00b9588118b23bddd42e77f, type: 3}
   m_PreloadedShaders: []
   m_PreloadShadersBatchTimeLimit: -1
   m_GraphicsStateCollection: {fileID: 0}
@@ -52,7 +61,7 @@ GraphicsSettings:
   m_WarmupProgressivelyLimit: -1
   m_CacheMissCollectionPath: CacheMissCollection
   m_SpritesDefaultMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
-  m_CustomRenderPipeline: {fileID: 0}
+  m_CustomRenderPipeline: {fileID: 11400000, guid: b85d4c7da5e3c6bde904f7ab30838a36, type: 2}
   m_TransparencySortMode: 0
   m_TransparencySortAxis: {x: 0, y: 0, z: 1}
   m_DefaultRenderingPath: 1

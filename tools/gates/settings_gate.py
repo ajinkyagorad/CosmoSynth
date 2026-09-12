@@ -199,9 +199,17 @@ def run_checks():
                  if re.search(r"m_Script:\s*\{fileID:\s*\d+,\s*guid:\s*%s" % METAQUEST_GUID, d)])
         check("metaquest-feature", n == 1, "%d MetaQuestFeature documents (want exactly 1)" % n)
 
-        ht = [d for d in docs(oxr) if "openxr.feature.input.handtracking" in d]
+        # Anchored, not a substring: "openxr.feature.input.handtracking" is also a prefix of
+        # "...handtrackingsubsystem", which is Meta's Hand Tracking Subsystem and MUST stay
+        # enabled. The loose form asked for hand tracking to be turned off and called it a
+        # settings defect. The good fixture now carries an enabled subsystem document so a
+        # matcher that drifts back to a substring fails its own positive control.
+        ht = [d for d in docs(oxr)
+              if re.search(r"featureIdInternal:\s*com\.unity\.openxr\.feature\.input\.handtracking\s*$",
+                           d, flags=re.M)]
         if not ht:
-            check("handtracking-off", False, "no input.handtracking feature document")
+            check("handtracking-off", False,
+                  "no com.unity.openxr.feature.input.handtracking feature document")
         else:
             on = [d for d in ht if field(d, "m_enabled") == "1"]
             check("handtracking-off", not on,
@@ -323,9 +331,14 @@ MonoBehaviour:
   m_enabled: 1
 --- !u!114 &3
 MonoBehaviour:
-  m_Name: HandTracking Android
+  m_Name: MicrosoftHandInteraction Android
   m_enabled: 0
   featureIdInternal: com.unity.openxr.feature.input.handtracking
+--- !u!114 &5
+MonoBehaviour:
+  m_Name: HandTracking Android
+  m_enabled: 1
+  featureIdInternal: com.unity.openxr.feature.input.handtrackingsubsystem
 --- !u!114 &4
 MonoBehaviour:
   m_Name: FoveatedRenderingFeature Android
@@ -392,8 +405,8 @@ def self_test():
         ("render-mode", OXR, "m_renderMode: 1", "m_renderMode: 0"),
         ("metaquest-feature", OXR, "guid: f647cc0545697264a9878224faada6d5",
          "guid: 0000000000000000000000000000ffff"),
-        ("handtracking-off", OXR, "m_Name: HandTracking Android\n  m_enabled: 0",
-         "m_Name: HandTracking Android\n  m_enabled: 1"),
+        ("handtracking-off", OXR, "m_Name: MicrosoftHandInteraction Android\n  m_enabled: 0",
+         "m_Name: MicrosoftHandInteraction Android\n  m_enabled: 1"),
         ("android-providers", XRG, "m_Name: Android Providers",
          "m_Name: Android Providers\n--- !u!114 &2\nMonoBehaviour:\n  m_Name: Android Providers"),
     ]
