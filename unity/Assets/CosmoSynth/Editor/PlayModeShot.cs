@@ -7,6 +7,7 @@ using CosmoSynth.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace CosmoSynth.EditorTools
 {
@@ -42,9 +43,34 @@ namespace CosmoSynth.EditorTools
         private const string PendingKey = "CosmoSynth.PlayModeShot.Pending";
         private const string OutputKey = "CosmoSynth.PlayModeShot.Output";
         private const string FramesKey = "CosmoSynth.PlayModeShot.Frames";
-        private const string ViewKey = "CosmoSynth.PlayModeShot.View";
+        private const string ViewsKey = "CosmoSynth.PlayModeShot.Views";
+        private const string IndexKey = "CosmoSynth.PlayModeShot.Index";
+        private const string CommitKey = "CosmoSynth.PlayModeShot.Commit";
+        private const string DirtyKey = "CosmoSynth.PlayModeShot.Dirty";
+        private const string ProfileKey = "CosmoSynth.PlayModeShot.Profile";
+        private const string HideKey = "CosmoSynth.PlayModeShot.Hide";
+        private const string FailuresKey = "CosmoSynth.PlayModeShot.Failures";
 
         private static int _frames;
+
+        /// <summary>
+        /// The seven scales Section A requires a capture at, as render metres per kilometre.
+        ///
+        /// Not a taste list: these are the walkthrough rows of the group design, and the numbers
+        /// beside them are the expected rendered distances. They are here rather than in a shell
+        /// script so that "release" cannot drift from what the design asks for. When
+        /// LayerTable.Rungs lands, this becomes a projection of it.
+        /// </summary>
+        private static readonly (string caption, double unitsPerKm)[] FoundationScales =
+        {
+            ("earth-hologram", 4.31e-5),
+            ("solar-system-room", 3.34e-10),
+            ("nearby-stars", 3.24e-15),
+            ("milky-way-table", 1.08e-18),
+            ("local-group", 1.08e-20),
+            ("observable-universe", 1.40e-24),
+            ("true-scale", 1e3),
+        };
 
         static PlayModeShot()
         {
@@ -57,29 +83,49 @@ namespace CosmoSynth.EditorTools
 
         public static void Run()
         {
-            string output = Argument("-shotOut", "/tmp/cosmosynth-play.png");
+            string output = Argument("-shotOut", "/tmp/cosmosynth-shots");
             int frames = int.TryParse(Argument("-shotFrames", "600"), out int parsed) ? parsed : 600;
-            string view = Argument("-shotView", "default");
+            string views = Argument("-shotViews", Argument("-shotView", "default"));
+
+            if (views.Trim() == "release")
+            {
+                var expanded = new List<string> { "default", "wide", "mode:vr" };
+                foreach ((string caption, double unitsPerKm) in FoundationScales)
+                {
+                    expanded.Add($"scale:{caption}");
+                }
+                views = string.Join(",", expanded);
+            }
 
             SessionState.SetBool(PendingKey, true);
             SessionState.SetString(OutputKey, output);
             SessionState.SetInt(FramesKey, frames);
-            SessionState.SetString(ViewKey, view);
+            SessionState.SetString(ViewsKey, views);
+            SessionState.SetInt(IndexKey, 0);
+            SessionState.SetInt(FailuresKey, 0);
+            SessionState.SetString(CommitKey, Argument("-shotCommit", "(unknown)"));
+            SessionState.SetString(DirtyKey, Argument("-shotDirty", "?"));
+            SessionState.SetString(ProfileKey, Argument("-shotProfile", "full"));
+            SessionState.SetString(HideKey, Argument("-shotHide",
+                Environment.GetEnvironmentVariable("COSMOSYNTH_HIDE") ?? ""));
 
             const string scenePath = "Assets/CosmoSynth/Scenes/SolarSystemLab.unity";
             if (!File.Exists(scenePath))
             {
-                Log($"FAILED: no scene at {scenePath}. Run ServerBuild.BuildAndroid once to generate it.");
+                Log($"FAILED: no scene at {scenePath}. Run SceneBuilder.CreateScene once and commit it.");
                 EditorApplication.Exit(1);
                 return;
             }
 
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
-            Log($"entering play mode on {scenePath}, capturing after {frames} frames");
+            Log($"entering play mode on {scenePath}; views: {views}");
 
             // No -quit on the command line, or the editor exits before play mode starts.
             EditorApplication.EnterPlaymode();
         }
+
+        private static string[] Views() =>
+            SessionState.GetString(ViewsKey, "default").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
         private static void Tick()
         {
@@ -95,42 +141,34 @@ namespace CosmoSynth.EditorTools
             // a race.
             if (!IsSettled() && _frames < SessionState.GetInt(FramesKey, 600)) return;
 
-            // Change the scale, then let the app run on before capturing.
-            //
-            // Bodies are placed in LateUpdate, so a scale set during this callback has not reached
-            // a single transform yet: capturing immediately photographs the previous scale's
-            // layout through the new scale's clip planes, which looks like a rendering bug and is
-            // entirely the harness's doing. Twenty frames also lets the manipulator's log-space
-            // scale smoothing settle.
-            if (!_settledActionsDone)
-            {
-                _settledActionsDone = true;
+            string[] views = Views();
+            int index = SessionState.GetInt(IndexKey, 0);
+            if (index >= views.Length) { Finish(); return; }
 
-                // Size the cameras to the capture BEFORE letting the app run on.
+            string view = views[index].Trim();
+
+            if (!_viewPrepared)
+            {
+                _viewPrepared = true;
+
+                // Size the camera to the capture BEFORE letting the app run on.
                 //
-                // This is why the report and the picture used to disagree. Every apparent-size
-                // rule in the app — the minimum visible body, star magnitudes, orbit line width,
-                // LOD selection — is denominated in pixels of the render target, and the target
-                // was only swapped for a 1920x1080 one at the instant of capture. So all of that
-                // ran against the batchmode Game view, which is about 486 pixels tall, and the
-                // capture then photographed the result at 1080: Earth was reported at 347 px and
-                // measured 790, an orbit line asked for 2.6 px and drew 7.5. Everything in the
-                // shot was roughly 2.2x larger than the code had asked for, uniformly enough to
-                // look deliberate. Assigning the target here and then running the settling frames
-                // means the numbers in the report describe the pixels in the PNG.
+                // Every apparent-size rule in the app — the 2.5 px floor, star magnitudes, orbit
+                // line width, LOD selection — is denominated in pixels of the render target, and
+                // the target used to be swapped for a 1920x1080 one at the instant of capture. So
+                // all of that ran against the batchmode Game view at about 486 px tall and the
+                // capture then photographed the result at 1080: everything in the shot was
+                // roughly 2.2x larger than the code had asked for, uniformly enough to look
+                // deliberate.
+                //
+                // The `camera` assertion runs BEFORE this, because this assigns a targetTexture
+                // and the assertion is partly about the camera the app itself built.
+                if (index == 0) AssertCamera();
                 PrepareCaptureViewport();
 
-                ApplyViewAction(SessionState.GetString(ViewKey, "default"));
+                ApplyViewAction(view);
 
-                // Always, not only when a view action fired: the resize alone has to reach every
-                // transform, and bodies are placed in LateUpdate.
-                //
-                // Flying to a star needs far longer. NearbyStarSystems checks twice a second and
-                // batchmode frames are unthrottled, so twenty of them can pass in a few
-                // milliseconds — the capture would photograph the moment before the system was
-                // generated and report, wrongly, that nothing happened.
-                _framesAfterAction = SessionState.GetString(ViewKey, "default")
-                    .StartsWith("star", StringComparison.Ordinal) ? 600 : 20;
+                _framesAfterAction = view.StartsWith("star", StringComparison.Ordinal) ? 600 : 30;
                 return;
             }
 
@@ -140,34 +178,254 @@ namespace CosmoSynth.EditorTools
                 return;
             }
 
-            EditorApplication.update -= Tick;
-            SessionState.SetBool(PendingKey, false);
-
-            string output = SessionState.GetString(OutputKey, "/tmp/cosmosynth-play.png");
-            int exitCode = 0;
-
             try
             {
-                // Diagnostic switch: hide renderers whose hierarchy path contains any of these,
-                // then capture. "What is that large shape" is otherwise answered by guesswork —
-                // this answers it by removing candidates one at a time.
-                //   COSMOSYNTH_HIDE="Star Field,Atmosphere" bash playshot-cosmosynth.sh ...
-                string hide = Environment.GetEnvironmentVariable("COSMOSYNTH_HIDE");
+                string hide = SessionState.GetString(HideKey, "");
                 if (!string.IsNullOrWhiteSpace(hide)) HideRenderers(hide);
 
-                string report = Inspect() + ProbeDestinationAlpha();
-                Log(report);
-                File.WriteAllText(Path.ChangeExtension(output, ".report.txt"), report);
+                var report = new StringBuilder();
+                report.AppendLine($"commit {SessionState.GetString(CommitKey, "?")} " +
+                                  $"dirty {SessionState.GetString(DirtyKey, "?")} " +
+                                  $"unity {Application.unityVersion} " +
+                                  $"profile {SessionState.GetString(ProfileKey, "full")} " +
+                                  $"views {views.Length}");
+                report.AppendLine($"view {view} ({index + 1} of {views.Length})");
+                report.Append(Inspect());
+                report.Append(ProbeDestinationAlpha());
+                report.Append(AssertInvariants(view));
 
-                if (!Capture(output, SessionState.GetString(ViewKey, "default"))) exitCode = 3;
+                string body = report.ToString();
+                Log(body);
+
+                string outDir = SessionState.GetString(OutputKey, "/tmp/cosmosynth-shots");
+                Directory.CreateDirectory(outDir);
+                string safe = view.Replace(':', '-').Replace('/', '-');
+                File.WriteAllText(Path.Combine(outDir, safe + ".report.txt"), body);
+
+                if (!Capture(Path.Combine(outDir, safe + ".png"), view)) Fail("capture", "no PNG written");
             }
             catch (Exception exception)
             {
-                Log($"FAILED: {exception}");
-                exitCode = 2;
+                Fail("harness", exception.ToString());
             }
 
-            EditorApplication.Exit(exitCode);
+            SessionState.SetInt(IndexKey, index + 1);
+            _viewPrepared = false;
+            _settledActionsDone = false;
+        }
+
+        private static bool _viewPrepared;
+
+        /// <summary>
+        /// Record a failed assertion. Every one of these is fatal: a harness that reports a broken
+        /// invariant and exits 0 is a harness whose output nobody reads twice.
+        /// </summary>
+        private static void Fail(string id, string detail)
+        {
+            Debug.LogError($"[PlayModeShot] ASSERT_FAIL {id}: {detail}");
+            SessionState.SetInt(FailuresKey, SessionState.GetInt(FailuresKey, 0) + 1);
+        }
+
+        private static void Finish()
+        {
+            EditorApplication.update -= Tick;
+            SessionState.SetBool(PendingKey, false);
+
+            int failures = SessionState.GetInt(FailuresKey, 0);
+            if (failures > 0)
+            {
+                Log($"{failures} assertion(s) failed");
+                EditorApplication.Exit(4);
+                return;
+            }
+
+            Log("PLAYSHOT_OK");
+            EditorApplication.Exit(0);
+        }
+
+        // ---- Assertions ------------------------------------------------------
+
+        /// <summary>
+        /// Exactly one enabled camera, clearing to a colour whose alpha is zero in passthrough.
+        ///
+        /// Run before the harness touches anything, because the harness itself assigns a
+        /// targetTexture and that would mask the very thing being checked.
+        /// </summary>
+        private static void AssertCamera()
+        {
+            var cameras = new List<Camera>();
+            foreach (Camera camera in Camera.allCameras)
+            {
+                if (camera != null && camera.isActiveAndEnabled) cameras.Add(camera);
+            }
+
+            if (cameras.Count != 1)
+            {
+                Fail("camera", $"{cameras.Count} enabled cameras: " +
+                               string.Join(", ", cameras.ConvertAll(c => HierarchyPath(c.transform))));
+                return;
+            }
+
+            Camera only = cameras[0];
+            if (only.targetTexture != null) Fail("camera", "the app's camera has a targetTexture of its own");
+            if (only.clearFlags != CameraClearFlags.SolidColor)
+                Fail("camera", $"clear flags are {only.clearFlags}, not SolidColor");
+
+            // The device value, not the editor's. XrRig falls back to an opaque clear when no XR
+            // display comes up, which is every run here — so what is checkable headlessly is that
+            // the passthrough clear the rig WOULD use has alpha zero, and that the camera is on
+            // one of the two colours the rig knows about. Only the headset can confirm the
+            // composite (G5 H5).
+            if (XrRig.PassthroughClearColour.a != 0f)
+                Fail("camera", $"XrRig.PassthroughClearColour alpha is {XrRig.PassthroughClearColour.a}, not 0");
+
+            Color clear = only.backgroundColor;
+            bool known = clear == XrRig.PassthroughClearColour || clear == XrRig.SpaceClearColour;
+            if (!known) Fail("camera", $"clear colour {clear} is neither the passthrough nor the space clear");
+
+            if (Mathf.Approximately(only.nearClipPlane, (float)ScaledSpace.NearPlaneMetres) == false)
+                Fail("camera", $"near plane {only.nearClipPlane} != {ScaledSpace.NearPlaneMetres}");
+            if (Mathf.Approximately(only.farClipPlane, (float)ScaledSpace.FarPlaneMetres) == false)
+                Fail("camera", $"far plane {only.farClipPlane} != {ScaledSpace.FarPlaneMetres}");
+        }
+
+        /// <summary>
+        /// The invariants the foundation rests on, checked against the running app and appended to
+        /// the report so a passing run says what it proved.
+        /// </summary>
+        private static string AssertInvariants(string view)
+        {
+            var report = new StringBuilder();
+            report.AppendLine("  --- assertions");
+
+            // ---- pipeline
+            RenderPipelineAsset pipeline = GraphicsSettings.currentRenderPipeline;
+            report.AppendLine($"  pipeline: {(pipeline != null ? pipeline.name : "Built-in")}, " +
+                              $"colour space {QualitySettings.activeColorSpace}");
+            if (pipeline == null) Fail("pipeline", "GraphicsSettings.currentRenderPipeline is null (Built-in)");
+            if (QualitySettings.activeColorSpace != ColorSpace.Linear)
+                Fail("pipeline", $"colour space is {QualitySettings.activeColorSpace}, not Linear");
+
+            // ---- catalogue adopted once
+            var simulation = UnityEngine.Object.FindAnyObjectByType<UniverseSimulation>();
+            if (simulation?.Catalog != null)
+            {
+                report.AppendLine($"  catalog: {simulation.CatalogAdoptions} adoption(s), " +
+                                  $"{simulation.Views.Count} views for {simulation.Catalog.Count} bodies");
+                if (simulation.CatalogAdoptions != 1)
+                    Fail("catalog", $"the catalogue was adopted {simulation.CatalogAdoptions} times, not once");
+                if (simulation.Views.Count != simulation.Catalog.Count)
+                    Fail("catalog", $"{simulation.Views.Count} views for {simulation.Catalog.Count} bodies");
+            }
+            else
+            {
+                Fail("catalog", "no catalogue loaded");
+            }
+
+            // ---- nothing is drawn beyond the far plane
+            var renderer = UnityEngine.Object.FindAnyObjectByType<ScaleRenderer>();
+            Camera camera = Camera.main;
+            float far = camera != null ? camera.farClipPlane : (float)ScaledSpace.FarPlaneMetres;
+            float limit = 0.9f * far;
+            float farthest = 0f;
+            string farthestPath = "(none)";
+
+            foreach (Renderer r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                if (camera == null) continue;
+
+                // The sky shell is placed per eye at a declared radius and is exempt by design;
+                // everything else is CPU-placed and must sit inside the frustum.
+                Bounds b = r.bounds;
+                float distance = Vector3.Distance(camera.transform.position, b.center) + b.extents.magnitude;
+                if (distance > farthest) { farthest = distance; farthestPath = HierarchyPath(r.transform); }
+            }
+
+            report.AppendLine($"  far: farthest drawn {farthest:F1} m of {far:F0} m (limit {limit:F0}) — {farthestPath}");
+            if (farthest > limit)
+                Fail("far", $"{farthestPath} reaches {farthest:F1} m, past 0.9 x far = {limit:F0} m");
+
+            // ---- the group solver resolved every overlap
+            if (renderer != null)
+            {
+                report.AppendLine($"  groups: rigid {renderer.RigidGroups}, envelope {renderer.EnvelopeGroups}, " +
+                                  $"enclosing {renderer.EnclosingGroups}, push conflicts {renderer.PushConflicts}");
+                if (renderer.PushConflicts > 0)
+                    Fail("push", $"{renderer.PushConflicts} group(s) could not be ordered without entering the room");
+            }
+
+            // ---- angular size survives the compression
+            report.Append(AssertAngularSize(simulation, renderer));
+
+            // ---- nothing is magenta
+            int magenta = 0;
+            foreach (Renderer r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (r == null) continue;
+                foreach (Material m in r.sharedMaterials)
+                {
+                    if (m != null && m.shader != null && m.shader.name.StartsWith("Hidden/InternalError")) magenta++;
+                }
+            }
+            report.AppendLine($"  shaders: {magenta} renderer(s) on the internal error shader");
+            if (magenta > 0) Fail("shaders", $"{magenta} material(s) fell back to Hidden/InternalErrorShader");
+
+            report.AppendLine($"  view '{view}' asserted");
+            return report.ToString();
+        }
+
+        /// <summary>
+        /// The one property the whole distance map promises: a body subtends the same angle drawn
+        /// as it does in truth.
+        ///
+        /// Checked on the body with the largest true angular size, across every group mode, so
+        /// whichever side of the compression boundary this view sits on it is the interesting one
+        /// that gets checked. 1e-3 relative: float transforms carry about 6e-8 per rounding over
+        /// at most a dozen roundings, so anything above 1e-5 is a real scaling bug and this leaves
+        /// two orders of margin over that.
+        /// </summary>
+        private static string AssertAngularSize(UniverseSimulation simulation, ScaleRenderer renderer)
+        {
+            if (simulation?.Catalog == null || renderer == null || Camera.main == null) return "";
+
+            FrameContext ctx = renderer.Context;
+            CelestialBodyView best = null;
+            double bestAngle = 0.0;
+
+            foreach (CelestialBodyView view in simulation.Views.Values)
+            {
+                if (view == null || !view.IsGeometryDrawn) continue;
+                double radiusKm = simulation.DisplayRadiusKm(view.Body);
+                double distanceKm = Double3.Distance(ctx.EyeKm, view.AbsolutePositionKm);
+                if (distanceKm <= radiusKm) continue;                       // inside it: no disc to measure
+                double angle = ScaleSpace.AngularDiameterRad(radiusKm, distanceKm);
+                if (angle > bestAngle) { bestAngle = angle; best = view; }
+            }
+
+            if (best == null) return "  angular: nothing drawn with a measurable disc" + Environment.NewLine;
+
+            double trueRadius = simulation.DisplayRadiusKm(best.Body);
+            double trueDistance = Double3.Distance(ctx.EyeKm, best.AbsolutePositionKm);
+            double trueAngle = ScaleSpace.AngularDiameterRad(trueRadius, trueDistance);
+
+            float renderedRadius = best.RenderedRadius;
+            float renderedDistance = Vector3.Distance(ctx.EyeUniverse, best.transform.localPosition);
+            double renderedAngle = renderedDistance > renderedRadius
+                ? 2.0 * MathD.SafeAsin(renderedRadius / renderedDistance)
+                : MathD.TwoPi;
+
+            double error = trueAngle > 0.0 ? Math.Abs(renderedAngle - trueAngle) / trueAngle : 0.0;
+            string line = $"  angular: {best.Body.Id} true {trueAngle * MathD.Rad2Deg:F4} deg at " +
+                          $"{trueDistance:G4} km, rendered {renderedAngle * MathD.Rad2Deg:F4} deg at " +
+                          $"{renderedDistance:F3} m, group scale {best.GroupScale:G4}, error {error:G3}\n";
+
+            if (error > 1e-3)
+            {
+                Fail("angular", $"{best.Body.Id} subtends {renderedAngle * MathD.Rad2Deg:F4} deg drawn " +
+                                $"but {trueAngle * MathD.Rad2Deg:F4} deg in truth (relative {error:G3})");
+            }
+            return line;
         }
 
         /// <summary>
@@ -306,6 +564,36 @@ namespace CosmoSynth.EditorTools
                 return FlyToStar(starIndex);
             }
 
+            // "scale:<caption>" — one of the seven scales the foundation requires a capture at.
+            // Set through FloatingOrigin, which is the only thing that clamps, so a capture cannot
+            // photograph a scale the app would refuse.
+            if (view.StartsWith("scale:", StringComparison.Ordinal))
+            {
+                string caption = view.Substring(6);
+                var simulation = UnityEngine.Object.FindAnyObjectByType<UniverseSimulation>();
+                if (simulation?.Origin == null) { Log($"no simulation: cannot apply {view}"); return false; }
+
+                foreach ((string name, double unitsPerKm) in FoundationScales)
+                {
+                    if (name != caption) continue;
+                    simulation.Origin.SetUnitsPerKm(unitsPerKm);
+                    Log($"scale set to {unitsPerKm:G4} units/km for '{caption}' " +
+                        $"(clamped to {simulation.Origin.UnitsPerKm:G4})");
+                    return true;
+                }
+                Log($"unknown scale caption '{caption}'");
+                return false;
+            }
+
+            // "mode:vr" — the opaque full-space clear rather than passthrough.
+            if (view == "mode:vr")
+            {
+                var rig = UnityEngine.Object.FindAnyObjectByType<XrRig>();
+                if (rig == null) return false;
+                rig.SetPassthrough(false);
+                return true;
+            }
+
             if (!view.StartsWith("rung", StringComparison.Ordinal)) return false;
             if (!int.TryParse(view.Substring(4), out int rung)) return false;
 
@@ -319,11 +607,6 @@ namespace CosmoSynth.EditorTools
             dashboard.ApplyScaleRung(rung);
             Log($"applied scale rung {rung} '{CosmoSynth.Runtime.WristDashboard.ScaleRungName(rung)}'");
             return true;
-        }
-
-        private static bool Unused()
-        {
-            return false;
         }
 
         /// <summary>
@@ -388,11 +671,6 @@ namespace CosmoSynth.EditorTools
                 var beacon = UnityEngine.Object.FindAnyObjectByType<CosmoSynth.Runtime.AnchorBeacon>();
                 if (beacon != null) report.AppendLine($"  status card: {beacon.DescribePanel()}");
 
-                var bands = camera.GetComponent<CosmoSynth.Runtime.DepthBands>();
-                if (bands != null)
-                {
-                    report.AppendLine($"  depth bands: split {bands.SplitDistance:G4}, far {bands.FarDistance:G4}");
-                }
                 report.AppendLine($"  clear: {camera.clearFlags}, colour alpha {camera.backgroundColor.a:F2}");
             }
 
@@ -476,7 +754,7 @@ namespace CosmoSynth.EditorTools
                         $"    {view.Body.Name,-13} d={distanceKm,11:G5} km  R={displayRadiusKm,10:G5} km  " +
                         $"{view.ApparentDiameterPixels,8:F1} px  {view.Representation,-12} " +
                         $"tex={(view.HasSurfaceTexture ? "y" : "n")} rWorld={view.RenderedRadius:G3} " +
-                        $"{(view.DrawnAsStarPoint ? "sky" : "space")}");
+                        $"{(view.DrawnAsPoint ? "point" : "geometry")}");
                 }
                 report.AppendLine($"  bodies at 1 px or larger: {visible} of {simulation.Views.Count}");
             }
@@ -549,8 +827,7 @@ namespace CosmoSynth.EditorTools
             Camera camera = rig != null ? rig.Camera : Camera.main;
             if (camera == null) return string.Empty;
 
-            var bands = camera.GetComponent<CosmoSynth.Runtime.DepthBands>();
-            Camera far = bands != null ? bands.FarCamera : null;
+            Camera far = null;
 
             var target = new RenderTexture(960, 540, 24, RenderTextureFormat.ARGB32)
             {
@@ -759,11 +1036,6 @@ namespace CosmoSynth.EditorTools
             _captureTarget = CreateCaptureTarget();
             camera.targetTexture = _captureTarget;
 
-            // Both, or ViewportInfo answers one question for the near band and another for the
-            // far one — and the far band is where the entire star field lives.
-            var bands = camera.GetComponent<CosmoSynth.Runtime.DepthBands>();
-            if (bands != null && bands.FarCamera != null) bands.FarCamera.targetTexture = _captureTarget;
-
             Log($"capture viewport: {CaptureWidth}x{CaptureHeight}, no MSAA — " +
                 "apparent-size rules now run at the resolution the shot is saved at");
         }
@@ -800,16 +1072,9 @@ namespace CosmoSynth.EditorTools
 
             RenderTexture target = _captureTarget != null ? _captureTarget : CreateCaptureTarget();
 
-            // BOTH bands, far first.
-            //
-            // Rendering only the main camera captures the near band alone — 5 cm to a few metres
-            // — and silently discards everything beyond it. That is most of the scene: the star
-            // field, every planet that is not the one in front of you, the whole outer system.
-            // The shot came back with a black background and looked like a rendering bug rather
-            // than like a harness that was only being shown half the frame. Compositing the pair
-            // the same way the device does is the only capture worth trusting.
-            var bands = camera.GetComponent<CosmoSynth.Runtime.DepthBands>();
-            Camera far = bands != null ? bands.FarCamera : null;
+            // ONE camera, one render. There is no far band to composite any more: the whole
+            // range reaches one frustum through the distance map, which is the point of it.
+            Camera far = null;
 
             // The app clears to alpha 0 for passthrough. With no compositor behind it that would
             // save as a transparent PNG showing nothing, so force an opaque clear for the

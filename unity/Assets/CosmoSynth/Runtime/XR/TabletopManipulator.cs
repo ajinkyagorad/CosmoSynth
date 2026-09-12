@@ -38,15 +38,11 @@ namespace CosmoSynth.Runtime
     {
         [SerializeField] private UniverseSimulation _simulation;
 
-        [Header("Scale limits")]
-        [Tooltip("Smallest render units per km. Lower means more universe fits in the room.")]
-        // 1e-20 puts a thousand light years in the room; the old 1e-12 stopped at about forty
-        // light years, which made the whole exoplanet catalogue feel walled off.
-        [SerializeField] private double _minimumUnitsPerKm = 1e-20;
-
-        [Tooltip("Largest render units per km. Higher means standing on a surface.")]
-        // 1e6 is close enough to read a hundred-metre feature on a planet's surface.
-        [SerializeField] private double _maximumUnitsPerKm = 1e6;
+        // The scale limits used to live here, as two serialised fields, and they disagreed with
+        // every other opinion in the codebase about how far the ladder goes. There is now exactly
+        // one pair, in Core/Presentation/ScaleLimits.cs, applied inside
+        // FloatingOrigin.SetUnitsPerKm — so every writer is clamped whether it knows about the
+        // limits or not, and this component no longer has an opinion.
 
         [Header("Feel")]
         [Tooltip("Hands must separate by at least this much before scaling engages, in metres.")]
@@ -78,6 +74,12 @@ namespace CosmoSynth.Runtime
         /// </summary>
         private double _targetUnitsPerKm;
 
+        /// <summary>When the last hand let go, so a reached scale stops being a standing order.</summary>
+        private float _lastReleaseTime = float.NegativeInfinity;
+
+        /// <summary>How long after the last release a scale request survives, seconds.</summary>
+        private const float ReleaseHoldSeconds = 0.5f;
+
         /// <summary>True while either hand is holding the universe.</summary>
         public bool IsGrabbing => _left.IsGripping || _right.IsGripping;
 
@@ -96,11 +98,30 @@ namespace CosmoSynth.Runtime
             _targetUnitsPerKm = 0.0;
         }
 
-        /// <summary>Feed the current hand poses. Call once per frame from the input backend.</summary>
+        /// <summary>
+        /// Feed the current hand poses. Call once per frame from the input backend.
+        ///
+        /// Poses arrive in WORLD space and are converted to the universe host's local space here,
+        /// once, at the only door they come through. Everything downstream then calls
+        /// <c>origin.ToAbsolute</c> on a universe-local point, which is what that method expects.
+        /// Converting at each of the four call sites instead is how one of them gets missed, and a
+        /// grab that is correct with the universe unrotated and drifts as soon as it is turned is
+        /// exactly what that looks like.
+        /// </summary>
         public void UpdateHands(HandPose left, HandPose right)
         {
-            _left = left;
-            _right = right;
+            _left = ToUniverseSpace(left);
+            _right = ToUniverseSpace(right);
+        }
+
+        private HandPose ToUniverseSpace(HandPose pose)
+        {
+            if (_simulation == null) return pose;
+
+            Transform universe = _simulation.transform;
+            pose.Position = universe.InverseTransformPoint(pose.Position);
+            pose.Rotation = Quaternion.Inverse(universe.rotation) * pose.Rotation;
+            return pose;
         }
 
         private void Update()
@@ -111,6 +132,7 @@ namespace CosmoSynth.Runtime
             else if (IsGrabbing) UpdateOneHanded();
             else
             {
+                if (_wasOneHanded || _wasTwoHanded) _lastReleaseTime = Time.unscaledTime;
                 _wasOneHanded = false;
                 _wasTwoHanded = false;
             }
@@ -167,7 +189,7 @@ namespace CosmoSynth.Runtime
             // per pull — still only a handful of gestures across the whole catalogue, now that
             // the thumbstick carries actual travel and this gesture only has to handle scale.
             double ratio = System.Math.Pow(span / _grabSpan, 2.0);
-            _targetUnitsPerKm = MathD.Clamp(_grabUnitsPerKm * ratio, _minimumUnitsPerKm, _maximumUnitsPerKm);
+            _targetUnitsPerKm = ScaleLimits.Clamp(_grabUnitsPerKm * ratio);
 
             // Keep the chosen anchor pinned, so the world scales about it.
             Vector3 midpoint = (_left.Position + _right.Position) * 0.5f;
@@ -210,6 +232,21 @@ namespace CosmoSynth.Runtime
             if (_targetUnitsPerKm <= 0.0) return;
 
             FloatingOrigin origin = _simulation.Origin;
+
+            // Clear the target once it is reached, and shortly after the hands let go.
+            //
+            // A target that is never cleared is a standing instruction: every rung tap and every
+            // arrival that sets the scale through FloatingOrigin is then dragged back toward
+            // whatever the last gesture asked for, one log-space step per frame, for the rest of
+            // the session. The exact-equality test below could never fire, because the smoothing
+            // approaches the target asymptotically and lands on it only by luck.
+            if (System.Math.Abs(MathD.SafeLog10(origin.UnitsPerKm) - MathD.SafeLog10(_targetUnitsPerKm)) < 1e-3
+                || (!IsGrabbing && Time.unscaledTime - _lastReleaseTime > ReleaseHoldSeconds))
+            {
+                _targetUnitsPerKm = 0.0;
+                return;
+            }
+
             if (_targetUnitsPerKm == origin.UnitsPerKm) return;
 
             if (_scaleSmoothing <= 0f)
@@ -237,9 +274,7 @@ namespace CosmoSynth.Runtime
             if (view == null || _simulation == null) return;
 
             double radiusKm = view.Body.EquatorialRadiusKm ?? 1.0;
-            _targetUnitsPerKm = MathD.Clamp(
-                ScaleSpace.HologramUnitsPerKm(radiusKm, diameterMetres),
-                _minimumUnitsPerKm, _maximumUnitsPerKm);
+            _targetUnitsPerKm = ScaleLimits.Clamp(ScaleSpace.HologramUnitsPerKm(radiusKm, diameterMetres));
 
             // Put the body at the room's focal point rather than wherever it happened to be.
             _simulation.Origin.SetOrigin(view.AbsolutePositionKm);
@@ -260,8 +295,7 @@ namespace CosmoSynth.Runtime
 
             if (extentKm <= 0.0) return;
 
-            _targetUnitsPerKm = MathD.Clamp(diameterMetres / (2.0 * extentKm),
-                _minimumUnitsPerKm, _maximumUnitsPerKm);
+            _targetUnitsPerKm = ScaleLimits.Clamp(diameterMetres / (2.0 * extentKm));
 
             if (_simulation.Views.TryGetValue(rootBodyId, out var rootView))
             {

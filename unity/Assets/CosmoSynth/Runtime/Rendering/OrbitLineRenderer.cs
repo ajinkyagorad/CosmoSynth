@@ -39,9 +39,10 @@ namespace CosmoSynth.Runtime
     /// </list>
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(60)]
     [RequireComponent(typeof(LineRenderer))]
     [AddComponentMenu("CosmoSynth/Orbit Line")]
-    public sealed class OrbitLineRenderer : MonoBehaviour, IFloatingOriginListener
+    public sealed class OrbitLineRenderer : MonoBehaviour
     {
         [SerializeField] private int _sampleCount = 256;
 
@@ -89,7 +90,6 @@ namespace CosmoSynth.Runtime
             _line.numCapVertices = 2;
 
             Rebuild();
-            simulation.Origin.Register(this);
         }
 
         /// <summary>Resample the conic. Only needed when the orbit itself changes, not per frame.</summary>
@@ -324,15 +324,9 @@ namespace CosmoSynth.Runtime
             return Mathf.Clamp(index, 0, count - 1);
         }
 
-        public void OnOriginShifted(Vector3 shift)
-        {
-            // Vertices are rebuilt from absolute coordinates every LateUpdate, so the shift needs
-            // no correction here — but applying it immediately avoids one frame of the orbit
-            // hanging in the old position.
-            if (_vertices == null || _line == null) return;
-            for (int i = 0; i < _vertices.Length; i++) _vertices[i] += shift;
-            _line.SetPositions(_vertices);
-        }
+        // OnOriginShifted is gone with the rebase machinery it existed for. There is no rebase:
+        // the camera stays in the room, the movers change the origin, and every vertex here is
+        // rebuilt from absolute coordinates each LateUpdate anyway.
 
         /// <summary>Fade this orbit, for satellites that would otherwise clutter their primary.</summary>
         public void Dim(float factor)
@@ -343,7 +337,6 @@ namespace CosmoSynth.Runtime
 
         private void OnDestroy()
         {
-            if (_simulation != null && _simulation.Origin != null) _simulation.Origin.Unregister(this);
             if (_line != null && _line.material != null && Application.isPlaying) Destroy(_line.material);
         }
     }

@@ -306,46 +306,20 @@ namespace CosmoSynth.Tests
                 "inside the body we are in local detail");
         }
 
-        [Test("scale bands tile the range without gaps and keep depth ratios workable")]
-        public static void ScaleBandsAreWellFormed()
-        {
-            var bands = ScaleSpace.DefaultBands;
-            for (int i = 1; i < bands.Count; i++)
-            {
-                Assert.True(bands[i].NearKm <= bands[i - 1].FarKm,
-                    $"gap between bands '{bands[i - 1].Name}' and '{bands[i].Name}'");
-            }
-
-            foreach (var band in bands)
-            {
-                // Beyond roughly 1e6 a floating-point depth buffer starts to break down, which
-                // is the whole reason for splitting into bands.
-                Assert.True(band.DepthRange <= 1e7,
-                    $"band '{band.Name}' has a depth range of {band.DepthRange:E2}, too wide for one pass");
-            }
-
-            Assert.True(ScaleSpace.SelectBand(1.0).Name == "Local", "a metre-scale object is local");
-            Assert.True(ScaleSpace.SelectBand(1e8).Name == "Interplanetary", "1e8 km is interplanetary");
-            Assert.True(ScaleSpace.SelectBand(1e20).Name == "Galactic", "1e20 km is galactic");
-        }
-
-        [Test("floating origin round-trips and triggers a rebase at the right distance")]
-        public static void FloatingOriginBehaves()
+        [Test("the absolute-to-universe mapping is local, scaled and axis-swapped")]
+        public static void RenderTransformIsLocalAndScaled()
         {
             var origin = new Double3(1.4959787e8, 0, 0);   // 1 AU out
             var transform = new ScaleSpace.RenderTransform(origin, 1.0);
 
             var absolute = origin + new Double3(100.0, -50.0, 25.0);
             var render = transform.ToRender(absolute);
-            Assert.VectorClose(new Double3(100.0, -50.0, 25.0), render, 1e-9, "render position is small and local");
+
+            // ICRF (100, -50, 25) becomes universe-local (100, 25, -50): y and z swap, which is
+            // the one axis mapping in the codebase. FrameTests pins the handedness; this pins
+            // that ToRender goes through it rather than round the side of it.
+            Assert.VectorClose(new Double3(100.0, 25.0, -50.0), render, 1e-9, "render position is small, local and swapped");
             Assert.VectorClose(absolute, transform.ToAbsolute(render), 1e-6, "round trip back to absolute");
-
-            Assert.False(ScaleSpace.ShouldRebase(new Double3(1000, 0, 0)), "no rebase while close to the origin");
-            Assert.True(ScaleSpace.ShouldRebase(new Double3(5000, 0, 0)), "rebase once past the threshold");
-
-            // After rebasing, the same absolute point maps near zero again.
-            var rebased = transform.Rebased(absolute);
-            Assert.VectorClose(Double3.Zero, rebased.ToRender(absolute), 1e-9, "rebased origin sits at zero");
         }
 
         [Test("navigation speed scales with the scene and the log slider spans its range")]

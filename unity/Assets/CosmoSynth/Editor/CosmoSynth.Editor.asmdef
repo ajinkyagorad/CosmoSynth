@@ -10,9 +10,12 @@
     "Unity.XR.OpenXR",
     "Unity.XR.OpenXR.Editor",
     "Unity.XR.Hands",
-    "Unity.XR.Interaction.Toolkit",
     "Unity.XR.ARFoundation",
-    "Unity.InputSystem"
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Universal.Editor",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Core.Editor"
   ],
   "includePlatforms": [
     "Editor"

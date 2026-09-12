@@ -35,6 +35,13 @@ namespace CosmoSynth.Runtime
         private StarCatalog _catalog;
 
         /// <summary>
+        /// The one place ICRF meets Unity. Held so the star shell's vertices go through the same
+        /// mapping every body does; this file used to reorder the axes itself, which is a second
+        /// coordinate convention living in a renderer.
+        /// </summary>
+        private FloatingOrigin _origin;
+
+        /// <summary>
         /// The loaded star catalogue, or null until it arrives. Read lazily by anything that
         /// needs the stars — resolving it in Awake would cache a null forever, which is the
         /// shape of three bugs this project has already shipped.
@@ -69,6 +76,7 @@ namespace CosmoSynth.Runtime
         /// </summary>
         public void Build(UniverseSimulation simulation, Transform anchor)
         {
+            _origin = simulation != null ? simulation.Origin : null;
             Clear();
 
             BuildStarField(anchor);
@@ -217,8 +225,15 @@ namespace CosmoSynth.Runtime
 
             // Camera-facing quad. Billboarding in a shader would be better; at this count the
             // difference is not measurable and a fixed quad needs no custom shader.
-            var centre = new Vector3((float)direction.x, (float)direction.z, (float)direction.y)
-                     * _starSphereRadius;
+            //
+            // The direction is ICRF and goes through the floating origin's mapping, not through a
+            // local axis reorder. The reorder that used to stand here was the second copy of the
+            // right-handed-to-left-handed conversion in the codebase, and a sky that is silently
+            // mirrored is a sky in which every constellation is its own reflection.
+            Vector3 centre = (_origin != null
+                ? _origin.MapDirection(direction)
+                : new Vector3((float)direction.x, (float)direction.y, (float)direction.z))
+                * _starSphereRadius;
 
             Vector3 forward = centre.normalized;
             Vector3 right = Vector3.Cross(forward, Vector3.up).normalized;
@@ -559,7 +574,7 @@ namespace CosmoSynth.Runtime
                 density *= MathD.SmoothStep(0.0, 0.06, t) * MathD.SmoothStep(0.0, 0.06, 1.0 - t);
 
                 // Ring particles are dirty ice: bright and slightly warm.
-                var colour = new Color(0.88f, 0.84f, 0.76f, (float)density * opacity);
+                Color colour = CosmoTheme.WithAlpha(CosmoTheme.RingDust, (float)density * opacity);
                 pixels[x] = colour;
             }
 
@@ -582,7 +597,20 @@ namespace CosmoSynth.Runtime
         {
             if (simulation.Catalog == null || simulation.Catalog.RootIds.Count == 0) return;
 
-            string starId = simulation.Catalog.RootIds[0];
+            // The star that lights the FOCUS, found by walking its parents — not RootIds[0].
+            //
+            // RootIds is in insertion order, so the moment the exoplanet catalogue merged in, the
+            // single point light modelling the entire Solar System was attached to whichever root
+            // happened to sort first: 61 Vir, eleven parsecs away. Every planet went dark and the
+            // build reported complete success.
+            string focusId = simulation.FocusBody != null
+                ? simulation.FocusBody.Body.Id
+                : simulation.Catalog.RootIds[0];
+            CelestialBody hostStar = simulation.HostStarOf(focusId);
+            if (hostStar == null) hostStar = simulation.HostStarOf(simulation.Catalog.RootIds[0]);
+            if (hostStar == null) return;
+
+            string starId = hostStar.Id;
             if (!simulation.Views.TryGetValue(starId, out CelestialBodyView starView)) return;
 
             var lightObject = Own(new GameObject("Star Point Light"));
@@ -599,7 +627,7 @@ namespace CosmoSynth.Runtime
             // to be baked into the renderer; an M dwarf's system should be lit orange.
             double temperature = starView.Body.EffectiveTemperatureK ?? 5772.0;
             Double3 rgb = PlanetGenerator.BlackBodyColor(temperature);
-            light.color = new Color((float)rgb.x, (float)rgb.y, (float)rgb.z);
+            light.color = CosmoTheme.FromLinear(rgb);
 
             // 3.2 blew every planet out to pure white. Unity's point light barely attenuates
             // when the range is far larger than the distance, so the intensity here is close to
@@ -628,7 +656,7 @@ namespace CosmoSynth.Runtime
             var ambient = ambientObject.AddComponent<Light>();
             ambient.type = LightType.Directional;
             ambient.intensity = 0.05f;
-            ambient.color = new Color(0.5f, 0.55f, 0.7f);
+            ambient.color = CosmoTheme.Desaturate(CosmoTheme.Accent, 0.45f);
             ambient.shadows = LightShadows.None;
             // Never the per-pixel one. See the star light above: this exists to keep a night side
             // off pure black, and it must not outrank the light that models every lit face.

@@ -152,6 +152,33 @@ namespace CosmoSynth.Core
             foreach (var children in _childIds.Values) children.Sort(StringComparer.Ordinal);
         }
 
+        /// <summary>
+        /// The star that lights a body: the first star on its chain of parents.
+        ///
+        /// Not <c>RootIds[0]</c>, which is what the renderer used to ask. RootIds is in insertion
+        /// order, so the moment a second star system merged into the catalogue the light that
+        /// models the entire Solar System was attached to whichever root happened to sort first —
+        /// 61 Vir, 11 parsecs away — and every planet went dark while the build reported success.
+        ///
+        /// A star returns itself. A body with no star above it (a rogue planet, an unparented
+        /// spacecraft) returns null, and the caller draws it unlit rather than guessing. The hop
+        /// limit is a cycle guard: a hand-edited catalogue can name its own ancestor, and an
+        /// unbounded walk would hang the frame rather than reporting a bad file.
+        /// </summary>
+        public CelestialBody HostStarOf(string id)
+        {
+            const int maximumHops = 32;
+
+            CelestialBody body = Get(id);
+            for (int hop = 0; body != null && hop < maximumHops; hop++)
+            {
+                if (body.IsStar) return body;
+                if (string.IsNullOrEmpty(body.ParentId)) return null;
+                body = Get(body.ParentId);
+            }
+            return null;
+        }
+
         public IReadOnlyList<string> ChildIdsOf(string id) =>
             _childIds.TryGetValue(id ?? string.Empty, out var children) ? children : (IReadOnlyList<string>)Array.Empty<string>();
 

@@ -26,60 +26,13 @@ namespace CosmoSynth.Core
     }
 
     /// <summary>
-    /// A rendering band. The universe cannot be drawn in one pass because no depth buffer
-    /// spans metres to light years — at 32 bits of float depth, a single frustum reaching from
-    /// a handrail to a nebula has no precision left for either. The standard answer, used by
-    /// every seamless space renderer, is several passes: each band compresses its slice of the
-    /// world by its own factor and draws with its own near/far planes, and the results are
-    /// composited back to front.
-    /// </summary>
-    public readonly struct ScaleBand
-    {
-        public string Name { get; }
-
-        /// <summary>Nearest absolute distance this band is responsible for, km.</summary>
-        public double NearKm { get; }
-
-        /// <summary>Farthest absolute distance this band is responsible for, km.</summary>
-        public double FarKm { get; }
-
-        /// <summary>
-        /// Render units emitted per kilometre of real distance. Distant bands compress
-        /// heavily so that a whole galaxy lands inside a workable frustum.
-        /// </summary>
-        public double RenderUnitsPerKm { get; }
-
-        public ScaleBand(string name, double nearKm, double farKm, double renderUnitsPerKm)
-        {
-            if (farKm <= nearKm)
-                throw new ArgumentException($"Band '{name}' must have FarKm > NearKm.", nameof(farKm));
-            if (renderUnitsPerKm <= 0.0)
-                throw new ArgumentException($"Band '{name}' must have a positive scale.", nameof(renderUnitsPerKm));
-
-            Name = name;
-            NearKm = nearKm;
-            FarKm = farKm;
-            RenderUnitsPerKm = renderUnitsPerKm;
-        }
-
-        public double NearPlaneRenderUnits => NearKm * RenderUnitsPerKm;
-        public double FarPlaneRenderUnits => FarKm * RenderUnitsPerKm;
-
-        /// <summary>
-        /// Ratio of far to near plane. This is the number that actually governs depth
-        /// precision, and keeping it under about 1e5 per band is what makes the scheme work.
-        /// </summary>
-        public double DepthRange => FarPlaneRenderUnits / NearPlaneRenderUnits;
-
-        public bool Contains(double distanceKm) => distanceKm >= NearKm && distanceKm < FarKm;
-
-        public override string ToString() =>
-            $"{Name}: {NearKm:G3}-{FarKm:G3} km at {RenderUnitsPerKm:G3} units/km (depth range {DepthRange:G3})";
-    }
-
-    /// <summary>
-    /// Scale-space arithmetic: choosing how to draw a body, compressing the universe into
-    /// renderable bands, and keeping the camera near the origin.
+    /// Scale-space arithmetic: choosing how to draw a body, and the mapping from absolute
+    /// coordinates to the universe host's local space.
+    ///
+    /// Distance compression and group placement live in <see cref="ScaledSpace"/>, which is the
+    /// only account of distance in the codebase. The band stack that used to live here described
+    /// a multi-pass compositor over a reversed floating-point depth buffer; the device has
+    /// neither, and two accounts of distance is how one of them rots.
     ///
     /// Everything here is pure arithmetic on doubles so it can be tested without a renderer.
     /// The Unity layer supplies cameras, layers and materials; this decides the numbers.
@@ -147,52 +100,15 @@ namespace CosmoSynth.Core
             return MathD.SmoothStep(thresholdPixels - half, thresholdPixels + half, apparentDiameterPixels);
         }
 
-        // ---- Bands -----------------------------------------------------------
-
-        /// <summary>
-        /// The default band stack, from a handrail to the observable universe.
-        ///
-        /// Each band's far/near ratio is kept near 1e4-1e5, which a reversed floating-point
-        /// depth buffer handles comfortably. The scales are chosen so consecutive bands
-        /// overlap slightly in world space, giving the compositor somewhere to cross-fade.
-        /// </summary>
-        public static IReadOnlyList<ScaleBand> DefaultBands { get; } = new[]
-        {
-            // 1 render unit = 1 metre here: this is the band the XR rig lives in, and hand
-            // tracking is only meaningful at true scale.
-            new ScaleBand("Local",          1e-4,   1e2,   1000.0),
-            new ScaleBand("Orbital",        1e1,    1e6,   1.0),
-            new ScaleBand("Interplanetary", 1e5,    1e11,  1e-5),
-            new ScaleBand("Interstellar",   1e10,   1e16,  1e-10),
-            new ScaleBand("Galactic",       1e15,   1e22,  1e-16),
-        };
-
-        /// <summary>Pick the band that should own an object at the given distance.</summary>
-        public static ScaleBand SelectBand(double distanceKm, IReadOnlyList<ScaleBand> bands = null)
-        {
-            bands = bands ?? DefaultBands;
-            for (int i = 0; i < bands.Count; i++)
-            {
-                if (bands[i].Contains(distanceKm)) return bands[i];
-            }
-            return distanceKm < bands[0].NearKm ? bands[0] : bands[bands.Count - 1];
-        }
-
         // ---- Floating origin -------------------------------------------------
 
         /// <summary>
-        /// Distance from the origin, in render units, past which the origin should be rebased.
+        /// The mapping from absolute ICRF kilometres to the universe host's local metres:
+        /// subtract the origin in double, swap the axes, then scale.
         ///
-        /// A 32-bit float holds about 7 significant decimal digits, so at 10 km from the
-        /// origin the spacing between representable positions is already around a millimetre —
-        /// enough to make a hand-held hologram visibly jitter. Rebasing well before that keeps
-        /// everything the user can actually see in the precise part of the float range.
-        /// </summary>
-        public const double DefaultRebaseThresholdRenderUnits = 4000.0;
-
-        /// <summary>
-        /// The current mapping from absolute universe coordinates to renderable coordinates:
-        /// subtract the origin, then scale.
+        /// There is no rebase. The camera stays in the room and the movers change the origin and
+        /// the scale, so the subtraction is done in double before anything is cast to float and
+        /// float error has nowhere to accumulate.
         /// </summary>
         public readonly struct RenderTransform
         {
@@ -209,27 +125,49 @@ namespace CosmoSynth.Core
                 UnitsPerKm = unitsPerKm;
             }
 
-            /// <summary>Absolute position to render position.</summary>
-            public Double3 ToRender(Double3 absoluteKm) => (absoluteKm - OriginKm) * UnitsPerKm;
+            /// <summary>
+            /// The one ICRF-to-Unity axis mapping in the codebase: swap y and z.
+            ///
+            /// ICRF is right-handed with z toward the celestial pole; Unity is left-handed with y
+            /// up. This permutation has determinant -1, which is exactly the right-to-left-handed
+            /// change of basis — the identity that used to stand here IS the mirror, and a
+            /// mirrored solar system orbits correctly and rotates backwards, which is easy to
+            /// miss and very hard to explain later. P is symmetric and its own inverse, so the
+            /// same matrix maps both ways.
+            ///
+            /// With the universe host at identity, Unity +y is ICRF +z (the celestial pole), +x
+            /// is the vernal equinox and +z is ICRF +y. Nothing outside this struct and its Unity
+            /// wrapper may reorder an axis; gate G0d counts the attempts.
+            /// </summary>
+            public static readonly Matrix3d AxisSwap = new Matrix3d(1, 0, 0, 0, 0, 1, 0, 1, 0);
 
-            /// <summary>Render position back to absolute position.</summary>
-            public Double3 ToAbsolute(Double3 renderPosition) => renderPosition / UnitsPerKm + OriginKm;
+            /// <summary>Absolute position to universe-local metres.</summary>
+            public Double3 ToRender(Double3 absoluteKm) => AxisSwap * ((absoluteKm - OriginKm) * UnitsPerKm);
+
+            /// <summary>Universe-local metres back to an absolute position.</summary>
+            public Double3 ToAbsolute(Double3 renderPosition) =>
+                AxisSwap * renderPosition / UnitsPerKm + OriginKm;
+
+            /// <summary>An ICRF direction in universe-local axes. Unit length is preserved.</summary>
+            public Double3 MapDirection(Double3 icrf) => AxisSwap * icrf;
+
+            /// <summary>A universe-local direction back in ICRF axes.</summary>
+            public Double3 UnmapDirection(Double3 render) => AxisSwap * render;
+
+            /// <summary>
+            /// A body-fixed-to-ICRF rotation in universe-local axes: P M P.
+            ///
+            /// Its determinant is (-1)(+1)(-1) = +1, so the result is a proper rotation and
+            /// converts to a quaternion directly. Universe-local +y is the body's pole, which is
+            /// what the sphere's UV pole assumes.
+            /// </summary>
+            public Matrix3d MapRotation(Matrix3d bodyToIcrf) => AxisSwap * bodyToIcrf * AxisSwap;
 
             /// <summary>Scale a length with no translation — for radii, offsets and velocities.</summary>
             public double ScaleLength(double km) => km * UnitsPerKm;
 
-            /// <summary>Move the origin, returning the shift the scene graph must be offset by.</summary>
-            public RenderTransform Rebased(Double3 newOriginKm) => new RenderTransform(newOriginKm, UnitsPerKm);
-
             public override string ToString() => $"origin {OriginKm.ToString("G6")} km at {UnitsPerKm:G6} units/km";
         }
-
-        /// <summary>
-        /// Whether the origin should be rebased, given where the camera has drifted to.
-        /// </summary>
-        public static bool ShouldRebase(Double3 cameraRenderPosition,
-            double thresholdRenderUnits = DefaultRebaseThresholdRenderUnits) =>
-            cameraRenderPosition.SqrMagnitude > thresholdRenderUnits * thresholdRenderUnits;
 
         // ---- Navigation ------------------------------------------------------
 
@@ -241,9 +179,14 @@ namespace CosmoSynth.Core
         /// control feel identical at every scale: the same stick deflection always crosses the
         /// visible scene in about the same number of seconds, whether the scene is a room or a
         /// galactic arm.
+        ///
+        /// The ceiling is 1e24 km/s because the ladder now reaches the cosmic microwave
+        /// background: crossing the observable universe's 8.8e23 km in about four seconds needs
+        /// 2.2e23 km/s. The old 1e14 was five decades short, which does not read as a clamp — it
+        /// reads as a stick that has stopped working.
         /// </summary>
         public static double NavigationSpeed(double distanceToNearestSurfaceKm,
-            double secondsToCrossScene = 4.0, double minimumKmPerSecond = 1e-6, double maximumKmPerSecond = 1e14)
+            double secondsToCrossScene = 4.0, double minimumKmPerSecond = 1e-6, double maximumKmPerSecond = 1e24)
         {
             if (double.IsNaN(distanceToNearestSurfaceKm) || distanceToNearestSurfaceKm <= 0.0)
                 return minimumKmPerSecond;

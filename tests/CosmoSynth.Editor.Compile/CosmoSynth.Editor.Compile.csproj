@@ -1,0 +1,399 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Compile-check for the editor layer (ServerBuild, XrSetup, PlayModeShot, SceneBuilder,
+    CosmoUrpConfig), without opening the Unity Editor.
+
+    The tooling report's own "what it cannot prove" column said: "Nothing about ... the editor
+    layer (no CosmoSynth.Editor.Compile project exists yet)". That gap is expensive here, because
+    the editor layer is where every XR, URP and build setting is written, it is the layer with the
+    most version-sensitive API surface in the project, and the only way to find a misremembered
+    name was a five-minute batchmode launch behind a global lock.
+
+    run-tests.sh already looks for this project by exactly this path and builds it when present.
+
+    This builds a library, never runs it. Behaviour still needs the editor: what this catches is a
+    method that moved, a signature that changed, an enum member that does not exist.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>CosmoSynth.Editor.Compile</AssemblyName>
+    <RootNamespace>CosmoSynth.EditorTools</RootNamespace>
+    <Nullable>disable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS1701;CS1702;CS0436</NoWarn>
+    <UnityRoot>$(HOME)/Unity/Hub/Editor/6000.5.5f1/Editor/Data</UnityRoot>
+    <UnityManaged>$(UnityRoot)/Managed/UnityEngine</UnityManaged>
+    <UnityScriptAssemblies>$(MSBuildThisFileDirectory)../../unity/Library/ScriptAssemblies</UnityScriptAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../unity/Assets/CosmoSynth/Core/**/*.cs">
+      <Link>Core/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <Compile Include="../../unity/Assets/CosmoSynth/Runtime/**/*.cs">
+      <Link>Runtime/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <Compile Include="../../unity/Assets/CosmoSynth/Editor/**/*.cs">
+      <Link>Editor/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UnityEditor.AIModule">
+      <HintPath>$(UnityManaged)/UnityEditor.AIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.AccessibilityModule">
+      <HintPath>$(UnityManaged)/UnityEditor.AccessibilityModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.AdaptivePerformanceModule">
+      <HintPath>$(UnityManaged)/UnityEditor.AdaptivePerformanceModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.AssetComplianceModule">
+      <HintPath>$(UnityManaged)/UnityEditor.AssetComplianceModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.BuildProfileModule">
+      <HintPath>$(UnityManaged)/UnityEditor.BuildProfileModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.ClothModule">
+      <HintPath>$(UnityManaged)/UnityEditor.ClothModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.ContentLoadModule">
+      <HintPath>$(UnityManaged)/UnityEditor.ContentLoadModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.CoreBusinessMetricsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.CoreBusinessMetricsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.CoreModule">
+      <HintPath>$(UnityManaged)/UnityEditor.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.DeviceSimulatorModule">
+      <HintPath>$(UnityManaged)/UnityEditor.DeviceSimulatorModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.DiagnosticsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.DiagnosticsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.EditorToolbarModule">
+      <HintPath>$(UnityManaged)/UnityEditor.EditorToolbarModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.EmbreeModule">
+      <HintPath>$(UnityManaged)/UnityEditor.EmbreeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GIModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GenericRemoteModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GenericRemoteModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GraphToolkitModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GraphToolkitModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GraphViewModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GraphViewModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GraphicsStateCollectionSerializerModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GraphicsStateCollectionSerializerModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GridAndSnapModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GridAndSnapModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.GridModule">
+      <HintPath>$(UnityManaged)/UnityEditor.GridModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.HierarchyModule">
+      <HintPath>$(UnityManaged)/UnityEditor.HierarchyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.LightingModule">
+      <HintPath>$(UnityManaged)/UnityEditor.LightingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.MathematicsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.MathematicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.MediaModule">
+      <HintPath>$(UnityManaged)/UnityEditor.MediaModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.MultiplayerModule">
+      <HintPath>$(UnityManaged)/UnityEditor.MultiplayerModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.Physics2DModule">
+      <HintPath>$(UnityManaged)/UnityEditor.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.PhysicsCore2DModule">
+      <HintPath>$(UnityManaged)/UnityEditor.PhysicsCore2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.PhysicsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.PlayModeModule">
+      <HintPath>$(UnityManaged)/UnityEditor.PlayModeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.PresetsUIModule">
+      <HintPath>$(UnityManaged)/UnityEditor.PresetsUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.ProjectAuditorModule">
+      <HintPath>$(UnityManaged)/UnityEditor.ProjectAuditorModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.PropertiesModule">
+      <HintPath>$(UnityManaged)/UnityEditor.PropertiesModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.QuickInstallModule">
+      <HintPath>$(UnityManaged)/UnityEditor.QuickInstallModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.QuickSearchModule">
+      <HintPath>$(UnityManaged)/UnityEditor.QuickSearchModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SafeModeModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SafeModeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SceneTemplateModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SceneTemplateModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SceneViewModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SceneViewModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.ShaderBuildSettingsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.ShaderBuildSettingsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.ShaderCompilationModule">
+      <HintPath>$(UnityManaged)/UnityEditor.ShaderCompilationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.ShaderFoundryModule">
+      <HintPath>$(UnityManaged)/UnityEditor.ShaderFoundryModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SketchUpModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SketchUpModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SpriteMaskModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SpriteMaskModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SpriteShapeModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SpriteShapeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.SubstanceModule">
+      <HintPath>$(UnityManaged)/UnityEditor.SubstanceModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.TerrainModule">
+      <HintPath>$(UnityManaged)/UnityEditor.TerrainModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.TextCoreFontEngineModule">
+      <HintPath>$(UnityManaged)/UnityEditor.TextCoreFontEngineModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.TextCoreTextEngineModule">
+      <HintPath>$(UnityManaged)/UnityEditor.TextCoreTextEngineModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.TextRenderingModule">
+      <HintPath>$(UnityManaged)/UnityEditor.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.TilemapModule">
+      <HintPath>$(UnityManaged)/UnityEditor.TilemapModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.TreeModule">
+      <HintPath>$(UnityManaged)/UnityEditor.TreeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.U2DModule">
+      <HintPath>$(UnityManaged)/UnityEditor.U2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UIAutomationModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UIAutomationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UIBuilderModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UIBuilderModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UIElementsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UIElementsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UIElementsSamplesModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UIElementsSamplesModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UIToolkitAuthoringModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UIToolkitAuthoringModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UmbraModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UmbraModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UnityConnectModule">
+      <HintPath>$(UnityManaged)/UnityEditor.UnityConnectModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.VFXModule">
+      <HintPath>$(UnityManaged)/UnityEditor.VFXModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.VectorGraphicsModule">
+      <HintPath>$(UnityManaged)/UnityEditor.VectorGraphicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.VideoModule">
+      <HintPath>$(UnityManaged)/UnityEditor.VideoModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.XRModule">
+      <HintPath>$(UnityManaged)/UnityEditor.XRModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(UnityManaged)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(UnityManaged)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(UnityManaged)/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(UnityManaged)/UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(UnityManaged)/UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(UnityManaged)/UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>$(UnityManaged)/UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(UnityManaged)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.XRModule">
+      <HintPath>$(UnityManaged)/UnityEngine.XRModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.SubsystemsModule">
+      <HintPath>$(UnityManaged)/UnityEngine.SubsystemsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(UnityManaged)/UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(UnityManaged)/UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(UnityScriptAssemblies)')">
+    <Reference Include="Unity.InputSystem">
+      <HintPath>$(UnityScriptAssemblies)/Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.CoreUtils">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.CoreUtils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.Hands">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.Hands.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.ARFoundation">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.ARFoundation.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.ARSubsystems">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.ARSubsystems.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.Management">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.Management.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.Management.Editor">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.Management.Editor.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.OpenXR">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.OpenXR.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.XR.OpenXR.Editor">
+      <HintPath>$(UnityScriptAssemblies)/Unity.XR.OpenXR.Editor.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime">
+      <HintPath>$(UnityScriptAssemblies)/Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.Editor">
+      <HintPath>$(UnityScriptAssemblies)/Unity.RenderPipelines.Universal.Editor.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>$(UnityScriptAssemblies)/Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Editor">
+      <HintPath>$(UnityScriptAssemblies)/Unity.RenderPipelines.Core.Editor.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

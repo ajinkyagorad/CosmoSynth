@@ -58,6 +58,63 @@ namespace CosmoSynth.Runtime
         /// <summary>Warning / not-to-scale notices.</summary>
         public static readonly Color Warning = new Color(0.949f, 0.694f, 0.361f);
 
+        /// <summary>Plain white, as a token so no other file has to name a colour to get one.</summary>
+        public static readonly Color Neutral = new Color(1f, 1f, 1f, 1f);
+
+        // ---- Render clears ---------------------------------------------------
+        //
+        // The single most consequential colour in the project, and the one the inspector draws
+        // with the same swatch as its opposite.
+
+        /// <summary>
+        /// The passthrough clear. <b>Alpha zero is the whole point.</b>
+        ///
+        /// Quest composites passthrough UNDERNEATH the app's framebuffer, so alpha is coverage:
+        /// alpha 1 means "this pixel is mine, hide the room". (0, 0, 0, 1) is therefore an opaque
+        /// black wall, not an empty scene — and it looks correct everywhere except on the headset,
+        /// which is the worst possible failure mode.
+        /// </summary>
+        public static readonly Color PassthroughClear = new Color(0f, 0f, 0f, 0f);
+
+        /// <summary>The full-space clear: a very dark blue, opaque, for when there is no room to show.</summary>
+        public static readonly Color SpaceClear = new Color(0.004f, 0.005f, 0.011f, 1f);
+
+        /// <summary>
+        /// Ambient fill, so a night side reads as unlit rather than as missing geometry.
+        /// Starting value; re-measure it under Linear colour space.
+        /// </summary>
+        public static readonly Color AmbientFill = new Color(0.05f, 0.055f, 0.07f, 1f);
+
+        /// <summary>The tint of ring particles: dirty ice, warmer than the panel palette.</summary>
+        public static readonly Color RingDust = new Color(0.88f, 0.84f, 0.76f, 1f);
+
+        // ---- Combinators -----------------------------------------------------
+        //
+        // These exist so that "take this colour and change one thing about it" does not have to
+        // name a colour. Every `new Color(...)` outside this file was one of three operations, and
+        // gate G0d cannot tell an alpha override from a palette choice — but a reader can, and so
+        // can these.
+
+        /// <summary>The same colour at a different opacity.</summary>
+        public static Color WithAlpha(Color colour, float alpha) =>
+            new Color(colour.r, colour.g, colour.b, alpha);
+
+        /// <summary>The same colour, brighter or dimmer. Alpha is untouched.</summary>
+        public static Color Scaled(Color colour, float gain) =>
+            new Color(colour.r * gain, colour.g * gain, colour.b * gain, colour.a);
+
+        /// <summary>Mix a colour toward white. 1 keeps it, 0 makes it white.</summary>
+        public static Color Desaturate(Color colour, float saturation) =>
+            Color.Lerp(Neutral, colour, saturation);
+
+        /// <summary>
+        /// A Core colour triple as a Unity colour. Core is engine-free, so every physically
+        /// derived colour — a black-body temperature, a catalogue's display colour — arrives as a
+        /// Double3 and has to cross here.
+        /// </summary>
+        public static Color FromLinear(Double3 rgb) =>
+            new Color((float)rgb.x, (float)rgb.y, (float)rgb.z, 1f);
+
         /// <summary>
         /// Provenance colours — the app's most meaning-bearing palette, defined once.
         ///

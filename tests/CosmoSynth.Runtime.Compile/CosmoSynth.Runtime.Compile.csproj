@@ -128,6 +128,15 @@
       <HintPath>$(UnityScriptAssemblies)/Unity.XR.ARSubsystems.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- URP: XrRig configures the camera through UniversalAdditionalCameraData. -->
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime">
+      <HintPath>$(UnityScriptAssemblies)/Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>$(UnityScriptAssemblies)/Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>

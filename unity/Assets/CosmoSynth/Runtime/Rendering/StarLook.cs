@@ -112,14 +112,14 @@ namespace CosmoSynth.Runtime
         {
             brightness = Mathf.Clamp01(brightness);
 
-            var hue = new Color((float)blackBody.x, (float)blackBody.y, (float)blackBody.z);
+            Color hue = CosmoTheme.FromLinear(blackBody);
             float saturation = 0.30f + brightness * 0.70f;
-            Color tinted = Color.Lerp(Color.white, hue, saturation);
+            Color tinted = CosmoTheme.Desaturate(hue, saturation);
 
             float magnitude = FaintestBrightness + brightness * (1f - FaintestBrightness);
 
             // Alpha is 1 and means nothing. Left explicit so nobody reaches for it as a dial again.
-            return new Color(tinted.r * magnitude, tinted.g * magnitude, tinted.b * magnitude, 1f);
+            return CosmoTheme.WithAlpha(CosmoTheme.Scaled(tinted, magnitude), 1f);
         }
 
         /// <summary>

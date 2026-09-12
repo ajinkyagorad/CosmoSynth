@@ -106,8 +106,7 @@ namespace CosmoSynth.Runtime
             // soft outline hugging the silhouette that does not fight the atmosphere sitting in
             // the same few percent of radius.
             _highlightMaterial = CosmoShaders.Material(CosmoShaders.Rim);
-            _highlightMaterial.SetColor("_Color", new Color(CosmoTheme.Accent.r, CosmoTheme.Accent.g,
-                CosmoTheme.Accent.b, 0.6f));
+            _highlightMaterial.SetColor("_Color", CosmoTheme.WithAlpha(CosmoTheme.Accent, 0.6f));
             _highlightMaterial.SetFloat("_Power", 2.5f);
             renderer.sharedMaterial = _highlightMaterial;
 
@@ -143,7 +142,7 @@ namespace CosmoSynth.Runtime
             _ray.SetPosition(1, origin + direction * length);
 
             Color rayColour = _hovered != null ? CosmoTheme.StrokeActive : CosmoTheme.Accent;
-            _rayMaterial.color = new Color(rayColour.r, rayColour.g, rayColour.b, _hovered != null ? 0.95f : 0.45f);
+            _rayMaterial.color = CosmoTheme.WithAlpha(rayColour, _hovered != null ? 0.95f : 0.45f);
 
             PollSelect();
             UpdateHighlight();
@@ -319,7 +318,7 @@ namespace CosmoSynth.Runtime
             float pulse = 0.55f + Mathf.Sin(Time.unscaledTime * 2.6f) * 0.12f;
             Color ring = Selected == shown ? CosmoTheme.StrokeActive : CosmoTheme.Accent;
             _highlightMaterial.SetColor("_Color",
-                new Color(ring.r, ring.g, ring.b, Selected == shown ? pulse + 0.35f : pulse * 0.8f));
+                CosmoTheme.WithAlpha(ring, Selected == shown ? pulse + 0.35f : pulse * 0.8f));
         }
 
         private void OnDestroy()

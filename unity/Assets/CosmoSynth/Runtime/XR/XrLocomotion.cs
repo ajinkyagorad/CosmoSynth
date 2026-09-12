@@ -148,9 +148,9 @@ namespace CosmoSynth.Runtime
             // first step is what makes the stick point somewhere other than where the user is
             // looking, and it gets worse the more the anchor has been turned.
             Vector3 localDirection = _universeAnchor.InverseTransformDirection(worldDirection.normalized);
-            Double3 icrf = CelestialBodyView.ToIcrfDirection(localDirection.normalized);
 
             FloatingOrigin origin = _simulation.Origin;
+            Double3 icrf = origin.UnmapDirection(localDirection.normalized);
             Double3 viewerKm = origin.ToAbsolute(_simulation.ViewerLocalPosition);
 
             _simulation.NearestBody(viewerKm, out double surfaceKm);

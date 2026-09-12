@@ -381,7 +381,7 @@ namespace CosmoSynth.Runtime
             // plus a greenhouse estimate. Equilibrium alone freezes Earth's oceans.
             double equilibrium = SurfacePainter.SurfaceTemperatureFor(body, EquilibriumTemperatureFor(body));
             var baseColor = new ColorRgb(
-                (float)body.DisplayColor.x, (float)body.DisplayColor.y, (float)body.DisplayColor.z);
+                (float)body.DisplayColor.x, (float)body.DisplayColor.y, (float)body.DisplayColor.z);   // gate-justified: expanded below into a Color32 buffer, not a palette choice
             string bodyId = body.Id;
 
             TerrainField terrain = SurfacePainter.TerrainFor(body, equilibrium);

@@ -23,6 +23,7 @@ namespace CosmoSynth.Runtime
     /// neither is possible.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(60)]
     [AddComponentMenu("CosmoSynth/Spatial Panel")]
     public sealed class SpatialPanel : MonoBehaviour
     {
@@ -47,6 +48,15 @@ namespace CosmoSynth.Runtime
         private void LateUpdate()
         {
             if (_target == null || _rig?.Camera == null) return;
+
+            // A panel offset from a body's limb has to know the limb is there. IsGeometryDrawn,
+            // re-read every frame: a selection made while a body was visible outlives the body,
+            // and RenderedRadius does not go to zero when the geometry does.
+            if (!_target.IsPointable)
+            {
+                _panel.Opacity = 0f;
+                return;
+            }
 
             // Sit beside the body, clear of its limb, and always face the viewer.
             Transform camera = _rig.Camera.transform;
