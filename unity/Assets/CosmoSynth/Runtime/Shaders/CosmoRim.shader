@@ -1,5 +1,13 @@
 // A soft rim glow for the selected body.
 //
+// PORTED IN PLACE from Built-in CG to URP HLSL (contract 7.2). The maths is unchanged; what
+// changed is the pipeline skeleton, the camera accessor, the CBUFFER, and one added uniform:
+//   - CGPROGRAM -> HLSLPROGRAM, UnityCG.cginc -> CosmoCore.hlsl;
+//   - "RenderPipeline"="UniversalPipeline" and "LightMode"="UniversalForward" tags;
+//   - _WorldSpaceCameraPos -> GetCameraPositionWS(), read AFTER the eye macro;
+//   - _Color moved into CBUFFER_START(UnityPerMaterial) for the SRP Batcher;
+//   - _PerVertexCompress, so the rim still hugs the silhouette of an Envelope-mode body.
+//
 // Drawn on a sphere slightly larger than the body, with FRONT faces culled so only the far
 // hemisphere is rasterised. The body then occludes all of it except the sliver just outside its
 // own silhouette, which is exactly where a selection outline belongs. Rendering the near
@@ -21,37 +29,44 @@ Shader "CosmoSynth/Rim"
     {
         _Color    ("Colour (alpha scales brightness)", Color) = (0.35, 0.75, 1.0, 0.6)
         _Power    ("Edge falloff", Range(0.5, 8.0)) = 2.5
+        _PerVertexCompress ("Envelope mode (contract 2.6)", Float) = 0
     }
 
     SubShader
     {
-        Tags { "Queue" = "Transparent+150" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+        Tags { "Queue" = "Transparent+100" "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
 
         Pass
         {
+            Name "Rim"
+            Tags { "LightMode" = "UniversalForward" }
+
             Blend One One, Zero One
             ZWrite Off
             Cull Front
             ZTest LEqual
 
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma target 3.0
+            #pragma target 3.5
             #pragma multi_compile_instancing
-            #include "UnityCG.cginc"
+            #include "CosmoCore.hlsl"
 
-            float4 _Color;
-            float  _Power;
+            CBUFFER_START(UnityPerMaterial)
+                half4 _Color;
+                float _Power;
+                float _PerVertexCompress;
+            CBUFFER_END
 
-            struct appdata
+            struct Attributes
             {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            struct v2f
+            struct Varyings
             {
                 float4 pos      : SV_POSITION;
                 float3 worldPos : TEXCOORD0;
@@ -59,23 +74,24 @@ Shader "CosmoSynth/Rim"
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            v2f vert(appdata v)
+            Varyings vert(Attributes v)
             {
-                v2f o;
+                Varyings o = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_INITIALIZE_OUTPUT(v2f, o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                o.pos = UnityObjectToClipPos(v.vertex);
-                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-                o.worldNrm = UnityObjectToWorldNormal(v.normal);
+                float3 positionWS = TransformObjectToWorld(v.vertex.xyz);
+                if (_PerVertexCompress > 0.5) positionWS = CS_CompressWS(positionWS);
+                o.pos = TransformWorldToHClip(positionWS);
+                o.worldPos = positionWS;
+                o.worldNrm = TransformObjectToWorldNormal(v.normal);
                 return o;
             }
 
-            float4 frag(v2f i) : SV_Target
+            half4 frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
-                float3 view = normalize(_WorldSpaceCameraPos - i.worldPos);
+                float3 view = normalize(GetCameraPositionWS() - i.worldPos);
                 // abs, because these are back faces: the normal points away from the camera.
                 float facing = saturate(abs(dot(normalize(i.worldNrm), view)));
 
@@ -83,9 +99,13 @@ Shader "CosmoSynth/Rim"
                 float rim = pow(1.0 - facing, _Power);
 
                 // Alpha is the brightness dial, and it must not reach the framebuffer.
-                return float4(_Color.rgb * (_Color.a * rim), 0.0);
+                //
+                // No CS_DisplayToLinear here. _Color is a material Color set through SetColor,
+                // which Unity linearises itself (contract 7.4); decoding again would darken the
+                // rim by a second sRGB curve. Only VERTEX colours are decoded in the shader.
+                return half4(_Color.rgb * (half)(_Color.a * rim), 0.0h);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 

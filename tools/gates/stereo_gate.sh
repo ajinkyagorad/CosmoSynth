@@ -74,9 +74,17 @@ EOF
   # composited view. The regex is anchored at end of line so `Zero OneMinusSrcAlpha`
   # cannot satisfy it by prefix.
   local addn okn cmn
-  addn=$(cntE '^[[:space:]]*Blend[[:space:]]+One[[:space:]]+One' "$f")
+  # The trailing (space|comma|end) is load-bearing: `One` must be a WHOLE token. Without it
+  # `Blend One OneMinusSrcAlpha` -- premultiplied over, which is the correct and required blend
+  # for rings, volumes, panels and text (contract 2.2) -- matched by prefix and was reported as
+  # an unguarded additive. Every premultiplied shader in the set failed on that.
+  addn=$(cntE '^[[:space:]]*Blend[[:space:]]+One[[:space:]]+One([[:space:]]|,|$)' "$f")
   if [ "${addn:-0}" -gt 0 ]; then
-    okn=$(cntE '^[[:space:]]*Blend[[:space:]]+One[[:space:]]+One,[[:space:]]*Zero[[:space:]]+One[[:space:]]*$' "$f")
+    # Ends in (space|end of line) rather than (optional space, end of line), so a trailing
+    # `// ...` comment on the Blend line is allowed -- the contract's own verbatim Point.shader
+    # (Appendix A.4) comments this exact line. `Zero OneMinusSrcAlpha` still cannot satisfy it
+    # by prefix, because the character after `One` is then `M`, neither a space nor end of line.
+    okn=$(cntE '^[[:space:]]*Blend[[:space:]]+One[[:space:]]+One,[[:space:]]*Zero[[:space:]]+One([[:space:]]|$)' "$f")
     cmn=$(cntE '^[[:space:]]*ColorMask[[:space:]]+RGB' "$f")
     # ponytail: file-scoped, not pass-scoped. A file mixing a guarded and an unguarded
     # additive pass passes here; upgrade to a per-Pass parser if that shape ever ships.
@@ -118,7 +126,7 @@ Shader "CosmoSynth/Good"
     Tags { "RenderPipeline"="UniversalPipeline" }
     Pass
     {
-      Blend One One, Zero One
+      Blend One One, Zero One     // a trailing comment on this line is allowed
       HLSLPROGRAM
       #pragma vertex vert
       #pragma fragment frag
@@ -127,6 +135,19 @@ Shader "CosmoSynth/Good"
       struct V { float4 p : SV_POSITION; UNITY_VERTEX_OUTPUT_STEREO };
       V vert(A i){ V o; UNITY_SETUP_INSTANCE_ID(i); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o); return o; }
       float4 frag(V i):SV_Target{ UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return 1; }
+      ENDHLSL
+    }
+    Pass
+    {
+      Blend One OneMinusSrcAlpha, One OneMinusSrcAlpha   // premultiplied over: NOT an additive
+      HLSLPROGRAM
+      #pragma vertex vert2
+      #pragma fragment frag2
+      #pragma multi_compile_instancing
+      struct A2 { float4 p : POSITION; UNITY_VERTEX_INPUT_INSTANCE_ID };
+      struct V2 { float4 p : SV_POSITION; UNITY_VERTEX_OUTPUT_STEREO };
+      V2 vert2(A2 i){ V2 o; UNITY_SETUP_INSTANCE_ID(i); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o); return o; }
+      float4 frag2(V2 i):SV_Target{ UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return 1; }
       ENDHLSL
     }
   }
@@ -156,6 +177,12 @@ SHADER
   mutate "unjustified multi_compile"      's/#pragma fragment frag/#pragma fragment frag\n      #pragma multi_compile _ FOO/'
   mutate "ZTest Always unjustified"       's/Blend One One, Zero One/ZTest Always\n      Blend One One, Zero One/'
   mutate "additive writes alpha"          's/Blend One One, Zero One/Blend One One/'
+  # The guard now tolerates a trailing comment, so prove a COMMENTED unguarded additive is still
+  # caught -- otherwise the fix for defect 2 would have become the hole.
+  mutate "additive writes alpha, commented" 's#Blend One One, Zero One.*#Blend One One   // oops#'
+  # And prove the premultiplied pass is judged on its own merits, not waved through: turning its
+  # destination factor into One makes it a genuine alpha-writing additive.
+  mutate "premultiplied turned additive"  's/Blend One OneMinusSrcAlpha, One OneMinusSrcAlpha/Blend One One/'
   rm -rf "$d"
   [ "$ok" -eq 1 ] || return 1
   echo "SELF-TEST PASS"
