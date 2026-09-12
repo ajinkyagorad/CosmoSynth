@@ -1,3297 +1,4941 @@
 {
- "source": "HYG star database v4.4 (astronexus), CC BY-SA 4.0 \u2014 compiled from the Hipparcos, Yale Bright Star and Gliese catalogues",
- "sourceUrl": "https://codeberg.org/astronexus/hyg",
+ "source": "HYG star database v4.4 (astronexus), via the CSS1 container built 2026-08-01",
  "licence": "CC BY-SA 4.0",
- "generated": "2026-08-01T20:40:46Z",
- "note": "Indices refer to stars.csstars, which is sorted brightest first. Positions are ICRF equatorial cartesian, parsecs.",
+ "licenceProfile": "sideload-nc",
+ "generated": "2026-09-12T18:00:36Z",
+ "note": "Indices refer to stars.csstars, sorted brightest first. Written in the same run as the catalogue, so the indices cannot disagree with it.",
  "stars": [
   {
    "index": 0,
    "name": "Sirius",
+   "designation": "9Alp CMa",
    "constellation": "CMa",
-   "designation": "9Alp CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": -1.44
   },
   {
    "index": 1,
    "name": "Canopus",
+   "designation": "Alp Car",
    "constellation": "Car",
-   "designation": "Alp Car"
+   "hip": 0,
+   "hd": 0,
+   "vmag": -0.62
   },
   {
    "index": 2,
    "name": "Arcturus",
+   "designation": "16Alp Boo",
    "constellation": "Boo",
-   "designation": "16Alp Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": -0.05
   },
   {
    "index": 3,
    "name": "Rigil Kentaurus",
+   "designation": "Alp1Cen",
    "constellation": "Cen",
-   "designation": "Alp1Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": -0.01
   },
   {
    "index": 4,
    "name": "Vega",
+   "designation": "3Alp Lyr",
    "constellation": "Lyr",
-   "designation": "3Alp Lyr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.03
   },
   {
    "index": 5,
    "name": "Capella",
+   "designation": "13Alp Aur",
    "constellation": "Aur",
-   "designation": "13Alp Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.08
   },
   {
    "index": 6,
    "name": "Rigel",
+   "designation": "19Bet Ori",
    "constellation": "Ori",
-   "designation": "19Bet Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.18
   },
   {
    "index": 7,
    "name": "Procyon",
+   "designation": "10Alp CMi",
    "constellation": "CMi",
-   "designation": "10Alp CMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.4
   },
   {
    "index": 8,
    "name": "Achernar",
+   "designation": "Alp Eri",
    "constellation": "Eri",
-   "designation": "Alp Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.45
   },
   {
    "index": 9,
    "name": "Betelgeuse",
+   "designation": "58Alp Ori",
    "constellation": "Ori",
-   "designation": "58Alp Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.45
   },
   {
    "index": 10,
    "name": "Hadar",
+   "designation": "Bet Cen",
    "constellation": "Cen",
-   "designation": "Bet Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.61
   },
   {
    "index": 11,
    "name": "Altair",
+   "designation": "53Alp Aql",
    "constellation": "Aql",
-   "designation": "53Alp Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.76
   },
   {
    "index": 12,
    "name": "Acrux",
+   "designation": "Alp1Cru",
    "constellation": "Cru",
-   "designation": "Alp1Cru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.77
   },
   {
    "index": 13,
    "name": "Aldebaran",
+   "designation": "87Alp Tau",
    "constellation": "Tau",
-   "designation": "87Alp Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.87
   },
   {
    "index": 15,
    "name": "Spica",
+   "designation": "67Alp Vir",
    "constellation": "Vir",
-   "designation": "67Alp Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 0.98
   },
   {
    "index": 16,
    "name": "Antares",
+   "designation": "21Alp Sco",
    "constellation": "Sco",
-   "designation": "21Alp Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.06
   },
   {
    "index": 17,
    "name": "Pollux",
+   "designation": "78Bet Gem",
    "constellation": "Gem",
-   "designation": "78Bet Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.16
   },
   {
    "index": 18,
    "name": "Fomalhaut",
+   "designation": "24Alp PsA",
    "constellation": "PsA",
-   "designation": "24Alp PsA"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.17
   },
   {
    "index": 19,
    "name": "Mimosa",
+   "designation": "Bet Cru",
    "constellation": "Cru",
-   "designation": "Bet Cru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.25
   },
   {
    "index": 20,
    "name": "Deneb",
+   "designation": "50Alp Cyg",
    "constellation": "Cyg",
-   "designation": "50Alp Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.25
   },
   {
    "index": 21,
    "name": "Toliman",
+   "designation": "Alp2Cen",
    "constellation": "Cen",
-   "designation": "Alp2Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.35
   },
   {
    "index": 22,
    "name": "Regulus",
+   "designation": "32Alp Leo",
    "constellation": "Leo",
-   "designation": "32Alp Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.36
   },
   {
    "index": 23,
    "name": "Adhara",
+   "designation": "21Eps CMa",
    "constellation": "CMa",
-   "designation": "21Eps CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.5
   },
   {
    "index": 24,
    "name": "Castor",
+   "designation": "66Alp Gem",
    "constellation": "Gem",
-   "designation": "66Alp Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.58
   },
   {
    "index": 25,
    "name": "Gacrux",
+   "designation": "Gam Cru",
    "constellation": "Cru",
-   "designation": "Gam Cru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.59
   },
   {
    "index": 26,
    "name": "Shaula",
+   "designation": "35Lam Sco",
    "constellation": "Sco",
-   "designation": "35Lam Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.62
   },
   {
    "index": 27,
    "name": "Bellatrix",
+   "designation": "24Gam Ori",
    "constellation": "Ori",
-   "designation": "24Gam Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.64
   },
   {
    "index": 28,
    "name": "Elnath",
+   "designation": "112Bet Tau",
    "constellation": "Tau",
-   "designation": "112Bet Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.65
   },
   {
    "index": 29,
    "name": "Miaplacidus",
+   "designation": "Bet Car",
    "constellation": "Car",
-   "designation": "Bet Car"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.67
   },
   {
    "index": 30,
    "name": "Alnilam",
+   "designation": "46Eps Ori",
    "constellation": "Ori",
-   "designation": "46Eps Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.69
   },
   {
    "index": 31,
    "name": "Alnair",
+   "designation": "Alp Gru",
    "constellation": "Gru",
-   "designation": "Alp Gru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.73
   },
   {
    "index": 32,
    "name": "Alnitak",
+   "designation": "50Zet Ori",
    "constellation": "Ori",
-   "designation": "50Zet Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.74
   },
   {
    "index": 34,
    "name": "Alioth",
+   "designation": "77Eps UMa",
    "constellation": "UMa",
-   "designation": "77Eps UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.76
   },
   {
    "index": 35,
    "name": "Mirfak",
+   "designation": "33Alp Per",
    "constellation": "Per",
-   "designation": "33Alp Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.79
   },
   {
    "index": 36,
    "name": "Kaus Australis",
+   "designation": "20Eps Sgr",
    "constellation": "Sgr",
-   "designation": "20Eps Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.79
   },
   {
    "index": 37,
    "name": "Dubhe",
+   "designation": "50Alp UMa",
    "constellation": "UMa",
-   "designation": "50Alp UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.81
   },
   {
    "index": 38,
    "name": "Wezen",
+   "designation": "25Del CMa",
    "constellation": "CMa",
-   "designation": "25Del CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.83
   },
   {
    "index": 39,
    "name": "Alkaid",
+   "designation": "85Eta UMa",
    "constellation": "UMa",
-   "designation": "85Eta UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.85
   },
   {
    "index": 40,
    "name": "Avior",
+   "designation": "Eps Car",
    "constellation": "Car",
-   "designation": "Eps Car"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.86
   },
   {
    "index": 41,
    "name": "Sargas",
+   "designation": "The Sco",
    "constellation": "Sco",
-   "designation": "The Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.86
   },
   {
    "index": 42,
    "name": "Menkalinan",
+   "designation": "34Bet Aur",
    "constellation": "Aur",
-   "designation": "34Bet Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.9
   },
   {
    "index": 43,
    "name": "Atria",
+   "designation": "Alp TrA",
    "constellation": "TrA",
-   "designation": "Alp TrA"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.91
   },
   {
    "index": 44,
    "name": "Alhena",
+   "designation": "24Gam Gem",
    "constellation": "Gem",
-   "designation": "24Gam Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.93
   },
   {
    "index": 45,
    "name": "Alsephina",
+   "designation": "Del Vel",
    "constellation": "Vel",
-   "designation": "Del Vel"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.93
   },
   {
    "index": 46,
    "name": "Peacock",
+   "designation": "Alp Pav",
    "constellation": "Pav",
-   "designation": "Alp Pav"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.94
   },
   {
    "index": 47,
    "name": "Polaris",
+   "designation": "1Alp UMi",
    "constellation": "UMi",
-   "designation": "1Alp UMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.97
   },
   {
    "index": 48,
    "name": "Mirzam",
+   "designation": "2Bet CMa",
    "constellation": "CMa",
-   "designation": "2Bet CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.98
   },
   {
    "index": 49,
    "name": "Alphard",
+   "designation": "30Alp Hya",
    "constellation": "Hya",
-   "designation": "30Alp Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 1.99
   },
   {
    "index": 50,
    "name": "Hamal",
+   "designation": "13Alp Ari",
    "constellation": "Ari",
-   "designation": "13Alp Ari"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.01
   },
   {
    "index": 51,
    "name": "Algieba",
+   "designation": "41Gam1Leo",
    "constellation": "Leo",
-   "designation": "41Gam1Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.01
   },
   {
    "index": 52,
    "name": "Diphda",
+   "designation": "16Bet Cet",
    "constellation": "Cet",
-   "designation": "16Bet Cet"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.04
   },
   {
    "index": 53,
    "name": "Nunki",
+   "designation": "34Sig Sgr",
    "constellation": "Sgr",
-   "designation": "34Sig Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.05
   },
   {
    "index": 54,
    "name": "Menkent",
+   "designation": "5The Cen",
    "constellation": "Cen",
-   "designation": "5The Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.06
   },
   {
    "index": 55,
    "name": "Alpheratz",
+   "designation": "21Alp And",
    "constellation": "And",
-   "designation": "21Alp And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.07
   },
   {
    "index": 56,
    "name": "Mirach",
+   "designation": "43Bet And",
    "constellation": "And",
-   "designation": "43Bet And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.07
   },
   {
    "index": 57,
    "name": "Saiph",
+   "designation": "53Kap Ori",
    "constellation": "Ori",
-   "designation": "53Kap Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.07
   },
   {
    "index": 58,
    "name": "Kochab",
+   "designation": "7Bet UMi",
    "constellation": "UMi",
-   "designation": "7Bet UMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.07
   },
   {
    "index": 59,
    "name": "Tiaki",
+   "designation": "Bet Gru",
    "constellation": "Gru",
-   "designation": "Bet Gru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.07
   },
   {
    "index": 60,
    "name": "Rasalhague",
+   "designation": "55Alp Oph",
    "constellation": "Oph",
-   "designation": "55Alp Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.08
   },
   {
    "index": 61,
    "name": "Algol",
+   "designation": "26Bet Per",
    "constellation": "Per",
-   "designation": "26Bet Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.09
   },
   {
    "index": 62,
    "name": "Almach",
+   "designation": "57Gam1And",
    "constellation": "And",
-   "designation": "57Gam1And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.1
   },
   {
    "index": 63,
    "name": "Denebola",
+   "designation": "94Bet Leo",
    "constellation": "Leo",
-   "designation": "94Bet Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.14
   },
   {
    "index": 64,
    "name": "Tiansi",
+   "designation": "27Gam Cas",
    "constellation": "Cas",
-   "designation": "27Gam Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.15
   },
   {
    "index": 66,
    "name": "Naos",
+   "designation": "Zet Pup",
    "constellation": "Pup",
-   "designation": "Zet Pup"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.21
   },
   {
    "index": 67,
    "name": "Aspidiske",
+   "designation": "Iot Car",
    "constellation": "Car",
-   "designation": "Iot Car"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.21
   },
   {
    "index": 68,
    "name": "Alphecca",
+   "designation": "5Alp CrB",
    "constellation": "CrB",
-   "designation": "5Alp CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.22
   },
   {
    "index": 69,
    "name": "Suhail",
+   "designation": "Lam Vel",
    "constellation": "Vel",
-   "designation": "Lam Vel"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.23
   },
   {
    "index": 70,
    "name": "Mizar",
+   "designation": "79Zet UMa",
    "constellation": "UMa",
-   "designation": "79Zet UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.23
   },
   {
    "index": 71,
    "name": "Sadr",
+   "designation": "37Gam Cyg",
    "constellation": "Cyg",
-   "designation": "37Gam Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.23
   },
   {
    "index": 72,
    "name": "Schedar",
+   "designation": "18Alp Cas",
    "constellation": "Cas",
-   "designation": "18Alp Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.24
   },
   {
    "index": 73,
    "name": "Eltanin",
+   "designation": "33Gam Dra",
    "constellation": "Dra",
-   "designation": "33Gam Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.24
   },
   {
    "index": 74,
    "name": "Mintaka",
+   "designation": "34Del Ori",
    "constellation": "Ori",
-   "designation": "34Del Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.25
   },
   {
    "index": 75,
    "name": "Caph",
+   "designation": "11Bet Cas",
    "constellation": "Cas",
-   "designation": "11Bet Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.28
   },
   {
    "index": 77,
    "name": "Dschubba",
+   "designation": "7Del Sco",
    "constellation": "Sco",
-   "designation": "7Del Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.29
   },
   {
    "index": 78,
    "name": "Larawag",
+   "designation": "26Eps Sco",
    "constellation": "Sco",
-   "designation": "26Eps Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.29
   },
   {
    "index": 79,
    "name": "Uridim",
+   "designation": "Alp Lup",
    "constellation": "Lup",
-   "designation": "Alp Lup"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.3
   },
   {
    "index": 81,
    "name": "Merak",
+   "designation": "48Bet UMa",
    "constellation": "UMa",
-   "designation": "48Bet UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.34
   },
   {
    "index": 82,
    "name": "Izar",
+   "designation": "36Eps Boo",
    "constellation": "Boo",
-   "designation": "36Eps Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.35
   },
   {
    "index": 83,
    "name": "Enif",
+   "designation": "8Eps Peg",
    "constellation": "Peg",
-   "designation": "8Eps Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.38
   },
   {
    "index": 85,
    "name": "Ankaa",
+   "designation": "Alp Phe",
    "constellation": "Phe",
-   "designation": "Alp Phe"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.4
   },
   {
    "index": 86,
    "name": "Phecda",
+   "designation": "64Gam UMa",
    "constellation": "UMa",
-   "designation": "64Gam UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.41
   },
   {
    "index": 87,
    "name": "Sabik",
+   "designation": "35Eta Oph",
    "constellation": "Oph",
-   "designation": "35Eta Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.43
   },
   {
    "index": 88,
    "name": "Scheat",
+   "designation": "53Bet Peg",
    "constellation": "Peg",
-   "designation": "53Bet Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.44
   },
   {
    "index": 89,
    "name": "Aludra",
+   "designation": "31Eta CMa",
    "constellation": "CMa",
-   "designation": "31Eta CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.45
   },
   {
    "index": 90,
    "name": "Alderamin",
+   "designation": "5Alp Cep",
    "constellation": "Cep",
-   "designation": "5Alp Cep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.45
   },
   {
    "index": 91,
    "name": "Markeb",
+   "designation": "Kap Vel",
    "constellation": "Vel",
-   "designation": "Kap Vel"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.47
   },
   {
    "index": 92,
    "name": "Aljanah",
+   "designation": "53Eps Cyg",
    "constellation": "Cyg",
-   "designation": "53Eps Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.48
   },
   {
    "index": 93,
    "name": "Markab",
+   "designation": "54Alp Peg",
    "constellation": "Peg",
-   "designation": "54Alp Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.49
   },
   {
    "index": 94,
    "name": "Menkar",
+   "designation": "92Alp Cet",
    "constellation": "Cet",
-   "designation": "92Alp Cet"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.54
   },
   {
    "index": 96,
    "name": "Leepwal",
+   "designation": "Zet Cen",
    "constellation": "Cen",
-   "designation": "Zet Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.55
   },
   {
    "index": 97,
    "name": "Zosma",
+   "designation": "68Del Leo",
    "constellation": "Leo",
-   "designation": "68Del Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.56
   },
   {
    "index": 98,
    "name": "Acrab",
+   "designation": "8Bet1Sco",
    "constellation": "Sco",
-   "designation": "8Bet1Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.56
   },
   {
    "index": 99,
    "name": "Arneb",
+   "designation": "11Alp Lep",
    "constellation": "Lep",
-   "designation": "11Alp Lep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.58
   },
   {
    "index": 101,
    "name": "Gienah",
+   "designation": "4Gam Crv",
    "constellation": "Crv",
-   "designation": "4Gam Crv"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.58
   },
   {
    "index": 102,
    "name": "Ascella",
+   "designation": "38Zet Sgr",
    "constellation": "Sgr",
-   "designation": "38Zet Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.6
   },
   {
    "index": 103,
    "name": "Zubeneschamali",
+   "designation": "27Bet Lib",
    "constellation": "Lib",
-   "designation": "27Bet Lib"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.61
   },
   {
    "index": 104,
    "name": "Unukalhai",
+   "designation": "24Alp Ser",
    "constellation": "Ser",
-   "designation": "24Alp Ser"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.63
   },
   {
    "index": 105,
    "name": "Sheratan",
+   "designation": "6Bet Ari",
    "constellation": "Ari",
-   "designation": "6Bet Ari"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.64
   },
   {
    "index": 106,
    "name": "Phact",
+   "designation": "Alp Col",
    "constellation": "Col",
-   "designation": "Alp Col"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.65
   },
   {
    "index": 107,
    "name": "Mahasim",
+   "designation": "37The Aur",
    "constellation": "Aur",
-   "designation": "37The Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.65
   },
   {
    "index": 108,
    "name": "Kraz",
+   "designation": "9Bet Crv",
    "constellation": "Crv",
-   "designation": "9Bet Crv"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.65
   },
   {
    "index": 109,
    "name": "Ruchbah",
+   "designation": "37Del Cas",
    "constellation": "Cas",
-   "designation": "37Del Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.66
   },
   {
    "index": 110,
    "name": "Muphrid",
+   "designation": "8Eta Boo",
    "constellation": "Boo",
-   "designation": "8Eta Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.68
   },
   {
    "index": 112,
    "name": "Hassaleh",
+   "designation": "3Iot Aur",
    "constellation": "Aur",
-   "designation": "3Iot Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.69
   },
   {
    "index": 115,
    "name": "Lesath",
+   "designation": "34Ups Sco",
    "constellation": "Sco",
-   "designation": "34Ups Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.7
   },
   {
    "index": 117,
    "name": "Kaus Media",
+   "designation": "19Del Sgr",
    "constellation": "Sgr",
-   "designation": "19Del Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.72
   },
   {
    "index": 118,
    "name": "Tarazed",
+   "designation": "50Gam Aql",
    "constellation": "Aql",
-   "designation": "50Gam Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.72
   },
   {
    "index": 119,
    "name": "Yed Prior",
+   "designation": "1Del Oph",
    "constellation": "Oph",
-   "designation": "1Del Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.73
   },
   {
    "index": 120,
    "name": "Athebyne",
+   "designation": "14Eta Dra",
    "constellation": "Dra",
-   "designation": "14Eta Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.73
   },
   {
    "index": 122,
    "name": "Porrima",
+   "designation": "29Gam Vir",
    "constellation": "Vir",
-   "designation": "29Gam Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.74
   },
   {
    "index": 123,
    "name": "Hatysa",
+   "designation": "44Iot Ori",
    "constellation": "Ori",
-   "designation": "44Iot Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.75
   },
   {
    "index": 124,
    "name": "Kulou",
+   "designation": "Iot Cen",
    "constellation": "Cen",
-   "designation": "Iot Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.75
   },
   {
    "index": 125,
    "name": "Zubenelgenubi",
+   "designation": "9Alp2Lib",
    "constellation": "Lib",
-   "designation": "9Alp2Lib"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.75
   },
   {
    "index": 126,
    "name": "Cebalrai",
+   "designation": "60Bet Oph",
    "constellation": "Oph",
-   "designation": "60Bet Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.76
   },
   {
    "index": 127,
    "name": "Cursa",
+   "designation": "67Bet Eri",
    "constellation": "Eri",
-   "designation": "67Bet Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.78
   },
   {
    "index": 128,
    "name": "Kornephoros",
+   "designation": "27Bet Her",
    "constellation": "Her",
-   "designation": "27Bet Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.78
   },
   {
    "index": 129,
    "name": "Rasalgethi",
+   "designation": "64Alp1Her",
    "constellation": "Her",
-   "designation": "64Alp1Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.78
   },
   {
    "index": 130,
    "name": "Imai",
+   "designation": "Del Cru",
    "constellation": "Cru",
-   "designation": "Del Cru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.79
   },
   {
    "index": 131,
    "name": "Rastaban",
+   "designation": "23Bet Dra",
    "constellation": "Dra",
-   "designation": "23Bet Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.79
   },
   {
    "index": 133,
    "name": "Nihal",
+   "designation": "9Bet Lep",
    "constellation": "Lep",
-   "designation": "9Bet Lep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.81
   },
   {
    "index": 134,
    "name": "Tianji",
+   "designation": "40Zet Her",
    "constellation": "Her",
-   "designation": "40Zet Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.81
   },
   {
    "index": 136,
    "name": "Paikauhale",
+   "designation": "23Tau Sco",
    "constellation": "Sco",
-   "designation": "23Tau Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.82
   },
   {
    "index": 137,
    "name": "Kaus Borealis",
+   "designation": "22Lam Sgr",
    "constellation": "Sgr",
-   "designation": "22Lam Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.82
   },
   {
    "index": 138,
    "name": "Algenib",
+   "designation": "88Gam Peg",
    "constellation": "Peg",
-   "designation": "88Gam Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.83
   },
   {
    "index": 139,
    "name": "Tureis",
+   "designation": "15Rho Pup",
    "constellation": "Pup",
-   "designation": "15Rho Pup"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.83
   },
   {
    "index": 144,
    "name": "Alcyone",
+   "designation": "25Eta Tau",
    "constellation": "Tau",
-   "designation": "25Eta Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.85
   },
   {
    "index": 145,
    "name": "Vindemiatrix",
+   "designation": "47Eps Vir",
    "constellation": "Vir",
-   "designation": "47Eps Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.85
   },
   {
    "index": 146,
    "name": "Deneb Algedi",
+   "designation": "49Del Cap",
    "constellation": "Cap",
-   "designation": "49Del Cap"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.85
   },
   {
    "index": 147,
    "name": "Castor B",
+   "designation": "66Alp Gem",
    "constellation": "Gem",
-   "designation": "66Alp Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.85
   },
   {
    "index": 149,
    "name": "Fawaris",
+   "designation": "18Del Cyg",
    "constellation": "Cyg",
-   "designation": "18Del Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.86
   },
   {
    "index": 150,
    "name": "Tejat",
+   "designation": "13Mu  Gem",
    "constellation": "Gem",
-   "designation": "13Mu  Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.87
   },
   {
    "index": 152,
    "name": "Lang-Exster",
+   "designation": "Alp Tuc",
    "constellation": "Tuc",
-   "designation": "Alp Tuc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.87
   },
   {
    "index": 153,
    "name": "Acamar",
+   "designation": "The1Eri",
    "constellation": "Eri",
-   "designation": "The1Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.88
   },
   {
    "index": 154,
    "name": "Albaldah",
+   "designation": "41Pi  Sgr",
    "constellation": "Sgr",
-   "designation": "41Pi  Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.88
   },
   {
    "index": 155,
    "name": "Gomeisa",
+   "designation": "3Bet CMi",
    "constellation": "CMi",
-   "designation": "3Bet CMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.89
   },
   {
    "index": 156,
    "name": "Cor Caroli",
+   "designation": "12Alp2CVn",
    "constellation": "CVn",
-   "designation": "12Alp2CVn"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.89
   },
   {
    "index": 157,
    "name": "Fang",
+   "designation": "6Pi  Sco",
    "constellation": "Sco",
-   "designation": "6Pi  Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.89
   },
   {
    "index": 158,
    "name": "Aldu",
+   "designation": "45Eps Per",
    "constellation": "Per",
-   "designation": "45Eps Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.9
   },
   {
    "index": 159,
    "name": "Alniyat",
+   "designation": "20Sig Sco",
    "constellation": "Sco",
-   "designation": "20Sig Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.9
   },
   {
    "index": 160,
    "name": "Sadalsuud",
+   "designation": "22Bet Aqr",
    "constellation": "Aqr",
-   "designation": "22Bet Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.9
   },
   {
    "index": 163,
    "name": "Matar",
+   "designation": "44Eta Peg",
    "constellation": "Peg",
-   "designation": "44Eta Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.93
   },
   {
    "index": 165,
    "name": "Algorab",
+   "designation": "7Del Crv",
    "constellation": "Crv",
-   "designation": "7Del Crv"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.94
   },
   {
    "index": 166,
    "name": "Sadalmelik",
+   "designation": "34Alp Aqr",
    "constellation": "Aqr",
-   "designation": "34Alp Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.95
   },
   {
    "index": 167,
    "name": "Zaurak",
+   "designation": "34Gam Eri",
    "constellation": "Eri",
-   "designation": "34Gam Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.97
   },
   {
    "index": 168,
    "name": "Tianguan",
+   "designation": "123Zet Tau",
    "constellation": "Tau",
-   "designation": "123Zet Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.97
   },
   {
    "index": 169,
    "name": "Ras Elased Australis",
+   "designation": "17Eps Leo",
    "constellation": "Leo",
-   "designation": "17Eps Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.97
   },
   {
    "index": 170,
    "name": "Alnasl",
+   "designation": "10Gam2Sgr",
    "constellation": "Sgr",
-   "designation": "10Gam2Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.98
   },
   {
    "index": 171,
    "name": "Naja",
+   "designation": "46Gam Hya",
    "constellation": "Hya",
-   "designation": "46Gam Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.99
   },
   {
    "index": 173,
    "name": "Okab",
+   "designation": "17Zet Aql",
    "constellation": "Aql",
-   "designation": "17Zet Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 2.99
   },
   {
    "index": 174,
    "name": "Alaybasan",
+   "designation": "4Bet Tri",
    "constellation": "Tri",
-   "designation": "4Bet Tri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.0
   },
   {
    "index": 176,
    "name": "Pherkad",
+   "designation": "13Gam UMi",
    "constellation": "UMi",
-   "designation": "13Gam UMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.0
   },
   {
    "index": 177,
    "name": "Xamidimura",
+   "designation": "Mu 1Sco",
    "constellation": "Sco",
-   "designation": "Mu 1Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.0
   },
   {
    "index": 178,
    "name": "Aldhanab",
+   "designation": "Gam Gru",
    "constellation": "Gru",
-   "designation": "Gam Gru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.0
   },
   {
    "index": 179,
    "name": "Sarvvis",
+   "designation": "39Del Per",
    "constellation": "Per",
-   "designation": "39Del Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.01
   },
   {
    "index": 180,
    "name": "Furud",
+   "designation": "1Zet CMa",
    "constellation": "CMa",
-   "designation": "1Zet CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.02
   },
   {
    "index": 183,
    "name": "Almaaz",
+   "designation": "7Eps Aur",
    "constellation": "Aur",
-   "designation": "7Eps Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.03
   },
   {
    "index": 185,
    "name": "Seginus",
+   "designation": "27Gam Boo",
    "constellation": "Boo",
-   "designation": "27Gam Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.04
   },
   {
    "index": 186,
    "name": "Albireo",
+   "designation": "6Bet1Cyg",
    "constellation": "Cyg",
-   "designation": "6Bet1Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.05
   },
   {
    "index": 187,
    "name": "Dabih",
+   "designation": "9Bet Cap",
    "constellation": "Cap",
-   "designation": "9Bet Cap"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.05
   },
   {
    "index": 188,
    "name": "Mebsuta",
+   "designation": "27Eps Gem",
    "constellation": "Gem",
-   "designation": "27Eps Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.06
   },
   {
    "index": 189,
    "name": "Tania Australis",
+   "designation": "34Mu  UMa",
    "constellation": "UMa",
-   "designation": "34Mu  UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.06
   },
   {
    "index": 190,
    "name": "Altais",
+   "designation": "57Del Dra",
    "constellation": "Dra",
-   "designation": "57Del Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.07
   },
   {
    "index": 196,
    "name": "Wazn",
+   "designation": "Bet Col",
    "constellation": "Col",
-   "designation": "Bet Col"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.12
   },
   {
    "index": 197,
    "name": "Talitha",
+   "designation": "9Iot UMa",
    "constellation": "UMa",
-   "designation": "9Iot UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.12
   },
   {
    "index": 199,
    "name": "Sarin",
+   "designation": "65Del Her",
    "constellation": "Her",
-   "designation": "65Del Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.12
   },
   {
    "index": 203,
    "name": "Nuchuang",
+   "designation": "67Pi  Her",
    "constellation": "Her",
-   "designation": "67Pi  Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.16
   },
   {
    "index": 204,
    "name": "Pipit",
+   "designation": "Nu  Pup",
    "constellation": "Pup",
-   "designation": "Nu  Pup"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.17
   },
   {
    "index": 206,
    "name": "Aldhibah",
+   "designation": "22Zet Dra",
    "constellation": "Dra",
-   "designation": "22Zet Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.17
   },
   {
    "index": 208,
    "name": "Haedus",
+   "designation": "10Eta Aur",
    "constellation": "Aur",
-   "designation": "10Eta Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.18
   },
   {
    "index": 209,
    "name": "Xami",
+   "designation": "Alp Cir",
    "constellation": "Cir",
-   "designation": "Alp Cir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.18
   },
   {
    "index": 210,
    "name": "Tabit",
+   "designation": "1Pi 3Ori",
    "constellation": "Ori",
-   "designation": "1Pi 3Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.19
   },
   {
    "index": 211,
    "name": "Ping",
+   "designation": "2Eps Lep",
    "constellation": "Lep",
-   "designation": "2Eps Lep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.19
   },
   {
    "index": 213,
    "name": "Fuyue",
+   "designation": "",
    "constellation": "Sco",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.19
   },
   {
    "index": 215,
    "name": "Errai",
+   "designation": "35Gam Cep",
    "constellation": "Cep",
-   "designation": "35Gam Cep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.21
   },
   {
    "index": 217,
    "name": "Yed Posterior",
+   "designation": "2Eps Oph",
    "constellation": "Oph",
-   "designation": "2Eps Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.23
   },
   {
    "index": 219,
    "name": "Alfirk",
+   "designation": "8Bet Cep",
    "constellation": "Cep",
-   "designation": "8Bet Cep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.23
   },
   {
    "index": 221,
    "name": "Antinous",
+   "designation": "65The Aql",
    "constellation": "Aql",
-   "designation": "65The Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.24
   },
   {
    "index": 224,
    "name": "Brachium",
+   "designation": "20Sig Lib",
    "constellation": "Lib",
-   "designation": "20Sig Lib"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.25
   },
   {
    "index": 225,
    "name": "Sulafat",
+   "designation": "14Gam Lyr",
    "constellation": "Lyr",
-   "designation": "14Gam Lyr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.25
   },
   {
    "index": 229,
    "name": "Skat",
+   "designation": "76Del Aqr",
    "constellation": "Aqr",
-   "designation": "76Del Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.27
   },
   {
    "index": 230,
    "name": "Bade",
+   "designation": "5Mu  Lep",
    "constellation": "Lep",
-   "designation": "5Mu  Lep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.29
   },
   {
    "index": 232,
    "name": "Edasich",
+   "designation": "12Iot Dra",
    "constellation": "Dra",
-   "designation": "12Iot Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.29
   },
   {
    "index": 235,
    "name": "Propus",
+   "designation": "7Eta Gem",
    "constellation": "Gem",
-   "designation": "7Eta Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.31
   },
   {
    "index": 239,
    "name": "Megrez",
+   "designation": "69Del UMa",
    "constellation": "UMa",
-   "designation": "69Del UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.32
   },
   {
    "index": 243,
    "name": "Rhombus",
+   "designation": "Alp Ret",
    "constellation": "Ret",
-   "designation": "Alp Ret"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.33
   },
   {
    "index": 244,
    "name": "Chertan",
+   "designation": "70The Leo",
    "constellation": "Leo",
-   "designation": "70The Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.33
   },
   {
    "index": 245,
    "name": "Azmidi",
+   "designation": "7Xi  Pup",
    "constellation": "Pup",
-   "designation": "7Xi  Pup"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.34
   },
   {
    "index": 246,
    "name": "Segin",
+   "designation": "45Eps Cas",
    "constellation": "Cas",
-   "designation": "45Eps Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.35
   },
   {
    "index": 248,
    "name": "Alzirr",
+   "designation": "31Xi  Gem",
    "constellation": "Gem",
-   "designation": "31Xi  Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.35
   },
   {
    "index": 249,
    "name": "Muscida",
+   "designation": "1Omi UMa",
    "constellation": "UMa",
-   "designation": "1Omi UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.35
   },
   {
    "index": 252,
    "name": "Ashlesha",
+   "designation": "11Eps Hya",
    "constellation": "Hya",
-   "designation": "11Eps Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.38
   },
   {
    "index": 253,
    "name": "Heze",
+   "designation": "79Zet Vir",
    "constellation": "Vir",
-   "designation": "79Zet Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.38
   },
   {
    "index": 254,
    "name": "Meissa",
+   "designation": "39Lam Ori",
    "constellation": "Ori",
-   "designation": "39Lam Ori"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.39
   },
   {
    "index": 256,
    "name": "Minelauva",
+   "designation": "43Del Vir",
    "constellation": "Vir",
-   "designation": "43Del Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.39
   },
   {
    "index": 258,
    "name": "Chamukuy",
+   "designation": "78The2Tau",
    "constellation": "Tau",
-   "designation": "78The2Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.4
   },
   {
    "index": 261,
    "name": "Bibing",
+   "designation": "35Lam Tau",
    "constellation": "Tau",
-   "designation": "35Lam Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.41
   },
   {
    "index": 262,
    "name": "Heng",
+   "designation": "Nu  Cen",
    "constellation": "Cen",
-   "designation": "Nu  Cen"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.41
   },
   {
    "index": 265,
    "name": "Homam",
+   "designation": "42Zet Peg",
    "constellation": "Peg",
-   "designation": "42Zet Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.41
   },
   {
    "index": 266,
    "name": "Mothallah",
+   "designation": "2Alp Tri",
    "constellation": "Tri",
-   "designation": "2Alp Tri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.42
   },
   {
    "index": 271,
    "name": "Adhafera",
+   "designation": "36Zet Leo",
    "constellation": "Leo",
-   "designation": "36Zet Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.43
   },
   {
    "index": 273,
    "name": "Tania Borealis",
+   "designation": "33Lam UMa",
    "constellation": "UMa",
-   "designation": "33Lam UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.45
   },
   {
    "index": 274,
    "name": "Achird",
+   "designation": "24Eta Cas",
    "constellation": "Cas",
-   "designation": "24Eta Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.46
   },
   {
    "index": 277,
    "name": "Qigong",
+   "designation": "49Del Boo",
    "constellation": "Boo",
-   "designation": "49Del Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.46
   },
   {
    "index": 278,
    "name": "Kaffaljidhma",
+   "designation": "86Gam Cet",
    "constellation": "Cet",
-   "designation": "86Gam Cet"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.47
   },
   {
    "index": 283,
    "name": "Nganurganity",
+   "designation": "22Sig CMa",
    "constellation": "CMa",
-   "designation": "22Sig CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.49
   },
   {
    "index": 284,
    "name": "Alula Borealis",
+   "designation": "54Nu  UMa",
    "constellation": "UMa",
-   "designation": "54Nu  UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.49
   },
   {
    "index": 285,
    "name": "Nekkar",
+   "designation": "42Bet Boo",
    "constellation": "Boo",
-   "designation": "42Bet Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.49
   },
   {
    "index": 289,
    "name": "Wasat",
+   "designation": "55Del Gem",
    "constellation": "Gem",
-   "designation": "55Del Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.5
   },
   {
    "index": 292,
    "name": "Sadalbari",
+   "designation": "48Mu  Peg",
    "constellation": "Peg",
-   "designation": "48Mu  Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.51
   },
   {
    "index": 293,
    "name": "Rana",
+   "designation": "23Del Eri",
    "constellation": "Eri",
-   "designation": "23Del Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.52
   },
   {
    "index": 294,
    "name": "Subra",
+   "designation": "14Omi Leo",
    "constellation": "Leo",
-   "designation": "14Omi Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.52
   },
   {
    "index": 296,
    "name": "Sheliak",
+   "designation": "10Bet Lyr",
    "constellation": "Lyr",
-   "designation": "10Bet Lyr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.52
   },
   {
    "index": 298,
    "name": "Biham",
+   "designation": "26The Peg",
    "constellation": "Peg",
-   "designation": "26The Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.52
   },
   {
    "index": 300,
    "name": "Ain",
+   "designation": "74Eps Tau",
    "constellation": "Tau",
-   "designation": "74Eps Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.53
   },
   {
    "index": 301,
    "name": "Tarf",
+   "designation": "17Bet Cnc",
    "constellation": "Cnc",
-   "designation": "17Bet Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.53
   },
   {
    "index": 306,
    "name": "Darlugal",
+   "designation": "14Zet Lep",
    "constellation": "Lep",
-   "designation": "14Zet Lep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.55
   },
   {
    "index": 313,
    "name": "Pipirima",
+   "designation": "Mu 2Sco",
    "constellation": "Sco",
-   "designation": "Mu 2Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.56
   },
   {
    "index": 315,
    "name": "Alkaphrah",
+   "designation": "12Kap UMa",
    "constellation": "UMa",
-   "designation": "12Kap UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.57
   },
   {
    "index": 316,
    "name": "Kalasungsang",
+   "designation": "25Rho Boo",
    "constellation": "Boo",
-   "designation": "25Rho Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.57
   },
   {
    "index": 319,
    "name": "Algedi",
+   "designation": "6Alp2Cap",
    "constellation": "Cap",
-   "designation": "6Alp2Cap"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.58
   },
   {
    "index": 320,
    "name": "Nembus",
+   "designation": "51    And",
    "constellation": "And",
-   "designation": "51    And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.59
   },
   {
    "index": 323,
    "name": "Zavijava",
+   "designation": "5Bet Vir",
    "constellation": "Vir",
-   "designation": "5Bet Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.59
   },
   {
    "index": 324,
    "name": "Ginan",
+   "designation": "Eps Cru",
    "constellation": "Cru",
-   "designation": "Eps Cru"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.59
   },
   {
    "index": 331,
    "name": "Bharani",
+   "designation": "41    Ari",
    "constellation": "Ari",
-   "designation": "41    Ari"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.61
   },
   {
    "index": 336,
    "name": "Alpherg",
+   "designation": "99Eta Psc",
    "constellation": "Psc",
-   "designation": "99Eta Psc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.62
   },
   {
    "index": 337,
    "name": "Atlas",
+   "designation": "27    Tau",
    "constellation": "Tau",
-   "designation": "27    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.62
   },
   {
    "index": 340,
    "name": "Alfarasalkamil",
+   "designation": "1Omi And",
    "constellation": "And",
-   "designation": "1Omi And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.62
   },
   {
    "index": 342,
    "name": "Rotanev",
+   "designation": "6Bet Del",
    "constellation": "Del",
-   "designation": "6Bet Del"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.64
   },
   {
    "index": 343,
    "name": "Prima Hyadum",
+   "designation": "54Gam Tau",
    "constellation": "Tau",
-   "designation": "54Gam Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.65
   },
   {
    "index": 345,
    "name": "Zhou",
+   "designation": "28Bet Ser",
    "constellation": "Ser",
-   "designation": "28Bet Ser"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.65
   },
   {
    "index": 348,
    "name": "Nusakan",
+   "designation": "3Bet CrB",
    "constellation": "CrB",
-   "designation": "3Bet CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.66
   },
   {
    "index": 350,
    "name": "Thuban",
+   "designation": "11Alp Dra",
    "constellation": "Dra",
-   "designation": "11Alp Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.67
   },
   {
    "index": 355,
    "name": "Safina",
+   "designation": "88    Aqr",
    "constellation": "Aqr",
-   "designation": "88    Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.68
   },
   {
    "index": 356,
    "name": "Fulu",
+   "designation": "17Zet Cas",
    "constellation": "Cas",
-   "designation": "17Zet Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.69
   },
   {
    "index": 358,
    "name": "Saclateni",
+   "designation": "8Zet Aur",
    "constellation": "Aur",
-   "designation": "8Zet Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.69
   },
   {
    "index": 360,
    "name": "Taiyangshou",
+   "designation": "63Chi UMa",
    "constellation": "UMa",
-   "designation": "63Chi UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.69
   },
   {
    "index": 361,
    "name": "Nashira",
+   "designation": "40Gam Cap",
    "constellation": "Cap",
-   "designation": "40Gam Cap"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.69
   },
   {
    "index": 370,
    "name": "Alshain",
+   "designation": "60Bet Aql",
    "constellation": "Aql",
-   "designation": "60Bet Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.71
   },
   {
    "index": 371,
    "name": "Ran",
+   "designation": "18Eps Eri",
    "constellation": "Eri",
-   "designation": "18Eps Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.72
   },
   {
    "index": 372,
    "name": "Electra",
+   "designation": "17    Tau",
    "constellation": "Tau",
-   "designation": "17    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.72
   },
   {
    "index": 373,
    "name": "Bagu",
+   "designation": "33Del Aur",
    "constellation": "Aur",
-   "designation": "33Del Aur"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.72
   },
   {
    "index": 376,
    "name": "Maenalus",
+   "designation": "109    Vir",
    "constellation": "Vir",
-   "designation": "109    Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.73
   },
   {
    "index": 377,
    "name": "Grumium",
+   "designation": "32Xi  Dra",
    "constellation": "Dra",
-   "designation": "32Xi  Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.73
   },
   {
    "index": 379,
    "name": "Shatabhisha",
+   "designation": "73Lam Aqr",
    "constellation": "Aqr",
-   "designation": "73Lam Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.73
   },
   {
    "index": 380,
    "name": "Baten Kaitos",
+   "designation": "55Zet Cet",
    "constellation": "Cet",
-   "designation": "55Zet Cet"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.74
   },
   {
    "index": 384,
    "name": "Bake-eo",
+   "designation": "62Gam Oph",
    "constellation": "Oph",
-   "designation": "62Gam Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.75
   },
   {
    "index": 390,
    "name": "Stellio",
+   "designation": "7Alp Lac",
    "constellation": "Lac",
-   "designation": "7Alp Lac"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.76
   },
   {
    "index": 391,
    "name": "Miram",
+   "designation": "15Eta Per",
    "constellation": "Per",
-   "designation": "15Eta Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.77
   },
   {
    "index": 393,
    "name": "Secunda Hyadum",
+   "designation": "61Del1Tau",
    "constellation": "Tau",
-   "designation": "61Del1Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.77
   },
   {
    "index": 398,
    "name": "Sualocin",
+   "designation": "9Alp Del",
    "constellation": "Del",
-   "designation": "9Alp Del"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.77
   },
   {
    "index": 406,
    "name": "Albali",
+   "designation": "2Eps Aqr",
    "constellation": "Aqr",
-   "designation": "2Eps Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.78
   },
   {
    "index": 407,
    "name": "Misam",
+   "designation": "27Kap Per",
    "constellation": "Per",
-   "designation": "27Kap Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.79
   },
   {
    "index": 408,
    "name": "Praecipua",
+   "designation": "46    LMi",
    "constellation": "LMi",
-   "designation": "46    LMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.79
   },
   {
    "index": 409,
    "name": "Dalim",
+   "designation": "Alp For",
    "constellation": "For",
-   "designation": "Alp For"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.8
   },
   {
    "index": 414,
    "name": "Theemin",
+   "designation": "52Ups2Eri",
    "constellation": "Eri",
-   "designation": "52Ups2Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.81
   },
   {
    "index": 416,
    "name": "Baltesha",
+   "designation": "8Gam CrB",
    "constellation": "CrB",
-   "designation": "8Gam CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.81
   },
   {
    "index": 417,
    "name": "Udkadua",
+   "designation": "16Lam And",
    "constellation": "And",
-   "designation": "16Lam And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.81
   },
   {
    "index": 418,
    "name": "Alrescha",
+   "designation": "113Alp Psc",
    "constellation": "Psc",
-   "designation": "113Alp Psc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.82
   },
   {
    "index": 420,
    "name": "Giausar",
+   "designation": "1Lam Dra",
    "constellation": "Dra",
-   "designation": "1Lam Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.82
   },
   {
    "index": 421,
    "name": "Marfik",
+   "designation": "10Lam Oph",
    "constellation": "Oph",
-   "designation": "10Lam Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.82
   },
   {
    "index": 425,
    "name": "Paradys",
+   "designation": "Alp Aps",
    "constellation": "Aps",
-   "designation": "Alp Aps"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.83
   },
   {
    "index": 427,
    "name": "Atik",
+   "designation": "38Omi Per",
    "constellation": "Per",
-   "designation": "38Omi Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.84
   },
   {
    "index": 430,
    "name": "Shaomin",
+   "designation": "47Rho Leo",
    "constellation": "Leo",
-   "designation": "47Rho Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.84
   },
   {
    "index": 434,
    "name": "Polis",
+   "designation": "13Mu  Sgr",
    "constellation": "Sgr",
-   "designation": "13Mu  Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.84
   },
   {
    "index": 443,
    "name": "Tusizuo",
+   "designation": "109    Her",
    "constellation": "Her",
-   "designation": "109    Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.85
   },
   {
    "index": 446,
    "name": "Sceptrum",
+   "designation": "53    Eri",
    "constellation": "Eri",
-   "designation": "53    Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.86
   },
   {
    "index": 451,
    "name": "Sadachbia",
+   "designation": "48Gam Aqr",
    "constellation": "Aqr",
-   "designation": "48Gam Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.86
   },
   {
    "index": 452,
    "name": "Maia",
+   "designation": "20    Tau",
    "constellation": "Tau",
-   "designation": "20    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.87
   },
   {
    "index": 456,
    "name": "Iklil",
+   "designation": "5Rho Sco",
    "constellation": "Sco",
-   "designation": "5Rho Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.87
   },
   {
    "index": 459,
    "name": "Mesarthim",
+   "designation": "5Gam2Ari",
    "constellation": "Ari",
-   "designation": "5Gam2Ari"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.88
   },
   {
    "index": 460,
    "name": "Rasalas",
+   "designation": "24Mu  Leo",
    "constellation": "Leo",
-   "designation": "24Mu  Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.88
   },
   {
    "index": 463,
    "name": "Azha",
+   "designation": "3Eta Eri",
    "constellation": "Eri",
-   "designation": "3Eta Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.89
   },
   {
    "index": 466,
    "name": "Zaniah",
+   "designation": "15Eta Vir",
    "constellation": "Vir",
-   "designation": "15Eta Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.89
   },
   {
    "index": 468,
    "name": "Ukdah",
+   "designation": "35Iot Hya",
    "constellation": "Hya",
-   "designation": "35Iot Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.9
   },
   {
    "index": 475,
    "name": "Zubenelhakrabi",
+   "designation": "38Gam Lib",
    "constellation": "Lib",
-   "designation": "38Gam Lib"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.91
   },
   {
    "index": 476,
    "name": "Asuusiha",
+   "designation": "22Tau Her",
    "constellation": "Her",
-   "designation": "22Tau Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.91
   },
   {
    "index": 477,
    "name": "Khepdenreret",
+   "designation": "58Eps Her",
    "constellation": "Her",
-   "designation": "58Eps Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.92
   },
   {
    "index": 479,
    "name": "Kitalpha",
+   "designation": "8Alp Equ",
    "constellation": "Equ",
-   "designation": "8Alp Equ"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.92
   },
   {
    "index": 488,
    "name": "Wurren",
+   "designation": "Zet Phe",
    "constellation": "Phe",
-   "designation": "Zet Phe"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.94
   },
   {
    "index": 491,
    "name": "Asellus Australis",
+   "designation": "47Del Cnc",
    "constellation": "Cnc",
-   "designation": "47Del Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.94
   },
   {
    "index": 493,
    "name": "Gang",
+   "designation": "50    Cas",
    "constellation": "Cas",
-   "designation": "50    Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.95
   },
   {
    "index": 500,
    "name": "Arkab Prior",
+   "designation": "Bet1Sgr",
    "constellation": "Sgr",
-   "designation": "Bet1Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.96
   },
   {
    "index": 501,
    "name": "Rukbat",
+   "designation": "Alp Sgr",
    "constellation": "Sgr",
-   "designation": "Alp Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.96
   },
   {
    "index": 504,
    "name": "Beemim",
+   "designation": "43    Eri",
    "constellation": "Eri",
-   "designation": "43    Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.97
   },
   {
    "index": 513,
    "name": "Menkib",
+   "designation": "46Xi  Per",
    "constellation": "Per",
-   "designation": "46Xi  Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.98
   },
   {
    "index": 518,
    "name": "Alcor",
+   "designation": "80    UMa",
    "constellation": "UMa",
-   "designation": "80    UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 3.99
   },
   {
    "index": 522,
    "name": "Jabbah",
+   "designation": "14Nu  Sco",
    "constellation": "Sco",
-   "designation": "14Nu  Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.0
   },
   {
    "index": 523,
    "name": "Dajiangjunbei",
+   "designation": "Phi Per",
    "constellation": "Per",
-   "designation": "Phi Per"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.01
   },
   {
    "index": 525,
    "name": "Mekbuda",
+   "designation": "43Zet Gem",
    "constellation": "Gem",
-   "designation": "43Zet Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.01
   },
   {
    "index": 533,
    "name": "Alchiba",
+   "designation": "1Alp Crv",
    "constellation": "Crv",
-   "designation": "1Alp Crv"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.02
   },
   {
    "index": 536,
    "name": "Apdu",
+   "designation": "9Gam Tri",
    "constellation": "Tri",
-   "designation": "9Gam Tri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.03
   },
   {
    "index": 538,
    "name": "Yuyu",
+   "designation": "48Iot Cnc",
    "constellation": "Cnc",
-   "designation": "48Iot Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.03
   },
   {
    "index": 541,
    "name": "Aldulfin",
+   "designation": "2Eps Del",
    "constellation": "Del",
-   "designation": "2Eps Del"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.03
   },
   {
    "index": 543,
    "name": "Beid",
+   "designation": "38Omi1Eri",
    "constellation": "Eri",
-   "designation": "38Omi1Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.04
   },
   {
    "index": 562,
    "name": "Syrma",
+   "designation": "99Iot Vir",
    "constellation": "Vir",
-   "designation": "99Iot Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.07
   },
   {
    "index": 566,
    "name": "Shimu",
+   "designation": "34Zet And",
    "constellation": "And",
-   "designation": "34Zet And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.08
   },
   {
    "index": 572,
    "name": "Alkes",
+   "designation": "7Alp Crt",
    "constellation": "Crt",
-   "designation": "7Alp Crt"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.08
   },
   {
    "index": 574,
    "name": "Udang",
+   "designation": "23The Cap",
    "constellation": "Cap",
-   "designation": "23The Cap"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.08
   },
   {
    "index": 577,
    "name": "Gudja",
+   "designation": "35Kap Ser",
    "constellation": "Ser",
-   "designation": "35Kap Ser"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.09
   },
   {
    "index": 578,
    "name": "Titawin",
+   "designation": "50Ups And",
    "constellation": "And",
-   "designation": "50Ups And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.1
   },
   {
    "index": 584,
    "name": "Muliphein",
+   "designation": "23Gam CMa",
    "constellation": "CMa",
-   "designation": "23Gam CMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.11
   },
   {
    "index": 586,
    "name": "Zhang",
+   "designation": "39Ups1Hya",
    "constellation": "Hya",
-   "designation": "39Ups1Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.11
   },
   {
    "index": 590,
    "name": "Meridiana",
+   "designation": "Alp CrA",
    "constellation": "CrA",
-   "designation": "Alp CrA"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.11
   },
   {
    "index": 606,
    "name": "Merope",
+   "designation": "23    Tau",
    "constellation": "Tau",
-   "designation": "23    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.14
   },
   {
    "index": 609,
    "name": "Guansuo",
+   "designation": "4The CrB",
    "constellation": "CrB",
-   "designation": "4The CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.14
   },
   {
    "index": 615,
    "name": "Kaffalmusalsala",
+   "designation": "19Kap And",
    "constellation": "And",
-   "designation": "19Kap And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.15
   },
   {
    "index": 619,
    "name": "Cexing",
+   "designation": "15Kap Cas",
    "constellation": "Cas",
-   "designation": "15Kap Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.17
   },
   {
    "index": 621,
    "name": "Ancha",
+   "designation": "43The Aqr",
    "constellation": "Aqr",
-   "designation": "43The Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.17
   },
   {
    "index": 622,
    "name": "Kang",
+   "designation": "98Kap Vir",
    "constellation": "Vir",
-   "designation": "98Kap Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.18
   },
   {
    "index": 623,
    "name": "Xuange",
+   "designation": "19Lam Boo",
    "constellation": "Boo",
-   "designation": "19Lam Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.18
   },
   {
    "index": 660,
    "name": "Garnet Star",
+   "designation": "Mu  Cep",
    "constellation": "Cep",
-   "designation": "Mu  Cep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.23
   },
   {
    "index": 662,
    "name": "Tarandus",
+   "designation": "",
    "constellation": "Cep",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.24
   },
   {
    "index": 666,
    "name": "Chara",
+   "designation": "8Bet CVn",
    "constellation": "CVn",
-   "designation": "8Bet CVn"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.24
   },
   {
    "index": 675,
    "name": "Alsciaukat",
+   "designation": "31    Lyn",
    "constellation": "Lyn",
-   "designation": "31    Lyn"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.25
   },
   {
    "index": 679,
    "name": "Junnanmen",
+   "designation": "42Phi And",
    "constellation": "And",
-   "designation": "42Phi And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.26
   },
   {
    "index": 680,
    "name": "Torcular",
+   "designation": "110Omi Psc",
    "constellation": "Psc",
-   "designation": "110Omi Psc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.26
   },
   {
    "index": 681,
    "name": "82 G. Eri",
+   "designation": "",
    "constellation": "Eri",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.26
   },
   {
    "index": 685,
    "name": "Acubens",
+   "designation": "65Alp Cnc",
    "constellation": "Cnc",
-   "designation": "65Alp Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.26
   },
   {
    "index": 687,
    "name": "Bodu",
+   "designation": "95    Her",
    "constellation": "Her",
-   "designation": "95    Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.26
   },
   {
    "index": 688,
    "name": "Kurhah",
+   "designation": "17Xi  Cep",
    "constellation": "Cep",
-   "designation": "17Xi  Cep"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.26
   },
   {
    "index": 693,
    "name": "Gaja",
+   "designation": "94Tau Tau",
    "constellation": "Tau",
-   "designation": "94Tau Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.27
   },
   {
    "index": 696,
    "name": "Arkab Posterior",
+   "designation": "Bet2Sgr",
    "constellation": "Sgr",
-   "designation": "Bet2Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.27
   },
   {
    "index": 715,
    "name": "Rasalnaqa",
+   "designation": "17Iot And",
    "constellation": "And",
-   "designation": "17Iot And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.29
   },
   {
    "index": 718,
    "name": "Taygeta",
+   "designation": "19    Tau",
    "constellation": "Tau",
-   "designation": "19    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.3
   },
   {
    "index": 731,
    "name": "Alkalurops",
+   "designation": "51Mu 1Boo",
    "constellation": "Boo",
-   "designation": "51Mu 1Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.31
   },
   {
    "index": 739,
    "name": "Alterf",
+   "designation": "4Lam Leo",
    "constellation": "Leo",
-   "designation": "4Lam Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.32
   },
   {
    "index": 741,
    "name": "Diadem",
+   "designation": "42Alp Com",
    "constellation": "Com",
-   "designation": "42Alp Com"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.32
   },
   {
    "index": 748,
    "name": "Guniibuu",
+   "designation": "36    Oph",
    "constellation": "Oph",
-   "designation": "36    Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.33
   },
   {
    "index": 751,
    "name": "Alula Australis",
+   "designation": "53Xi  UMa",
    "constellation": "UMa",
-   "designation": "53Xi  UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.33
   },
   {
    "index": 767,
    "name": "Botein",
+   "designation": "57Del Ari",
    "constellation": "Ari",
-   "designation": "57Del Ari"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.35
   },
   {
    "index": 775,
    "name": "Yildun",
+   "designation": "23Del UMi",
    "constellation": "UMi",
-   "designation": "23Del UMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.35
   },
   {
    "index": 795,
    "name": "Ramus",
+   "designation": "102    Her",
    "constellation": "Her",
-   "designation": "102    Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.37
   },
   {
    "index": 802,
    "name": "Custos",
+   "designation": "",
    "constellation": "Cam",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.39
   },
   {
    "index": 807,
-   "name": "Yun\u00fc",
+   "name": "Yunü",
+   "designation": "31    Leo",
    "constellation": "Leo",
-   "designation": "31    Leo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.39
   },
   {
    "index": 811,
    "name": "Sham",
+   "designation": "5Alp Sge",
    "constellation": "Sge",
-   "designation": "5Alp Sge"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.39
   },
   {
    "index": 814,
    "name": "Kui",
+   "designation": "38Eta And",
    "constellation": "And",
-   "designation": "38Eta And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.4
   },
   {
    "index": 822,
    "name": "Maasym",
+   "designation": "76Lam Her",
    "constellation": "Her",
-   "designation": "76Lam Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.41
   },
   {
    "index": 834,
    "name": "Solitaire",
+   "designation": "58    Hya",
    "constellation": "Hya",
-   "designation": "58    Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.42
   },
   {
    "index": 838,
    "name": "Alkarab",
+   "designation": "68Ups Peg",
    "constellation": "Peg",
-   "designation": "68Ups Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.42
   },
   {
    "index": 840,
    "name": "Keid",
+   "designation": "40Omi2Eri",
    "constellation": "Eri",
-   "designation": "40Omi2Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.43
   },
   {
    "index": 842,
    "name": "Aladfar",
+   "designation": "20Eta Lyr",
    "constellation": "Lyr",
-   "designation": "20Eta Lyr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.43
   },
   {
    "index": 856,
    "name": "Anser",
+   "designation": "6Alp Vul",
    "constellation": "Vul",
-   "designation": "6Alp Vul"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.44
   },
   {
    "index": 861,
    "name": "Minchir",
+   "designation": "5Sig Hya",
    "constellation": "Hya",
-   "designation": "5Sig Hya"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.45
   },
   {
    "index": 869,
    "name": "Huagai",
+   "designation": "Iot Cas",
    "constellation": "Cas",
-   "designation": "Iot Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.46
   },
   {
    "index": 887,
    "name": "Genghe",
+   "designation": "28Sig Boo",
    "constellation": "Boo",
-   "designation": "28Sig Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.47
   },
   {
    "index": 898,
    "name": "Fumalsamakah",
+   "designation": "4Bet Psc",
    "constellation": "Psc",
-   "designation": "4Bet Psc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.48
   },
   {
    "index": 918,
    "name": "Tepiamenit",
+   "designation": "4Tau Boo",
    "constellation": "Boo",
-   "designation": "4Tau Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.5
   },
   {
    "index": 936,
    "name": "Lilii Borea",
+   "designation": "39    Ari",
    "constellation": "Ari",
-   "designation": "39    Ari"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.52
   },
   {
    "index": 939,
    "name": "Khambalia",
+   "designation": "100Lam Vir",
    "constellation": "Vir",
-   "designation": "100Lam Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.52
   },
   {
    "index": 954,
    "name": "Honores",
+   "designation": "7    And",
    "constellation": "And",
-   "designation": "7    And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.53
   },
   {
    "index": 966,
    "name": "Hydor",
+   "designation": "2    Cet",
    "constellation": "Cet",
-   "designation": "2    Cet"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.55
   },
   {
    "index": 969,
    "name": "Tonglingxing",
+   "designation": "",
    "constellation": "Cam",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.55
   },
   {
    "index": 988,
    "name": "Cujam",
+   "designation": "24Ome Her",
    "constellation": "Her",
-   "designation": "24Ome Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.57
   },
   {
    "index": 990,
    "name": "Dziban",
+   "designation": "31Psi1Dra",
    "constellation": "Dra",
-   "designation": "31Psi1Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.57
   },
   {
    "index": 1001,
    "name": "Salm",
+   "designation": "62Tau Peg",
    "constellation": "Peg",
-   "designation": "62Tau Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.58
   },
   {
    "index": 1004,
    "name": "Shaowei",
+   "designation": "Gam Cam",
    "constellation": "Cam",
-   "designation": "Gam Cam"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.59
   },
   {
    "index": 1010,
    "name": "Matrchakre",
+   "designation": "10Del CrB",
    "constellation": "CrB",
-   "designation": "10Del CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.59
   },
   {
    "index": 1030,
    "name": "Castula",
+   "designation": "28Ups2Cas",
    "constellation": "Cas",
-   "designation": "28Ups2Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.62
   },
   {
    "index": 1043,
    "name": "Alya",
+   "designation": "63The1Ser",
    "constellation": "Ser",
-   "designation": "63The1Ser"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.62
   },
   {
    "index": 1086,
    "name": "Asellus Borealis",
+   "designation": "43Gam Cnc",
    "constellation": "Cnc",
-   "designation": "43Gam Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.66
   },
   {
    "index": 1101,
    "name": "Tegmine",
+   "designation": "16Zet2Cnc",
    "constellation": "Cnc",
-   "designation": "16Zet2Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.67
   },
   {
    "index": 1106,
    "name": "Alsafi",
+   "designation": "61Sig Dra",
    "constellation": "Dra",
-   "designation": "61Sig Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.67
   },
   {
    "index": 1116,
    "name": "Apamvatsa",
+   "designation": "74    Vir",
    "constellation": "Vir",
-   "designation": "74    Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.68
   },
   {
    "index": 1120,
    "name": "Bunda",
+   "designation": "23Xi  Aqr",
    "constellation": "Aqr",
-   "designation": "23Xi  Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.68
   },
   {
    "index": 1129,
    "name": "Azelfafage",
+   "designation": "80Pi 1Cyg",
    "constellation": "Cyg",
-   "designation": "80Pi 1Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.69
   },
   {
    "index": 1137,
    "name": "Terebellum",
+   "designation": "58Ome Sgr",
    "constellation": "Sgr",
-   "designation": "58Ome Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.7
   },
   {
    "index": 1152,
    "name": "Libertas",
+   "designation": "59Xi  Aql",
    "constellation": "Aql",
-   "designation": "59Xi  Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.71
   },
   {
    "index": 1205,
    "name": "Angetenar",
+   "designation": "2Tau2Eri",
    "constellation": "Eri",
-   "designation": "2Tau2Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.76
   },
   {
    "index": 1207,
    "name": "Shangwei",
+   "designation": "",
    "constellation": "Cam",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.76
   },
   {
    "index": 1234,
    "name": "Alshat",
+   "designation": "8Nu  Cap",
    "constellation": "Cap",
-   "designation": "8Nu  Cap"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.77
   },
   {
    "index": 1272,
    "name": "Zibal",
+   "designation": "13Zet Eri",
    "constellation": "Eri",
-   "designation": "13Zet Eri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.8
   },
   {
    "index": 1281,
    "name": "Phyllon Kissinou",
+   "designation": "23    Com",
    "constellation": "Com",
-   "designation": "23    Com"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.8
   },
   {
    "index": 1285,
    "name": "Alrumh",
+   "designation": "34    Boo",
    "constellation": "Boo",
-   "designation": "34    Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.8
   },
   {
    "index": 1294,
    "name": "Alula Australis B",
+   "designation": "53Xi  UMa",
    "constellation": "UMa",
-   "designation": "53Xi  UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.8
   },
   {
    "index": 1302,
    "name": "Elgafar",
+   "designation": "105Phi Vir",
    "constellation": "Vir",
-   "designation": "105Phi Vir"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.81
   },
   {
    "index": 1320,
    "name": "Fafnir",
+   "designation": "42    Dra",
    "constellation": "Dra",
-   "designation": "42    Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.82
   },
   {
    "index": 1336,
    "name": "Quadrans",
+   "designation": "44    Boo",
    "constellation": "Boo",
-   "designation": "44    Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.83
   },
   {
    "index": 1345,
    "name": "Deltoton",
+   "designation": "8Del Tri",
    "constellation": "Tri",
-   "designation": "8Del Tri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.84
   },
   {
    "index": 1361,
    "name": "Graffias",
+   "designation": "Xi  Sco",
    "constellation": "Sco",
-   "designation": "Xi  Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.84
   },
   {
    "index": 1362,
    "name": "Shangcheng",
+   "designation": "",
    "constellation": "Cas",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.85
   },
   {
    "index": 1385,
    "name": "Ainalrami",
+   "designation": "32Nu 1Sgr",
    "constellation": "Sgr",
-   "designation": "32Nu 1Sgr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.86
   },
   {
    "index": 1389,
    "name": "Adhil",
+   "designation": "46Xi  And",
    "constellation": "And",
-   "designation": "46Xi  And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.87
   },
   {
    "index": 1421,
    "name": "Jishui",
+   "designation": "71Omi Gem",
    "constellation": "Gem",
-   "designation": "71Omi Gem"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.89
   },
   {
    "index": 1442,
    "name": "Acrab B",
+   "designation": "8Bet2Sco",
    "constellation": "Sco",
-   "designation": "8Bet2Sco"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.9
   },
   {
    "index": 1454,
    "name": "Lumbung",
+   "designation": "",
    "constellation": "Cru",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.91
   },
   {
    "index": 1508,
    "name": "Triminus",
+   "designation": "6    Tri",
    "constellation": "Tri",
-   "designation": "6    Tri"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.94
   },
   {
    "index": 1514,
    "name": "Felis",
+   "designation": "",
    "constellation": "Hya",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.94
   },
   {
    "index": 1543,
    "name": "Shakata",
+   "designation": "75    Tau",
    "constellation": "Tau",
-   "designation": "75    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.96
   },
   {
    "index": 1582,
    "name": "Aurwandilsta",
+   "designation": "14Iot CrB",
    "constellation": "CrB",
-   "designation": "14Iot CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.98
   },
   {
    "index": 1584,
    "name": "Alya B",
+   "designation": "63The2Ser",
    "constellation": "Ser",
-   "designation": "63The2Ser"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.98
   },
   {
    "index": 1613,
    "name": "Tengshe",
+   "designation": "",
    "constellation": "Lac",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 4.99
   },
   {
    "index": 1617,
    "name": "Elkurud",
+   "designation": "The Col",
    "constellation": "Col",
-   "designation": "The Col"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.0
   },
   {
    "index": 1625,
    "name": "Marsic",
+   "designation": "7Kap Her",
    "constellation": "Her",
-   "designation": "7Kap Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.0
   },
   {
    "index": 1663,
    "name": "Pherkad Minor",
+   "designation": "11    UMi",
    "constellation": "UMi",
-   "designation": "11    UMi"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.02
   },
   {
    "index": 1677,
    "name": "Chalawan",
+   "designation": "47    UMa",
    "constellation": "UMa",
-   "designation": "47    UMa"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.03
   },
   {
    "index": 1713,
    "name": "Situla",
+   "designation": "63Kap Aqr",
    "constellation": "Aqr",
-   "designation": "63Kap Aqr"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.04
   },
   {
    "index": 1715,
    "name": "Pleione",
+   "designation": "28    Tau",
    "constellation": "Tau",
-   "designation": "28    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.05
   },
   {
    "index": 1771,
    "name": "Guniibuu B",
+   "designation": "36    Oph",
    "constellation": "Oph",
-   "designation": "36    Oph"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.07
   },
   {
    "index": 1775,
    "name": "Lembu",
+   "designation": "97    Tau",
    "constellation": "Tau",
-   "designation": "97    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.08
   },
   {
    "index": 1778,
    "name": "Hoerikwaggo",
+   "designation": "Alp Men",
    "constellation": "Men",
-   "designation": "Alp Men"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.08
   },
   {
    "index": 1871,
    "name": "Cervantes",
+   "designation": "Mu  Ara",
    "constellation": "Ara",
-   "designation": "Mu  Ara"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.12
   },
   {
    "index": 1875,
    "name": "Albireo B",
+   "designation": "6Bet2Cyg",
    "constellation": "Cyg",
-   "designation": "6Bet2Cyg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.12
   },
   {
    "index": 1965,
    "name": "Nahn",
+   "designation": "77Xi  Cnc",
    "constellation": "Cnc",
-   "designation": "77Xi  Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.16
   },
   {
    "index": 2073,
    "name": "Revati",
+   "designation": "86Zet Psc",
    "constellation": "Psc",
-   "designation": "86Zet Psc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.21
   },
   {
    "index": 2087,
    "name": "Rangifer",
+   "designation": "49    Cas",
    "constellation": "Cas",
-   "designation": "49    Cas"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.22
   },
   {
    "index": 2112,
    "name": "Veritate",
+   "designation": "14    And",
    "constellation": "And",
-   "designation": "14    And"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.22
   },
   {
    "index": 2126,
    "name": "Taiyi",
+   "designation": "8    Dra",
    "constellation": "Dra",
-   "designation": "8    Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.23
   },
   {
    "index": 2555,
    "name": "Intercrus",
+   "designation": "",
    "constellation": "UMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.4
   },
   {
    "index": 2612,
    "name": "La Superba",
+   "designation": "",
    "constellation": "CVn",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.42
   },
   {
    "index": 2632,
    "name": "Tianyi",
+   "designation": "7    Dra",
    "constellation": "Dra",
-   "designation": "7    Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.43
   },
   {
    "index": 2681,
    "name": "Celaeno",
+   "designation": "16    Tau",
    "constellation": "Tau",
-   "designation": "16    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.45
   },
   {
    "index": 2706,
    "name": "Polaris Australis",
+   "designation": "Sig Oct",
    "constellation": "Oct",
-   "designation": "Sig Oct"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.45
   },
   {
    "index": 2710,
    "name": "Helvetios",
+   "designation": "51    Peg",
    "constellation": "Peg",
-   "designation": "51    Peg"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.45
   },
   {
    "index": 2896,
    "name": "Tianfu",
+   "designation": "63Tau Aql",
    "constellation": "Aql",
-   "designation": "63Tau Aql"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.51
   },
   {
    "index": 2899,
    "name": "Musica",
+   "designation": "18    Del",
    "constellation": "Del",
-   "designation": "18    Del"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.51
   },
   {
    "index": 3112,
    "name": "Stephanos",
+   "designation": "9Pi  CrB",
    "constellation": "CrB",
-   "designation": "9Pi  CrB"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.57
   },
   {
    "index": 3263,
    "name": "Cor Caroli B",
+   "designation": "12Alp1CVn",
    "constellation": "CVn",
-   "designation": "12Alp1CVn"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.61
   },
   {
    "index": 3346,
    "name": "Alrakis",
+   "designation": "21Mu  Dra",
    "constellation": "Dra",
-   "designation": "21Mu  Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.63
   },
   {
    "index": 3746,
    "name": "96 G. Psc",
+   "designation": "",
    "constellation": "Psc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.74
   },
   {
    "index": 3814,
    "name": "Kamelos",
+   "designation": "",
    "constellation": "Cam",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.75
   },
   {
    "index": 3837,
    "name": "Alruba",
+   "designation": "",
    "constellation": "Dra",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.75
   },
   {
    "index": 3856,
    "name": "Asterope",
+   "designation": "21    Tau",
    "constellation": "Tau",
-   "designation": "21    Tau"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.76
   },
   {
    "index": 3880,
    "name": "Merga",
+   "designation": "38    Boo",
    "constellation": "Boo",
-   "designation": "38    Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.76
   },
   {
    "index": 3984,
    "name": "Tonatiuh",
+   "designation": "",
    "constellation": "Cam",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.78
   },
   {
    "index": 4010,
    "name": "268 G. Cet",
+   "designation": "",
    "constellation": "Cet",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.79
   },
   {
    "index": 4125,
    "name": "Dziban B",
+   "designation": "31Psi1Dra",
    "constellation": "Dra",
-   "designation": "31Psi1Dra"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.81
   },
   {
    "index": 4619,
    "name": "Piautos",
+   "designation": "19Lam Cnc",
    "constellation": "Cnc",
-   "designation": "19Lam Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.92
   },
   {
    "index": 4836,
    "name": "Copernicus",
+   "designation": "55Rho1Cnc",
    "constellation": "Cnc",
-   "designation": "55Rho1Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 5.96
   },
   {
    "index": 5261,
    "name": "Xihe",
+   "designation": "",
    "constellation": "Lyr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.04
   },
   {
    "index": 5334,
    "name": "Shengong",
+   "designation": "",
    "constellation": "Sco",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.05
   },
   {
    "index": 6651,
    "name": "Marsic B",
+   "designation": "7Kap Her",
    "constellation": "Her",
-   "designation": "7Kap Her"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.25
   },
   {
    "index": 6663,
    "name": "Gumala",
+   "designation": "",
    "constellation": "Sgr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.25
   },
   {
    "index": 6933,
-   "name": "Cital\u00e1",
+   "name": "Citalá",
+   "designation": "",
    "constellation": "Mon",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.29
   },
   {
    "index": 6936,
    "name": "Meleph",
+   "designation": "41Eps Cnc",
    "constellation": "Cnc",
-   "designation": "41Eps Cnc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.29
   },
   {
    "index": 8103,
    "name": "Groombridge 1830",
+   "designation": "",
    "constellation": "UMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.42
   },
   {
    "index": 8160,
    "name": "Mago",
+   "designation": "",
    "constellation": "Cam",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.43
   },
   {
    "index": 8248,
    "name": "Revati B",
+   "designation": "86Zet Psc",
    "constellation": "Psc",
-   "designation": "86Zet Psc"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.44
   },
   {
    "index": 8321,
    "name": "Chechia",
+   "designation": "",
    "constellation": "Aql",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.44
   },
   {
    "index": 8385,
    "name": "Formosa",
+   "designation": "",
    "constellation": "Leo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.45
   },
   {
    "index": 8527,
    "name": "Mira",
+   "designation": "68Omi Cet",
    "constellation": "Cet",
-   "designation": "68Omi Cet"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.47
   },
   {
    "index": 8989,
    "name": "Alkalurops B",
+   "designation": "51Mu 2Boo",
    "constellation": "Boo",
-   "designation": "51Mu 2Boo"
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.51
   },
   {
    "index": 9619,
    "name": "Kamuy",
+   "designation": "",
    "constellation": "CrB",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.57
   },
   {
    "index": 10776,
    "name": "Inquill",
+   "designation": "",
    "constellation": "Ara",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.67
   },
   {
    "index": 10990,
    "name": "Bubup",
+   "designation": "",
    "constellation": "Men",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.69
   },
   {
    "index": 11065,
    "name": "Lacaille 8760",
+   "designation": "",
    "constellation": "Mic",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.69
   },
   {
    "index": 12847,
    "name": "Baekdu",
+   "designation": "",
    "constellation": "UMi",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.83
   },
   {
    "index": 13775,
    "name": "Timir",
+   "designation": "",
    "constellation": "Oph",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.89
   },
   {
    "index": 15373,
-   "name": "Tup\u00e3",
+   "name": "Tupã",
+   "designation": "",
    "constellation": "Cru",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 6.99
   },
   {
    "index": 15688,
    "name": "Matza",
+   "designation": "",
    "constellation": "Cen",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.01
   },
   {
    "index": 17462,
-   "name": "B\u00e9l\u00e9nos",
+   "name": "Bélénos",
+   "designation": "",
    "constellation": "Psc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.12
   },
   {
    "index": 17474,
    "name": "Tupi",
+   "designation": "",
    "constellation": "Ret",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.12
   },
   {
    "index": 18477,
    "name": "Dofida",
+   "designation": "",
    "constellation": "Cen",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.17
   },
   {
    "index": 20564,
    "name": "Buna",
+   "designation": "",
    "constellation": "And",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.28
   },
   {
    "index": 22236,
    "name": "Lacaille 9352",
+   "designation": "",
    "constellation": "PsA",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.35
   },
   {
    "index": 22370,
    "name": "Aiolos",
+   "designation": "",
    "constellation": "Car",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.36
   },
   {
    "index": 23084,
    "name": "Rapeto",
+   "designation": "",
    "constellation": "Sco",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.39
   },
   {
    "index": 24919,
    "name": "Uklun",
+   "designation": "",
    "constellation": "Cen",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.47
   },
   {
    "index": 25046,
    "name": "Itonda",
+   "designation": "",
    "constellation": "Gru",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.47
   },
   {
    "index": 25433,
    "name": "Lalande 21185",
+   "designation": "",
    "constellation": "UMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.49
   },
   {
    "index": 27037,
    "name": "Belel",
+   "designation": "",
    "constellation": "Sgr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.55
   },
   {
    "index": 28473,
    "name": "Lionrock",
+   "designation": "",
    "constellation": "Aqr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.6
   },
   {
    "index": 28904,
    "name": "Illyrian",
+   "designation": "",
    "constellation": "LMi",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.62
   },
   {
    "index": 31737,
    "name": "Nenque",
+   "designation": "",
    "constellation": "Phe",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.72
   },
   {
    "index": 33572,
    "name": "Cocibolca",
+   "designation": "",
    "constellation": "Scl",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.78
   },
   {
    "index": 34447,
-   "name": "Arcal\u00eds",
+   "name": "Arcalís",
+   "designation": "",
    "constellation": "Boo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.8
   },
   {
    "index": 34613,
    "name": "Ayeyarwady",
+   "designation": "",
    "constellation": "Eri",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.81
   },
   {
    "index": 35144,
    "name": "Poerava",
+   "designation": "",
    "constellation": "Tuc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.82
   },
   {
    "index": 35734,
    "name": "Sika",
+   "designation": "",
    "constellation": "Sgr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.84
   },
   {
    "index": 36333,
    "name": "Aniara",
+   "designation": "",
    "constellation": "UMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.86
   },
   {
    "index": 37030,
    "name": "Nikawiy",
+   "designation": "",
    "constellation": "Boo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.88
   },
   {
    "index": 37282,
    "name": "Lucilinburhuc",
+   "designation": "",
    "constellation": "Aur",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.89
   },
   {
    "index": 37438,
-   "name": "Rosal\u00edadecastro",
+   "name": "Rosalíadecastro",
+   "designation": "",
    "constellation": "Oph",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.89
   },
   {
    "index": 37955,
    "name": "Mouhoun",
+   "designation": "",
    "constellation": "Eri",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.91
   },
   {
    "index": 39609,
    "name": "Alasia",
+   "designation": "",
    "constellation": "Ser",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 7.95
   },
   {
    "index": 42194,
    "name": "Kaveh",
+   "designation": "",
    "constellation": "Ser",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.02
   },
   {
    "index": 42441,
    "name": "Stribor",
+   "designation": "",
    "constellation": "Lyn",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.03
   },
   {
    "index": 42885,
-   "name": "M\u00f6nch",
+   "name": "Mönch",
+   "designation": "",
    "constellation": "Vir",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.04
   },
   {
    "index": 43116,
    "name": "Nosaxa",
+   "designation": "",
    "constellation": "Pup",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.05
   },
   {
    "index": 43201,
-   "name": "Hunahp\u00fa",
+   "name": "Hunahpú",
+   "designation": "",
    "constellation": "Crt",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.05
   },
   {
    "index": 43229,
    "name": "Liesma",
+   "designation": "",
    "constellation": "UMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.05
   },
   {
    "index": 43415,
    "name": "Emiw",
+   "designation": "",
    "constellation": "Tuc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.06
   },
   {
    "index": 43991,
    "name": "Flegetonte",
+   "designation": "",
    "constellation": "Vir",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.07
   },
   {
    "index": 44529,
    "name": "Groombridge 34",
+   "designation": "",
    "constellation": "And",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.09
   },
   {
    "index": 45011,
-   "name": "Lusit\u00e2nia",
+   "name": "Lusitânia",
+   "designation": "",
    "constellation": "Mon",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.1
   },
   {
    "index": 45021,
    "name": "Nervia",
+   "designation": "",
    "constellation": "Aur",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.1
   },
   {
    "index": 45049,
    "name": "Tapecue",
+   "designation": "",
    "constellation": "Car",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.1
   },
   {
    "index": 47096,
    "name": "Ogma",
+   "designation": "",
    "constellation": "Her",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.15
   },
   {
    "index": 47680,
    "name": "Nushagak",
+   "designation": "",
    "constellation": "Cas",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.17
   },
   {
    "index": 48946,
-   "name": "N\u00e1sti",
+   "name": "Násti",
+   "designation": "",
    "constellation": "UMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.2
   },
   {
    "index": 49371,
    "name": "Dingolay",
+   "designation": "",
    "constellation": "Leo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.21
   },
   {
    "index": 50112,
    "name": "Gakyid",
+   "designation": "",
    "constellation": "Cnc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.23
   },
   {
    "index": 50130,
    "name": "Kalausi",
+   "designation": "",
    "constellation": "Vel",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.23
   },
   {
    "index": 50396,
-   "name": "Ax\u00f3lotl",
+   "name": "Axólotl",
+   "designation": "",
    "constellation": "Cet",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.23
   },
   {
    "index": 53083,
    "name": "Macondo",
+   "designation": "",
    "constellation": "Ant",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.3
   },
   {
    "index": 54953,
    "name": "Bosona",
+   "designation": "",
    "constellation": "Aqr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.34
   },
   {
    "index": 55432,
    "name": "Citadelle",
+   "designation": "",
    "constellation": "Psc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.36
   },
   {
    "index": 56311,
    "name": "Hoggar",
+   "designation": "",
    "constellation": "Tau",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.38
   },
   {
    "index": 56516,
    "name": "Mahsati",
+   "designation": "",
    "constellation": "Oph",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.38
   },
   {
    "index": 58166,
    "name": "Sagarmatha",
+   "designation": "",
    "constellation": "Leo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.42
   },
   {
    "index": 63322,
    "name": "Natasha",
+   "designation": "",
    "constellation": "Vel",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.54
   },
   {
    "index": 64387,
-   "name": "S\u0101maya",
+   "name": "Sāmaya",
+   "designation": "",
    "constellation": "PsA",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.56
   },
   {
    "index": 65678,
    "name": "Ebla",
+   "designation": "",
    "constellation": "Psc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.59
   },
   {
    "index": 70833,
    "name": "Karaka",
+   "designation": "",
    "constellation": "Aps",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.71
   },
   {
    "index": 71264,
    "name": "Hunor",
+   "designation": "",
    "constellation": "Her",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.72
   },
   {
    "index": 71593,
-   "name": "Bibh\u0101",
+   "name": "Bibhā",
+   "designation": "",
    "constellation": "Sex",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.73
   },
   {
    "index": 72488,
    "name": "Funi",
+   "designation": "",
    "constellation": "Dra",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.75
   },
   {
    "index": 76186,
    "name": "Babcock's star",
+   "designation": "",
    "constellation": "Lac",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.83
   },
   {
    "index": 76571,
    "name": "Cygnus X-1",
+   "designation": "",
    "constellation": "Cyg",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.84
   },
   {
    "index": 76754,
    "name": "Red Rectangle",
+   "designation": "",
    "constellation": "Mon",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.85
   },
   {
    "index": 77172,
    "name": "Kapteyn's Star",
+   "designation": "",
    "constellation": "Pic",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.86
   },
   {
    "index": 80927,
    "name": "Struve 2398 A",
+   "designation": "",
    "constellation": "Dra",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.94
   },
   {
    "index": 82153,
    "name": "Uruk",
+   "designation": "",
    "constellation": "Sge",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.97
   },
   {
    "index": 82355,
    "name": "Amadioha",
+   "designation": "",
    "constellation": "CMa",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 8.98
   },
   {
    "index": 87158,
    "name": "Shama",
+   "designation": "",
    "constellation": "Leo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.1
   },
   {
    "index": 95696,
    "name": "Ceibo",
+   "designation": "",
    "constellation": "Cha",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.37
   },
   {
    "index": 97622,
    "name": "Speedy Mic",
+   "designation": "",
    "constellation": "Mic",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.44
   },
   {
    "index": 99872,
    "name": "Barnard's Star",
+   "designation": "",
    "constellation": "Oph",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.54
   },
   {
    "index": 100979,
    "name": "Kruger 60",
+   "designation": "",
    "constellation": "Cep",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.59
   },
   {
    "index": 101448,
    "name": "Felixvarela",
+   "designation": "",
    "constellation": "Cet",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.62
   },
   {
    "index": 101595,
    "name": "Pincoya",
+   "designation": "",
    "constellation": "Sgr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.62
   },
   {
    "index": 103255,
    "name": "Struve 2398 B",
+   "designation": "",
    "constellation": "Dra",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.7
   },
   {
    "index": 104705,
    "name": "Solaris",
+   "designation": "",
    "constellation": "Peg",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.78
   },
   {
    "index": 104892,
-   "name": "U\u00faba",
+   "name": "Uúba",
+   "designation": "",
    "constellation": "Scl",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.79
   },
   {
    "index": 105614,
    "name": "Luyten's Star",
+   "designation": "",
    "constellation": "CMi",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.84
   },
   {
    "index": 106839,
    "name": "Intan",
+   "designation": "",
    "constellation": "For",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 9.92
   },
   {
    "index": 108040,
    "name": "Campbell's Hydrogen Star",
+   "designation": "",
    "constellation": "Cyg",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.0
   },
   {
    "index": 108929,
    "name": "Blaze Star",
+   "designation": "",
    "constellation": "CrB",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.08
   },
   {
    "index": 109177,
    "name": "Wolf 1061",
+   "designation": "",
    "constellation": "Oph",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.1
   },
   {
    "index": 110465,
-   "name": "A\u00f1a\u00f1uca",
+   "name": "Añañuca",
+   "designation": "",
    "constellation": "Vel",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.22
   },
   {
    "index": 110717,
    "name": "Koeia",
+   "designation": "",
    "constellation": "Eri",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.25
   },
   {
    "index": 111846,
    "name": "Ross 154",
+   "designation": "",
    "constellation": "Sgr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.37
   },
   {
    "index": 113912,
    "name": "Noquisi",
+   "designation": "",
    "constellation": "Leo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 10.67
   },
   {
    "index": 115589,
    "name": "Proxima Centauri",
+   "designation": "",
    "constellation": "Cen",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 11.01
   },
   {
    "index": 115676,
    "name": "Danfeng",
+   "designation": "",
    "constellation": "Tuc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 11.03
   },
   {
    "index": 115951,
    "name": "Ross 614",
+   "designation": "",
    "constellation": "Mon",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 11.12
   },
   {
    "index": 115955,
    "name": "Ross 128",
+   "designation": "",
    "constellation": "Vir",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 11.12
   },
   {
    "index": 116571,
    "name": "Sharjah",
+   "designation": "",
    "constellation": "Sco",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 11.34
   },
   {
    "index": 116684,
    "name": "Gar",
+   "designation": "",
    "constellation": "Vir",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 11.39
   },
   {
    "index": 118267,
    "name": "Ross 248",
+   "designation": "",
    "constellation": "And",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.29
   },
   {
    "index": 118303,
    "name": "Kaewkosin",
+   "designation": "",
    "constellation": "Cnc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.33
   },
   {
    "index": 118321,
    "name": "Van Maanen's Star",
+   "designation": "",
    "constellation": "Psc",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.37
   },
   {
    "index": 118327,
    "name": "Ross 687",
+   "designation": "",
    "constellation": "Hya",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.37
   },
   {
    "index": 118540,
    "name": "EZ Aqr",
+   "designation": "",
    "constellation": "Aqr",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.66
   },
   {
    "index": 118552,
    "name": "Ross 686",
+   "designation": "",
    "constellation": "Hya",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.68
   },
   {
    "index": 118669,
    "name": "3C 273",
+   "designation": "",
    "constellation": "Vir",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 12.88
   },
   {
    "index": 118962,
    "name": "Wolf 359",
+   "designation": "",
    "constellation": "Leo",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 13.45
   },
   {
    "index": 119138,
    "name": "Maru",
+   "designation": "",
    "constellation": "Vol",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 13.92
   },
   {
    "index": 119349,
    "name": "Onkaria",
+   "designation": "",
    "constellation": "Oph",
-   "designation": ""
+   "hip": 0,
+   "hd": 0,
+   "vmag": 14.67
   }
  ]
 }

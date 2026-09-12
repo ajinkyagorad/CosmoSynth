@@ -1,0 +1,976 @@
+{
+ "source": "Stellarium sky culture \"modern\" (Stellarium's team), CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/ ; IAU constellation boundary data (c) 2012-2022 Pierre Barbier, CC BY-SA 4.0",
+ "licence": "CC BY-SA 4.0",
+ "licenceTag": "by-sa",
+ "licenceProfile": "sideload-nc",
+ "generated": "2026-09-12T18:00:36Z",
+ "note": "Segments are PAIRS OF ROW INDICES into stars.csstars, written in the same run. A segment appears only when both of its stars are in the catalogue.",
+ "bridge": [
+  {
+   "stage": "catalog-hip",
+   "licenceTag": "by-sa",
+   "used": true,
+   "resolved": 0,
+   "candidates": 0
+  },
+  {
+   "stage": "iau-csn-hd",
+   "licenceTag": "by",
+   "used": true,
+   "resolved": 0,
+   "candidates": 0
+  },
+  {
+   "stage": "iau-csn-position",
+   "licenceTag": "by",
+   "used": true,
+   "resolved": 404,
+   "candidates": 404
+  },
+  {
+   "stage": "stellarium-name",
+   "licenceTag": "by-sa",
+   "used": true,
+   "resolved": 18,
+   "candidates": 399
+  },
+  {
+   "stage": "wikidata-hip-hd",
+   "licenceTag": "cc0",
+   "used": true,
+   "resolved": 0,
+   "candidates": 0
+  }
+ ],
+ "counts": {
+  "figuresInSource": 88,
+  "figuresShipped": 44,
+  "segmentsInSource": 695,
+  "segmentsShipped": 138,
+  "segmentFraction": 0.1986,
+  "distinctHipInSource": 710,
+  "hipResolved": 245,
+  "hipUnresolved": 465,
+  "hipFraction": 0.3451,
+  "bridgeCrossCheck": {
+   "stages": [
+    "stellarium-name",
+    "iau-csn-position"
+   ],
+   "compared": 381,
+   "agree": 380,
+   "sameSystem": 1,
+   "sameSystemHip": [
+    83608
+   ],
+   "conflict": 0,
+   "conflictHip": []
+  }
+ },
+ "figures": [
+  {
+   "abbr": "Aql",
+   "name": "Aquila",
+   "english": "Eagle",
+   "segments": [
+    [
+     370,
+     11
+    ],
+    [
+     11,
+     118
+    ]
+   ],
+   "labelIndex": 11
+  },
+  {
+   "abbr": "And",
+   "name": "Andromeda",
+   "english": "Andromeda",
+   "segments": [
+    [
+     62,
+     56
+    ]
+   ],
+   "labelIndex": 56
+  },
+  {
+   "abbr": "Lib",
+   "name": "Libra",
+   "english": "Scales",
+   "segments": [
+    [
+     475,
+     103
+    ],
+    [
+     103,
+     125
+    ],
+    [
+     125,
+     224
+    ],
+    [
+     224,
+     475
+    ]
+   ],
+   "labelIndex": 103
+  },
+  {
+   "abbr": "Cet",
+   "name": "Cetus",
+   "english": "Whale",
+   "segments": [
+    [
+     278,
+     94
+    ]
+   ],
+   "labelIndex": 94
+  },
+  {
+   "abbr": "Ari",
+   "name": "Aries",
+   "english": "Ram",
+   "segments": [
+    [
+     331,
+     50
+    ],
+    [
+     50,
+     105
+    ],
+    [
+     105,
+     459
+    ]
+   ],
+   "labelIndex": 50
+  },
+  {
+   "abbr": "Boo",
+   "name": "Boötes",
+   "english": "Boötes",
+   "segments": [
+    [
+     2,
+     82
+    ],
+    [
+     285,
+     185
+    ],
+    [
+     2,
+     110
+    ]
+   ],
+   "labelIndex": 2
+  },
+  {
+   "abbr": "Cnc",
+   "name": "Cancer",
+   "english": "Crab",
+   "segments": [
+    [
+     1086,
+     491
+    ],
+    [
+     491,
+     301
+    ],
+    [
+     491,
+     685
+    ]
+   ],
+   "labelIndex": 301
+  },
+  {
+   "abbr": "Cap",
+   "name": "Capricornus",
+   "english": "Capricornus",
+   "segments": [
+    [
+     319,
+     187
+    ],
+    [
+     361,
+     146
+    ]
+   ],
+   "labelIndex": 146
+  },
+  {
+   "abbr": "Car",
+   "name": "Carina",
+   "english": "Keel",
+   "segments": [
+    [
+     40,
+     1
+    ],
+    [
+     40,
+     66
+    ]
+   ],
+   "labelIndex": 1
+  },
+  {
+   "abbr": "Cas",
+   "name": "Cassiopeia",
+   "english": "Cassiopeia",
+   "segments": [
+    [
+     246,
+     109
+    ],
+    [
+     72,
+     75
+    ]
+   ],
+   "labelIndex": 72
+  },
+  {
+   "abbr": "Cen",
+   "name": "Centaurus",
+   "english": "Centaur",
+   "segments": [
+    [
+     3,
+     10
+    ]
+   ],
+   "labelIndex": 3
+  },
+  {
+   "abbr": "Cep",
+   "name": "Cepheus",
+   "english": "Cepheus",
+   "segments": [
+    [
+     219,
+     90
+    ],
+    [
+     215,
+     219
+    ]
+   ],
+   "labelIndex": 90
+  },
+  {
+   "abbr": "CVn",
+   "name": "Canes Venatici",
+   "english": "Hunting Dogs",
+   "segments": [
+    [
+     666,
+     156
+    ]
+   ],
+   "labelIndex": 156
+  },
+  {
+   "abbr": "Aur",
+   "name": "Auriga",
+   "english": "Charioteer",
+   "segments": [
+    [
+     107,
+     42
+    ],
+    [
+     42,
+     5
+    ],
+    [
+     5,
+     358
+    ],
+    [
+     358,
+     112
+    ],
+    [
+     28,
+     112
+    ],
+    [
+     28,
+     107
+    ]
+   ],
+   "labelIndex": 5
+  },
+  {
+   "abbr": "Col",
+   "name": "Columba",
+   "english": "Dove",
+   "segments": [
+    [
+     196,
+     106
+    ]
+   ],
+   "labelIndex": 106
+  },
+  {
+   "abbr": "CrB",
+   "name": "Corona Borealis",
+   "english": "Northern Crown",
+   "segments": [
+    [
+     348,
+     68
+    ]
+   ],
+   "labelIndex": 68
+  },
+  {
+   "abbr": "Crv",
+   "name": "Corvus",
+   "english": "Crow",
+   "segments": [
+    [
+     165,
+     101
+    ],
+    [
+     108,
+     165
+    ]
+   ],
+   "labelIndex": 101
+  },
+  {
+   "abbr": "Cru",
+   "name": "Crux",
+   "english": "Southern Cross",
+   "segments": [
+    [
+     25,
+     12
+    ],
+    [
+     19,
+     130
+    ]
+   ],
+   "labelIndex": 12
+  },
+  {
+   "abbr": "Cyg",
+   "name": "Cygnus",
+   "english": "Swan",
+   "segments": [
+    [
+     149,
+     71
+    ],
+    [
+     71,
+     20
+    ],
+    [
+     71,
+     92
+    ]
+   ],
+   "labelIndex": 20
+  },
+  {
+   "abbr": "Del",
+   "name": "Delphinus",
+   "english": "Dolphin",
+   "segments": [
+    [
+     541,
+     342
+    ],
+    [
+     342,
+     398
+    ]
+   ],
+   "labelIndex": 342
+  },
+  {
+   "abbr": "Dra",
+   "name": "Draco",
+   "english": "Dragon",
+   "segments": [
+    [
+     377,
+     73
+    ],
+    [
+     73,
+     131
+    ],
+    [
+     377,
+     190
+    ],
+    [
+     206,
+     120
+    ],
+    [
+     232,
+     350
+    ]
+   ],
+   "labelIndex": 73
+  },
+  {
+   "abbr": "Eri",
+   "name": "Eridanus",
+   "english": "Eridanus",
+   "segments": [
+    [
+     504,
+     414
+    ],
+    [
+     463,
+     1272
+    ],
+    [
+     1272,
+     371
+    ],
+    [
+     371,
+     293
+    ]
+   ],
+   "labelIndex": 293
+  },
+  {
+   "abbr": "Gem",
+   "name": "Gemini",
+   "english": "Twins",
+   "segments": [
+    [
+     44,
+     525
+    ],
+    [
+     525,
+     289
+    ],
+    [
+     188,
+     150
+    ],
+    [
+     150,
+     235
+    ]
+   ],
+   "labelIndex": 44
+  },
+  {
+   "abbr": "CMa",
+   "name": "Canis Major",
+   "english": "Greater Dog",
+   "segments": [
+    [
+     23,
+     283
+    ],
+    [
+     283,
+     38
+    ],
+    [
+     180,
+     23
+    ]
+   ],
+   "labelIndex": 23
+  },
+  {
+   "abbr": "UMa",
+   "name": "Ursa Major",
+   "english": "Great Bear",
+   "segments": [
+    [
+     39,
+     70
+    ],
+    [
+     70,
+     34
+    ],
+    [
+     34,
+     239
+    ],
+    [
+     239,
+     37
+    ],
+    [
+     37,
+     81
+    ],
+    [
+     81,
+     86
+    ],
+    [
+     86,
+     239
+    ],
+    [
+     86,
+     360
+    ]
+   ],
+   "labelIndex": 34
+  },
+  {
+   "abbr": "Gru",
+   "name": "Grus",
+   "english": "Crane",
+   "segments": [
+    [
+     31,
+     59
+    ]
+   ],
+   "labelIndex": 31
+  },
+  {
+   "abbr": "Her",
+   "name": "Hercules",
+   "english": "Hercules",
+   "segments": [
+    [
+     822,
+     199
+    ]
+   ],
+   "labelIndex": 199
+  },
+  {
+   "abbr": "Lep",
+   "name": "Lepus",
+   "english": "Hare",
+   "segments": [
+    [
+     99,
+     133
+    ]
+   ],
+   "labelIndex": 99
+  },
+  {
+   "abbr": "Leo",
+   "name": "Leo",
+   "english": "Lion",
+   "segments": [
+    [
+     63,
+     244
+    ],
+    [
+     244,
+     22
+    ],
+    [
+     51,
+     97
+    ],
+    [
+     97,
+     63
+    ],
+    [
+     51,
+     271
+    ],
+    [
+     271,
+     460
+    ],
+    [
+     460,
+     169
+    ],
+    [
+     97,
+     244
+    ]
+   ],
+   "labelIndex": 22
+  },
+  {
+   "abbr": "Lyr",
+   "name": "Lyra",
+   "english": "Lyre",
+   "segments": [
+    [
+     296,
+     225
+    ]
+   ],
+   "labelIndex": 225
+  },
+  {
+   "abbr": "Oph",
+   "name": "Ophiuchus",
+   "english": "Serpent Bearer",
+   "segments": [
+    [
+     60,
+     126
+    ],
+    [
+     87,
+     126
+    ]
+   ],
+   "labelIndex": 60
+  },
+  {
+   "abbr": "Ori",
+   "name": "Orion",
+   "english": "Orion",
+   "segments": [
+    [
+     32,
+     30
+    ],
+    [
+     30,
+     74
+    ],
+    [
+     9,
+     32
+    ],
+    [
+     32,
+     57
+    ],
+    [
+     57,
+     6
+    ],
+    [
+     6,
+     74
+    ],
+    [
+     74,
+     27
+    ],
+    [
+     27,
+     254
+    ],
+    [
+     254,
+     9
+    ],
+    [
+     27,
+     210
+    ]
+   ],
+   "labelIndex": 6
+  },
+  {
+   "abbr": "Peg",
+   "name": "Pegasus",
+   "english": "Pegasus",
+   "segments": [
+    [
+     138,
+     93
+    ],
+    [
+     88,
+     163
+    ],
+    [
+     88,
+     292
+    ],
+    [
+     265,
+     298
+    ],
+    [
+     298,
+     83
+    ],
+    [
+     55,
+     88
+    ],
+    [
+     55,
+     138
+    ],
+    [
+     88,
+     93
+    ]
+   ],
+   "labelIndex": 55
+  },
+  {
+   "abbr": "Per",
+   "name": "Perseus",
+   "english": "Perseus",
+   "segments": [
+    [
+     35,
+     61
+    ]
+   ],
+   "labelIndex": 35
+  },
+  {
+   "abbr": "CMi",
+   "name": "Canis Minor",
+   "english": "Lesser Dog",
+   "segments": [
+    [
+     7,
+     155
+    ]
+   ],
+   "labelIndex": 7
+  },
+  {
+   "abbr": "UMi",
+   "name": "Ursa Minor",
+   "english": "Lesser Bear",
+   "segments": [
+    [
+     47,
+     775
+    ],
+    [
+     176,
+     58
+    ]
+   ],
+   "labelIndex": 47
+  },
+  {
+   "abbr": "Psc",
+   "name": "Pisces",
+   "english": "Fishes",
+   "segments": [
+    [
+     336,
+     680
+    ],
+    [
+     680,
+     418
+    ]
+   ],
+   "labelIndex": 336
+  },
+  {
+   "abbr": "Pup",
+   "name": "Puppis",
+   "english": "Stern",
+   "segments": [
+    [
+     66,
+     139
+    ]
+   ],
+   "labelIndex": 66
+  },
+  {
+   "abbr": "Sgr",
+   "name": "Sagittarius",
+   "english": "Archer",
+   "segments": [
+    [
+     117,
+     137
+    ],
+    [
+     36,
+     170
+    ],
+    [
+     170,
+     117
+    ],
+    [
+     117,
+     36
+    ],
+    [
+     36,
+     102
+    ],
+    [
+     137,
+     434
+    ]
+   ],
+   "labelIndex": 36
+  },
+  {
+   "abbr": "Sco",
+   "name": "Scorpius",
+   "english": "Scorpion",
+   "segments": [
+    [
+     177,
+     78
+    ],
+    [
+     78,
+     136
+    ],
+    [
+     136,
+     16
+    ],
+    [
+     16,
+     77
+    ],
+    [
+     16,
+     157
+    ],
+    [
+     16,
+     98
+    ]
+   ],
+   "labelIndex": 16
+  },
+  {
+   "abbr": "Tau",
+   "name": "Taurus",
+   "english": "Bull",
+   "segments": [
+    [
+     13,
+     168
+    ],
+    [
+     343,
+     393
+    ],
+    [
+     13,
+     300
+    ],
+    [
+     13,
+     258
+    ],
+    [
+     258,
+     343
+    ],
+    [
+     393,
+     337
+    ]
+   ],
+   "labelIndex": 13
+  },
+  {
+   "abbr": "Aqr",
+   "name": "Aquarius",
+   "english": "Water Bearer",
+   "segments": [
+    [
+     160,
+     166
+    ],
+    [
+     166,
+     451
+    ],
+    [
+     166,
+     621
+    ],
+    [
+     406,
+     160
+    ]
+   ],
+   "labelIndex": 160
+  },
+  {
+   "abbr": "Vir",
+   "name": "Virgo",
+   "english": "Maiden",
+   "segments": [
+    [
+     466,
+     122
+    ],
+    [
+     122,
+     15
+    ],
+    [
+     15,
+     622
+    ],
+    [
+     622,
+     562
+    ],
+    [
+     15,
+     253
+    ],
+    [
+     253,
+     256
+    ],
+    [
+     256,
+     145
+    ],
+    [
+     256,
+     122
+    ]
+   ],
+   "labelIndex": 15
+  },
+  {
+   "abbr": "Vel",
+   "name": "Vela",
+   "english": "Sails",
+   "segments": [
+    [
+     45,
+     91
+    ]
+   ],
+   "labelIndex": 45
+  }
+ ]
+}

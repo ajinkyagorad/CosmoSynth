@@ -3,32 +3,74 @@ using System.Collections.Generic;
 
 namespace CosmoSynth.Core
 {
-    /// <summary>One catalogued star: where it is, how bright it looks, and what colour it is.</summary>
+    /// <summary>One catalogued star: where it is, how it moves, how bright it looks, its colour.</summary>
     public readonly struct CatalogStar
     {
-        /// <summary>Position in ICRF equatorial cartesian coordinates, parsecs.</summary>
+        /// <summary>Position in ICRF equatorial cartesian coordinates, parsecs, epoch J2000.0.</summary>
         public Double3 PositionParsecs { get; }
+
+        /// <summary>ICRF space velocity, km/s. Zero when <see cref="StarFlags.VelocityUnknown"/>.</summary>
+        public Double3 VelocityKmPerSecond { get; }
 
         /// <summary>Apparent visual magnitude. Smaller is brighter; Sirius is -1.44.</summary>
         public double ApparentMagnitude { get; }
 
-        /// <summary>Effective temperature, kelvin. Inferred, never measured — see Flags.</summary>
+        /// <summary>Effective temperature, kelvin. Inferred, never measured - see Flags.</summary>
         public double TemperatureK { get; }
+
+        /// <summary>Johnson B-V, or NaN when none was published.</summary>
+        public double ColourIndex { get; }
+
+        /// <summary>
+        /// Visual extinction toward this star, magnitudes, already folded out of the distance
+        /// modulus by whoever built the file. Applied exactly ONCE, here: a dust volume that
+        /// also dims it would count the same cloud twice.
+        /// </summary>
+        public double ExtinctionAv { get; }
+
+        /// <summary>Hipparcos number, 0 if none. An identifier, used for joins and picking.</summary>
+        public uint Hip { get; }
+
+        /// <summary>Henry Draper number, 0 if none.</summary>
+        public uint Hd { get; }
+
+        /// <summary>Spectral class and subclass packed as class*10+subclass, 255 unknown.</summary>
+        public byte SpectralCode { get; }
 
         public StarFlags Flags { get; }
 
-        public CatalogStar(Double3 positionParsecs, double apparentMagnitude, double temperatureK,
-            StarFlags flags)
+        public CatalogStar(Double3 positionParsecs, Double3 velocityKmPerSecond,
+            double apparentMagnitude, double temperatureK, double colourIndex,
+            double extinctionAv, uint hip, uint hd, byte spectralCode, StarFlags flags)
         {
             PositionParsecs = positionParsecs;
+            VelocityKmPerSecond = velocityKmPerSecond;
             ApparentMagnitude = apparentMagnitude;
             TemperatureK = temperatureK;
+            ColourIndex = colourIndex;
+            ExtinctionAv = extinctionAv;
+            Hip = hip;
+            Hd = hd;
+            SpectralCode = spectralCode;
             Flags = flags;
         }
 
         /// <summary>
-        /// Unit vector toward the star in ICRF. Always meaningful, including for the ten
-        /// thousand stars whose distance is not known — direction is what was measured.
+        /// The short form: position, brightness, colour temperature and flags, with every
+        /// other field absent rather than zero. Used by the procedural star-system generator
+        /// and by tests, which have no catalogue row behind them. `VelocityUnknown` and
+        /// `ExtinctionUnknown` are set because that is what is true of such a star.
+        /// </summary>
+        public CatalogStar(Double3 positionParsecs, double apparentMagnitude, double temperatureK,
+            StarFlags flags)
+            : this(positionParsecs, default, apparentMagnitude, temperatureK, double.NaN, 0.0,
+                0u, 0u, 255, flags | StarFlags.VelocityUnknown | StarFlags.ExtinctionUnknown)
+        {
+        }
+
+        /// <summary>
+        /// Unit vector toward the star in ICRF. Always meaningful, including for the stars
+        /// whose distance is not known - direction is what was measured.
         /// </summary>
         public Double3 Direction => PositionParsecs.Normalized;
 
@@ -37,6 +79,42 @@ namespace CosmoSynth.Core
             (Flags & StarFlags.DistanceUnknown) != 0 ? (double?)null : PositionParsecs.Magnitude;
 
         public bool HasProperName => (Flags & StarFlags.HasProperName) != 0;
+
+        /// <summary>Spectral class letter, or '?' when none was published.</summary>
+        public char SpectralClass =>
+            SpectralCode == 255 || SpectralCode / 10 >= StarCatalog.SpectralClasses.Length
+                ? '?'
+                : StarCatalog.SpectralClasses[SpectralCode / 10];
+
+        /// <summary>
+        /// Absolute visual magnitude, de-reddened. NaN when the distance is unknown, which is
+        /// the honest answer: without a distance there is no absolute magnitude.
+        /// </summary>
+        public double AbsoluteMagnitude
+        {
+            get
+            {
+                double? d = DistanceParsecs;
+                if (!d.HasValue) return double.NaN;
+                return Photometry.AbsoluteMagnitude(ApparentMagnitude - ExtinctionAv, d.Value);
+            }
+        }
+
+        /// <summary>
+        /// Position at an epoch offset from J2000.0, in years, by linear space motion.
+        /// Good to about 1e5 years: a curved galactic orbit bends the path by under 0.1 deg
+        /// over that span, which is far below anything this renderer can show.
+        /// </summary>
+        public Double3 PositionAt(double yearsFromJ2000)
+        {
+            if ((Flags & StarFlags.VelocityUnknown) != 0 ||
+                (Flags & StarFlags.VelocitySuspect) != 0)
+                return PositionParsecs;
+            // km/s -> pc/yr
+            const double KmPerSecondToParsecPerYear = 1.0 / 977792.2;
+            return PositionParsecs +
+                   VelocityKmPerSecond * (yearsFromJ2000 * KmPerSecondToParsecPerYear);
+        }
 
         public override string ToString() =>
             $"mag {ApparentMagnitude:F2}, {TemperatureK:F0} K, " +
@@ -49,101 +127,166 @@ namespace CosmoSynth.Core
         None = 0,
 
         /// <summary>
-        /// The parallax was unusable, so only the direction is known. The importer keeps these
-        /// and flags them rather than dropping a tenth of the sky or inventing a distance.
+        /// The parallax was unusable, so only the direction is known. Kept and flagged rather
+        /// than dropped: silently placing the star at the sentinel distance would invent a
+        /// measurement, and dropping it would delete part of the sky.
         /// </summary>
         DistanceUnknown = 1 << 0,
 
         /// <summary>
-        /// No B-V colour index was published, so the temperature comes from the spectral class
-        /// alone. That is a weaker claim than a colour measurement and is not the same thing.
+        /// No B-V was published, so the temperature comes from the spectral class alone. That
+        /// is a weaker claim than a colour measurement and is not the same thing.
         /// </summary>
         TemperatureFromSpectrum = 1 << 1,
 
         HasProperName = 1 << 2,
+
+        /// <summary>V came from Tycho photometry, not Johnson V. Wrong by up to 4.6 mag at the bright end.</summary>
+        PhotometryFromTycho = 1 << 3,
+
+        /// <summary>No radial velocity, so the velocity is tangential only.</summary>
+        RadialVelocityMissing = 1 << 4,
+
+        /// <summary>Appended from the nearby-star census rather than the main catalogue.</summary>
+        FromNearbyCensus = 1 << 5,
+
+        /// <summary>No visual magnitude at all (brown dwarfs); <see cref="CatalogStar.ApparentMagnitude"/> is NaN.</summary>
+        NoVisualMagnitude = 1 << 6,
+
+        /// <summary>
+        /// The computed speed exceeded 1,000 km/s, which is an astrometric error and not a
+        /// star: disc and halo stars stay under about 600 km/s relative to the Sun. Zeroed.
+        /// </summary>
+        VelocitySuspect = 1 << 7,
+
+        // bits 8-10 are the distance-source code, read with DistanceSourceOf.
+
+        /// <summary>
+        /// No extinction model covered this star, so <see cref="CatalogStar.ExtinctionAv"/> is
+        /// zero because nothing measured it - not because the sightline is clear.
+        /// </summary>
+        ExtinctionUnknown = 1 << 11,
+
+        /// <summary>No proper motion was published, so the velocity is unknown, not zero.</summary>
+        VelocityUnknown = 1 << 12,
+
+        /// <summary>
+        /// The row came through the CSS1 container, which carried no velocity, colour index,
+        /// spectral class or cross-identifier. Those fields are absent, not measured as zero.
+        /// </summary>
+        FromCss1Migration = 1 << 13,
+    }
+
+    public enum DistanceSource
+    {
+        Unknown = 0, GaiaDr3 = 1, GaiaDr2 = 2, Hipparcos = 3,
+        Gliese = 4, Other = 5, NearbyCensus = 6, GroundTrigonometric = 7,
     }
 
     /// <summary>
-    /// The shipped star catalogue: 119 613 real stars, read from the flat binary that
-    /// tools/cosmodata/build_starfield.py writes.
+    /// The shipped star catalogue: real stars at their measured three-dimensional positions.
     ///
-    /// Parsing lives in Core rather than in the renderer for the usual reason — it is pure
-    /// arithmetic over bytes, so it is tested headlessly in under a second against the file
-    /// that actually ships, instead of needing an editor and a play-mode run to notice that a
-    /// field moved.
+    /// Read from the CSS2 container that tools/cosmodata/build_starfield.py writes. Parsing
+    /// lives in Core rather than the renderer because it is pure arithmetic over bytes, so it
+    /// is tested headlessly in under a second against the file that actually ships, instead of
+    /// needing an editor and a play-mode run to notice that a field moved.
     ///
-    /// **Sorted brightest first**, which is the property the whole design rests on. The render
-    /// budget cannot afford every star, and the ones worth drawing are the bright ones, so the
-    /// runtime takes a prefix. That turns "which stars do I draw" from a search into a length.
+    /// **Sorted brightest first**, which is the property the whole design rests on: the render
+    /// budget cannot afford every star, the ones worth drawing are the bright ones, and a
+    /// prefix turns "which stars do I draw" from a search into a length. NaN magnitudes sort
+    /// last, so a prefix never contains one.
     ///
-    /// Layout, little-endian:
-    ///     magic     4      "CSS1"
-    ///     version   u32
-    ///     count     u32
-    ///     flags     u32    reserved
-    ///     ---
-    ///     count x (position 3xf32 parsecs, magnitude f32, temperature f32, flags u32)
+    /// **The distances are the point.** The previous renderer's own comment said "distance is
+    /// deliberately discarded here" and painted every star on a 900-unit shell. With distances,
+    /// walking toward Sirius makes Sirius leave the field behind it, and the constellation
+    /// figures shear into their true depths - which is the entire argument for a headset.
     /// </summary>
     public sealed class StarCatalog
     {
-        public const int HeaderBytes = 16;
-        public const int RecordBytes = 24;
-
-        private static readonly byte[] Magic = { (byte)'C', (byte)'S', (byte)'S', (byte)'1' };
+        public const string ContainerMagic = "CSS2";
+        public const string SpectralClasses = "OBAFGKMLTYCSW";
 
         private readonly CatalogStar[] _stars;
 
         public IReadOnlyList<CatalogStar> Stars => _stars;
         public int Count => _stars.Length;
 
-        private StarCatalog(CatalogStar[] stars) => _stars = stars;
+        /// <summary>Rows in the file, which may exceed <see cref="Count"/> after a prefix read.</summary>
+        public int TotalRows { get; }
+
+        /// <summary>The container meta: provenance, sources, counts, assertions and limits.</summary>
+        public CsData Data { get; }
+
+        /// <summary>
+        /// The faintest magnitude the file holds. The observed-sky limit slider cannot reveal
+        /// anything past this, and the panel says so rather than offering a setting that does
+        /// nothing - which is the defect in the Atlas, whose data stops at 8.54 and whose
+        /// slider goes to 14.
+        /// </summary>
+        public double FaintestMagnitude { get; }
+
+        public string Attribution => Data?.Attribution() ?? "";
+        public string LicenceProfile => Data?.LicenceProfile ?? "unknown";
+
+        private StarCatalog(CatalogStar[] stars, int totalRows, CsData data, double faintest)
+        {
+            _stars = stars;
+            TotalRows = totalRows;
+            Data = data;
+            FaintestMagnitude = faintest;
+        }
 
         /// <summary>
         /// Parse the catalogue. <paramref name="maximumStars"/> reads only the brightest N,
-        /// which is the normal case: the file holds everything down to magnitude 13 so it is
-        /// there when wanted, and a headset draws a few thousand of them.
+        /// which is the normal case: the file holds everything the source had so it is there
+        /// when wanted, and a headset draws a few thousand of them.
         /// </summary>
         public static StarCatalog Parse(byte[] data, int maximumStars = int.MaxValue)
         {
-            if (data == null) throw new ArgumentNullException(nameof(data));
-            if (data.Length < HeaderBytes)
-                throw new FormatException(
-                    $"A star catalogue is at least {HeaderBytes} bytes; got {data.Length}.");
+            CsData container = CsData.Parse(data, ContainerMagic);
 
-            for (int i = 0; i < Magic.Length; i++)
-            {
-                if (data[i] != Magic[i])
-                    throw new FormatException(
-                        "Star catalogue does not begin with 'CSS1'. Rebuild it with " +
-                        "tools/cosmodata/build_starfield.py.");
-            }
+            int rows = container.Rows;
+            int wanted = Math.Min(rows, Math.Max(0, maximumStars));
 
-            int count = (int)BitConverter.ToUInt32(data, 8);
-            long expected = HeaderBytes + (long)count * RecordBytes;
-            if (data.Length != expected)
-            {
-                throw new FormatException(
-                    $"Star catalogue declares {count} stars, needing {expected} bytes, but the " +
-                    $"file is {data.Length}. It is truncated or was written by another version.");
-            }
+            float[] pos = container.F32("pos", wanted);
+            float[] vmag = container.F32("vmag", wanted);
+            float[] teff = container.F32("teff", wanted);
+            uint[] flags = container.U32("flags", wanted);
 
-            int wanted = System.Math.Min(count, System.Math.Max(0, maximumStars));
+            float[] vel = container.Has("vel") ? container.F32("vel", wanted) : null;
+            ushort[] av = container.Has("av") ? container.U16("av", wanted) : null;
+            byte[] bv = container.Has("bv") ? container.U8("bv", wanted) : null;
+            byte[] spec = container.Has("spec") ? container.U8("spec", wanted) : null;
+            uint[] hip = container.Has("hip") ? container.U32("hip", wanted) : null;
+            uint[] hd = container.Has("hd") ? container.U32("hd", wanted) : null;
+
             var stars = new CatalogStar[wanted];
-
             for (int i = 0; i < wanted; i++)
             {
-                int at = HeaderBytes + i * RecordBytes;
                 stars[i] = new CatalogStar(
-                    new Double3(BitConverter.ToSingle(data, at),
-                                BitConverter.ToSingle(data, at + 4),
-                                BitConverter.ToSingle(data, at + 8)),
-                    BitConverter.ToSingle(data, at + 12),
-                    BitConverter.ToSingle(data, at + 16),
-                    (StarFlags)BitConverter.ToUInt32(data, at + 20));
+                    new Double3(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]),
+                    vel != null
+                        ? new Double3(vel[i * 3], vel[i * 3 + 1], vel[i * 3 + 2])
+                        : default,
+                    vmag[i],
+                    teff[i],
+                    bv != null && bv[i] != 0 ? container.Decode("bv", bv[i]) : double.NaN,
+                    av != null ? container.Decode("av", av[i]) : 0.0,
+                    hip != null ? hip[i] : 0u,
+                    hd != null ? hd[i] : 0u,
+                    spec != null ? spec[i] : (byte)255,
+                    (StarFlags)flags[i]);
             }
 
-            return new StarCatalog(stars);
+            double faintest = container.Meta["limits"]["faintestVmag"].AsDouble(double.NaN);
+            if (double.IsNaN(faintest) && wanted > 0) faintest = stars[wanted - 1].ApparentMagnitude;
+
+            return new StarCatalog(stars, rows, container, faintest);
         }
+
+        /// <summary>Which measurement the distance came from, decoded from flag bits 8-10.</summary>
+        public static DistanceSource DistanceSourceOf(in CatalogStar star) =>
+            (DistanceSource)(((uint)star.Flags >> 8) & 0x7);
 
         /// <summary>How many of the loaded stars are at or brighter than a magnitude.</summary>
         public int CountBrighterThan(double magnitude)
@@ -154,10 +297,51 @@ namespace CosmoSynth.Core
             while (low < high)
             {
                 int middle = (low + high) / 2;
-                if (_stars[middle].ApparentMagnitude <= magnitude) low = middle + 1;
+                double m = _stars[middle].ApparentMagnitude;
+                if (!double.IsNaN(m) && m <= magnitude) low = middle + 1;
                 else high = middle;
             }
             return low;
+        }
+
+        /// <summary>
+        /// How many stars a viewer at <paramref name="vantageParsecs"/> could see down to
+        /// <paramref name="limitMagnitude"/>. This is a real count, not a prefix: from ten
+        /// parsecs away the naked-eye sky is a different set of stars, which is the whole
+        /// point of carrying distances.
+        /// </summary>
+        public int CountVisibleFrom(Double3 vantageParsecs, double limitMagnitude)
+        {
+            int visible = 0;
+            for (int i = 0; i < _stars.Length; i++)
+            {
+                if (ObservedMagnitude(_stars[i], vantageParsecs) <= limitMagnitude) visible++;
+            }
+            return visible;
+        }
+
+        /// <summary>
+        /// Apparent magnitude of a star seen from an arbitrary vantage, in parsecs, ICRF.
+        /// NaN when the star has no distance: from anywhere but the Sun, a direction-only star
+        /// has no defined brightness, and pretending otherwise is what puts a whole shell of
+        /// fake stars at the sky radius.
+        /// </summary>
+        public static double ObservedMagnitude(in CatalogStar star, Double3 vantageParsecs)
+        {
+            double absolute = star.AbsoluteMagnitude;
+            if (double.IsNaN(absolute)) return double.NaN;
+            double distance = (star.PositionParsecs - vantageParsecs).Magnitude;
+            return Photometry.ApparentMagnitude(absolute, Math.Max(distance, 0.02),
+                star.ExtinctionAv);
+        }
+
+        /// <summary>Row index of a star by Hipparcos number, or -1.</summary>
+        public int IndexOfHip(uint hip)
+        {
+            if (hip == 0) return -1;
+            for (int i = 0; i < _stars.Length; i++)
+                if (_stars[i].Hip == hip) return i;
+            return -1;
         }
 
         /// <summary>
@@ -168,7 +352,13 @@ namespace CosmoSynth.Core
         public static Double3 ColorFor(in CatalogStar star) =>
             PlanetGenerator.BlackBodyColor(star.TemperatureK);
 
-        public override string ToString() => $"{Count} stars, brightest mag " +
-            (Count > 0 ? _stars[0].ApparentMagnitude.ToString("F2") : "n/a");
+        /// <summary>Provenance of one field on one star, from the file's own declaration.</summary>
+        public FieldProvenance ProvenanceFor(string field, in CatalogStar star) =>
+            Data.ProvenanceFor(field, (uint)star.Flags);
+
+        public override string ToString() =>
+            $"{Count} of {TotalRows} stars, brightest mag " +
+            (Count > 0 ? _stars[0].ApparentMagnitude.ToString("F2") : "n/a") +
+            $", faintest {FaintestMagnitude:F2}";
     }
 }
