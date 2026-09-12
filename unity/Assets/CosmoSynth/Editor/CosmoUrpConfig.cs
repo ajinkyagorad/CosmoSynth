@@ -36,14 +36,18 @@ namespace CosmoSynth.EditorTools
             ("m_RequireOpaqueTexture", 0),
             ("m_SupportsTerrainHoles", 0),
 
-            // Lighting is still Unity's: one point light at the host star and a dim directional
-            // fill. CONTRACT §8.1 sets both of these to 0 because CosmoSynth/Body is meant to
-            // carry _LightDirWS itself — but that shader is the shader lane's, and it has not
-            // landed. Turning the lights off before their replacement exists would ship an alpha
-            // of black spheres. FLIP BOTH TO 0 in the same commit that lands CosmoSynth/Body.
-            ("m_MainLightRenderingMode", 1),          // PerPixel: the ambient directional fill
-            ("m_AdditionalLightsRenderingMode", 1),   // PerPixel: the star's point light
-            ("m_AdditionalLightsPerObjectLimit", 1),  // exactly the star
+            // No Unity lights at all. CosmoSynth/Body carries _LightDirWS and _LightColor,
+            // written per body per frame from its own host star through the parent chain, and
+            // SkyAndRings no longer creates a point light or a directional fill. This is the same
+            // commit that lands CosmoSynth/Body, which is the condition the previous note set.
+            //
+            // It is not just waste. The Android quality level allows exactly ONE per-pixel light
+            // and Unity ranks a directional highly whatever its intensity, so a dim fill could
+            // take the only slot and demote the star lighting the entire system to a vertex
+            // light — on the device only, with nothing in the editor to reproduce it against.
+            ("m_MainLightRenderingMode", 0),
+            ("m_AdditionalLightsRenderingMode", 0),
+            ("m_AdditionalLightsPerObjectLimit", 0),
 
             // No shadows anywhere. A shadow pass is a second render of the scene, and nothing in
             // this app casts a shadow anyone can see: bodies are separated by millions of km.

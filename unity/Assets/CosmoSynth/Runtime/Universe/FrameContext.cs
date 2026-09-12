@@ -47,9 +47,6 @@ namespace CosmoSynth.Runtime
             Now = now;
         }
 
-        /// <summary>The argument every layer visibility window is a function of.</summary>
-        public double Log10U => MathD.SafeLog10(UnitsPerKm);
-
         /// <summary>Apparent diameter in pixels of a sphere, from the centre eye.</summary>
         public double ApparentPixels(double radiusKm, double distanceKm) =>
             ScaleSpace.AngularDiameterRad(radiusKm, distanceKm) * PixelsPerRadian;

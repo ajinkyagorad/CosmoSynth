@@ -278,6 +278,14 @@ namespace CosmoSynth.Runtime
 
             // Put the body at the room's focal point rather than wherever it happened to be.
             _simulation.Origin.SetOrigin(view.AbsolutePositionKm);
+
+            // Count as a release. The release clause below clears any target that is more than
+            // ReleaseHoldSeconds old, and _lastReleaseTime is otherwise only ever written when a
+            // gesture ends — so a request that did not come from a hand was discarded on the very
+            // next Update, before a single step was applied. The origin move still happened, which
+            // is the worst shape: the user is teleported to the body at the previous scale and the
+            // scale they asked for silently vanishes.
+            _lastReleaseTime = Time.unscaledTime;
         }
 
         /// <summary>Set the scale so a whole system spans a given size in the room.</summary>
@@ -301,6 +309,9 @@ namespace CosmoSynth.Runtime
             {
                 _simulation.Origin.SetOrigin(rootView.AbsolutePositionKm);
             }
+
+            // See FrameBodyAtSize: a non-gesture request must not be cleared before it is applied.
+            _lastReleaseTime = Time.unscaledTime;
         }
     }
 }

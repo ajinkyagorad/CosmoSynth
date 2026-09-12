@@ -42,12 +42,33 @@ namespace CosmoSynth.Runtime
         public static void PublishGlobals(in FrameContext ctx)
         {
             Shader.SetGlobalVector(CentreEyeId, ctx.EyeWorld);
+            PublishConstants();
+            Shader.SetGlobalMatrix(IcrfToWorldId, ctx.IcrfToWorld);
+        }
+
+        /// <summary>
+        /// The half of the globals that is the same every frame, published before anything can
+        /// draw.
+        ///
+        /// Unset, <c>_CS_Compress</c> is (0,0,0,0) — and <c>CS_CompressDistance</c> then evaluates
+        /// <c>0 * (1 + log(d * 0))</c>, which is <c>0 * -inf</c>, which is NaN for every distance
+        /// past the identity branch that a zero d0 guarantees is never taken. NaN vertex positions
+        /// on a tile GPU are undefined rasterisation, not blank geometry, and the sky radius is
+        /// zero at the same time so the shell degenerates to a point. That window is not a frame
+        /// or two: the catalogue arrives over three UnityWebRequest reads out of a compressed APK,
+        /// which on Android is seconds.
+        ///
+        /// So this runs from OnEnable, and the identity mapping goes out with it. Neither value
+        /// depends on a catalogue, a camera or a frame.
+        /// </summary>
+        public static void PublishConstants()
+        {
             Shader.SetGlobalVector(CompressId, new Vector4(
                 (float)ScaledSpace.IdentityRadiusMetres,
                 (float)(1.0 / ScaledSpace.IdentityRadiusMetres),
                 (float)ScaledSpace.SkyRadiusMetres,
                 0f));
-            Shader.SetGlobalMatrix(IcrfToWorldId, ctx.IcrfToWorld);
+            Shader.SetGlobalMatrix(IcrfToWorldId, Matrix4x4.identity);
         }
     }
 }

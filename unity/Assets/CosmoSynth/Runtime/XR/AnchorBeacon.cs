@@ -62,7 +62,8 @@ namespace CosmoSynth.Runtime
 
             // Three thin bars forming an axis cross. Unlit, so it shows even with no light in the
             // scene — one of the things that could be wrong.
-            _material = CosmoShaders.Material(CosmoShaders.UnlitColor);
+            _material = CosmoShaders.Material(CosmoShaders.Unlit);
+            if (_material == null) return;
             _material.color = CosmoTheme.Accent;
 
             CreateBar(new Vector3(1f, 0.06f, 0.06f));

@@ -27,6 +27,7 @@ namespace CosmoSynth.Runtime
     ///   cs Gamma         every colour in the app was tuned under Linear
     ///   BiRP             the shaders are URP-only and render magenta under Built-in
     ///   push &gt; 0         groups the solver could not order; see ScaledSpace.Solve
+    ///   vol &gt; 0          a drawn body punches a hole through an enclosing volume (R6)
     /// </summary>
     public static class RenderDiagnostics
     {
@@ -69,8 +70,14 @@ namespace CosmoSynth.Runtime
             if (_renderer == null) _renderer = Object.FindAnyObjectByType<ScaleRenderer>();
             if (_renderer != null)
             {
+                // ppr is R8's MEASURED pixels per radian, and every pixel figure in the contract —
+                // the 2.5 px visibility floor, the 8 px orbit cull, the label legibility floor,
+                // the stereo assertion's 103 px — is restated against it. Until the headset prints
+                // it, 1140 is an inference.
+                line.Append($"ppr {_renderer.Context.PixelsPerRadian:F0} ");
                 line.Append($"grp {_renderer.RigidGroups}/{_renderer.EnvelopeGroups}/{_renderer.EnclosingGroups} ");
                 line.Append($"push {_renderer.PushConflicts} ");
+                line.Append($"vol {_renderer.VolumeOcclusion} ");
                 line.Append($"far {_renderer.FarthestRenderedMetres:F0}/{ScaledSpace.FarPlaneMetres:F0}");
             }
 
@@ -91,8 +98,17 @@ namespace CosmoSynth.Runtime
             Camera main = Camera.main;
             if (main != null && main.backgroundColor.a > 0.001f && XRSettings.isDeviceActive) return false;   // gate-justified: reading the clear alpha, not choosing a colour
 
+            // A 16-bit depth buffer is 256x coarser than the D24 every separability figure in
+            // ScaledSpace is computed against. The doc comment above has always listed it as a red
+            // condition and the line has always printed the format; nothing ever compared them, so
+            // a device handing back D16 printed it and reported healthy.
+            if (XRSettings.isDeviceActive &&
+                XRSettings.eyeTextureDesc.depthStencilFormat.ToString().Contains("D16")) return false;
+
             if (_renderer == null) _renderer = Object.FindAnyObjectByType<ScaleRenderer>();
-            if (_renderer != null && _renderer.PushConflicts > 0) return false;
+            if (_renderer == null) return true;
+            if (_renderer.PushConflicts > 0) return false;
+            if (_renderer.VolumeOcclusion > 0) return false;
 
             return true;
         }

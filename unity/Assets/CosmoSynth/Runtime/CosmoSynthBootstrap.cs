@@ -225,7 +225,14 @@ namespace CosmoSynth.Runtime
 
             var log = new System.Collections.Generic.List<string>();
             CelestialCatalog assembled = CatalogAssembler.Assemble(sources, log);
-            foreach (string line in log) Debug.Log($"[CosmoSynth] catalogue {line}");
+            // A refusal is louder than a success. Every line came out at Log level, so a file
+            // that failed to parse read exactly like one that loaded — which is the Draco/SOHO
+            // trap in CLAUDE.md, one layer up: the check ran, printed, and nobody saw it.
+            foreach (string line in log)
+            {
+                if (line.Contains("skipped")) Debug.LogWarning($"[CosmoSynth] catalogue {line}");
+                else Debug.Log($"[CosmoSynth] catalogue {line}");
+            }
 
             if (assembled == null)
             {

@@ -14,12 +14,30 @@ namespace CosmoSynth.Runtime
     ///    uselessly at periapsis, which makes a comet's orbit render as a polygon at the far end.
     ///    <see cref="OrbitalElements.SampleOrbitPath"/> handles that.
     ///
-    /// 2. The vertices are regenerated whenever the floating origin shifts. A LineRenderer holds
-    ///    its own copy of the positions, which an origin shift does not move — so without
-    ///    <see cref="IFloatingOriginListener"/> the orbit tears away from its planet the first
-    ///    time the camera travels far enough to trigger a rebase.
+    /// 2. The vertices are rebuilt from absolute coordinates every frame, because the path is
+    ///    stored relative to the parent and the parent moves. There is no origin-shift listener
+    ///    any more — there is no rebase to listen for (contract 3.5) — but the reason the listener
+    ///    existed still holds: a renderer holding its own copy of world positions tears away from
+    ///    its planet the moment anything moves the frame underneath it.
     ///
-    /// Three things about how it *looked* were wrong, and they are what made the app read as a
+    /// The geometry is a <c>CosmoSynth/Ribbon</c> mesh rather than a <c>LineRenderer</c>. Three
+    /// things follow, and the first two were bugs:
+    ///
+    /// <list type="bullet">
+    /// <item><b>The width is angular.</b> A LineRenderer's width is in world units, so keeping a
+    /// line a constant two pixels wide meant recomputing a world width from the distance to the
+    /// nearest point of the ellipse every frame — and one width for the whole line is wrong for
+    /// any orbit large compared to its distance, which is why the near half used to sweep grey
+    /// bands across the view and why there had to be a hard millimetre cap. The shader expands the
+    /// ribbon in clip space against each eye's own projection, so the width is right everywhere on
+    /// the line and in both eyes, and the cap is gone with the problem.</item>
+    /// <item><b>It is billboarded per eye.</b> <c>LineAlignment.View</c> orients the strip from one
+    /// camera transform, which in a headset is one quad shown to two eyes.</item>
+    /// <item><b>It does not write alpha.</b> <c>Blend One One, Zero One</c>, so an orbit line adds
+    /// light to passthrough instead of punching a hairline hole through the room.</item>
+    /// </list>
+    ///
+    /// Three things about how it <i>looked</i> were wrong, and they are what made the app read as a
     /// wireframe diagram rather than as a sky:
     ///
     /// <list type="bullet">
@@ -40,21 +58,22 @@ namespace CosmoSynth.Runtime
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(60)]
-    [RequireComponent(typeof(LineRenderer))]
     [AddComponentMenu("CosmoSynth/Orbit Line")]
     public sealed class OrbitLineRenderer : MonoBehaviour
     {
         [SerializeField] private int _sampleCount = 256;
 
         /// <summary>
-        /// Line width, in pixels of the eye buffer.
+        /// Line width in dmm — millimetres subtended at one metre, which is milliradians.
         ///
-        /// 2.6 rather than the 1.1 it was. Below about two pixels a line on an LCD headset panel
-        /// aliases into a dotted crawl as the head moves, which reads as a rendering fault; the
-        /// figure that matters is not how thin the line can be drawn but how thin it can be drawn
-        /// and still hold still.
+        /// 1.8 dmm is 2.05 px at the 1140 px/rad of a Quest 3 eye buffer, which is the 2.6 px the
+        /// LineRenderer was asked for measured against the Game view's own reckoning: the two
+        /// differ by about 2.2x and the eye buffer is the one that ships. Below about two pixels a
+        /// line on an LCD headset panel aliases into a dotted crawl as the head moves, which reads
+        /// as a rendering fault; the figure that matters is not how thin the line can be drawn but
+        /// how thin it can be drawn and still hold still.
         /// </summary>
-        [SerializeField] private float _widthPixels = 2.6f;
+        [SerializeField] private float _widthDmm = 1.8f;
 
         [Tooltip("Fraction of the orbit behind the body that is drawn brightly.")]
         [Range(0.05f, 1f)]
@@ -62,32 +81,47 @@ namespace CosmoSynth.Runtime
 
         private UniverseSimulation _simulation;
         private CelestialBodyView _view;
-        private LineRenderer _line;
+        private MeshRenderer _renderer;
+        private Mesh _mesh;
+        private Material _material;
         private List<Double3> _pathRelativeToParentKm;
-        private Vector3[] _vertices;
+        private Vector3[] _points;                       // one per sample, this frame
+        private readonly List<Vector3> _vertices = new List<Vector3>();
+        private readonly List<Vector3> _others = new List<Vector3>();
         private Camera _camera;
         private Color _colour;
         private float _dim = 1f;
+
+        private static readonly int WidthDmmId = Shader.PropertyToID("_WidthDmm");
+        private static readonly int IntensityId = Shader.PropertyToID("_Intensity");
+        private static readonly int PlacementId = Shader.PropertyToID("_Placement");
 
         public void Initialise(UniverseSimulation simulation, CelestialBodyView view)
         {
             _simulation = simulation;
             _view = view;
 
-            _line = GetComponent<LineRenderer>();
+            _mesh = new Mesh { name = "Orbit", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             // Local space, matching CelestialBodyView: the line object sits at local zero under
             // the simulation transform, so its vertices share the bodies' coordinate space and the
-            // whole universe moves as one when the anchor is placed in the room.
-            _line.useWorldSpace = false;
-            _line.loop = false;
-            _line.material = CosmoShaders.Material(CosmoShaders.SpritesDefault);
-            _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            _line.receiveShadows = false;
-            _line.alignment = LineAlignment.View;
+            // whole universe moves as one when the anchor is placed in the room. The bounds are
+            // rebuilt with the vertices each frame, so the culler tracks the real extent.
+            gameObject.AddComponent<MeshFilter>().sharedMesh = _mesh;
 
-            // Smooth the polyline so an eccentric orbit does not read as a polygon.
-            _line.numCornerVertices = 2;
-            _line.numCapVertices = 2;
+            _renderer = gameObject.AddComponent<MeshRenderer>();
+            _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _renderer.receiveShadows = false;
+
+            _material = CosmoShaders.Material(CosmoShaders.Ribbon);
+            if (_material == null)
+            {
+                _renderer.enabled = false;
+                return;
+            }
+            _material.SetFloat(WidthDmmId, _widthDmm);
+            _material.SetFloat(PlacementId, 0f);        // rigid: the CPU writes the vertices
+            _material.SetFloat(IntensityId, _dim);
+            _renderer.sharedMaterial = _material;
 
             Rebuild();
         }
@@ -95,52 +129,100 @@ namespace CosmoSynth.Runtime
         /// <summary>Resample the conic. Only needed when the orbit itself changes, not per frame.</summary>
         public void Rebuild()
         {
-            if (_view?.Body?.Orbit == null || !_view.Body.Orbit.HasValue)
+            if (_view?.Body?.Orbit == null || !_view.Body.Orbit.HasValue || _mesh == null)
             {
-                if (_line != null) _line.positionCount = 0;
+                if (_mesh != null) _mesh.Clear();
+                _pathRelativeToParentKm = null;
                 return;
             }
 
             _pathRelativeToParentKm = _view.Body.Orbit.Value.SampleOrbitPath(_sampleCount);
-            _vertices = new Vector3[_pathRelativeToParentKm.Count];
-            _line.positionCount = _pathRelativeToParentKm.Count;
+            _points = new Vector3[_pathRelativeToParentKm.Count];
 
             _colour = CosmoTheme.OrbitColour(_view.Body.DisplayColor);
-            ApplyGradient();
+            BuildTopology();
+        }
+
+        /// <summary>
+        /// The four vertices per segment CosmoSynth/Ribbon expects, and the tail gradient.
+        ///
+        /// Each vertex carries its own endpoint (POSITION), the segment's other endpoint
+        /// (TEXCOORD0) and (side, order) in TEXCOORD1; the shader takes the screen-space direction
+        /// between the two and offsets by half the drawn width along its normal. Order is +1 when
+        /// the other endpoint is the next point and -1 when it is the previous one, so both ends of
+        /// a segment agree which way "side +1" is and the ribbon does not twist.
+        ///
+        /// Index and gradient only. Positions change every frame; this runs once per orbit, and the
+        /// alpha it bakes is anchored to the ARRAY, which <see cref="LateUpdate"/> rotates so index
+        /// zero is the body. That is the whole of the comet tail.
+        /// </summary>
+        private void BuildTopology()
+        {
+            int count = _pathRelativeToParentKm.Count;
+            int segments = count - 1;
+            if (segments < 1) { _mesh.Clear(); return; }
+
+            var sideOrder = new List<Vector2>(segments * 4);
+            var colours = new List<Color>(segments * 4);
+            var triangles = new List<int>(segments * 6);
+
+            _vertices.Clear();
+            _others.Clear();
+            for (int s = 0; s < segments; s++)
+            {
+                int b = s * 4;
+
+                // Placeholders; LateUpdate fills them. The lists must already be the right length
+                // so the per-frame path can index rather than allocate.
+                _vertices.Add(Vector3.zero); _vertices.Add(Vector3.zero);
+                _vertices.Add(Vector3.zero); _vertices.Add(Vector3.zero);
+                _others.Add(Vector3.zero); _others.Add(Vector3.zero);
+                _others.Add(Vector3.zero); _others.Add(Vector3.zero);
+
+                sideOrder.Add(new Vector2(-1f, 1f));
+                sideOrder.Add(new Vector2(1f, 1f));
+                sideOrder.Add(new Vector2(-1f, -1f));
+                sideOrder.Add(new Vector2(1f, -1f));
+
+                Color near = _colour; near.a = TailAlpha(s / (float)segments);
+                Color far = _colour; far.a = TailAlpha((s + 1) / (float)segments);
+                colours.Add(near); colours.Add(near);
+                colours.Add(far); colours.Add(far);
+
+                triangles.Add(b); triangles.Add(b + 2); triangles.Add(b + 1);
+                triangles.Add(b + 1); triangles.Add(b + 2); triangles.Add(b + 3);
+            }
+
+            _mesh.Clear();
+            _mesh.SetVertices(_vertices);
+            _mesh.SetUVs(0, _others);
+            _mesh.SetUVs(1, sideOrder);
+            _mesh.SetColors(colours);
+            _mesh.SetTriangles(triangles, 0);
         }
 
         /// <summary>
         /// The tail: opaque at the body, falling away behind it, gone by the time the path comes
         /// back round.
         ///
-        /// Index zero of the vertex array is kept at the body's current position by
-        /// <see cref="LateUpdate"/>, so a gradient anchored at t=0 is anchored to the planet.
+        /// The same four keys the LineRenderer gradient carried, evaluated directly — a Gradient
+        /// object was only ever a way to hand these numbers to a component that wanted an asset.
+        /// Never quite zero at the far end: the far side of an orbit still says how big it is, and
+        /// a path that disappears entirely behind the body reads as a broken arc.
         /// </summary>
-        private void ApplyGradient()
+        private float TailAlpha(float t)
         {
-            var gradient = new Gradient();
-            gradient.SetKeys(
-                new[]
-                {
-                    new GradientColorKey(_colour, 0f),
-                    new GradientColorKey(_colour, 1f),
-                },
-                new[]
-                {
-                    new GradientAlphaKey(0.95f * _dim, 0f),
-                    new GradientAlphaKey(0.45f * _dim, _tailFraction * 0.45f),
-                    new GradientAlphaKey(0.14f * _dim, _tailFraction),
-                    // Never quite zero: the far side of an orbit still says how big it is, and a
-                    // path that disappears entirely behind the body reads as a broken arc.
-                    new GradientAlphaKey(0.07f * _dim, 1f),
-                });
-
-            _line.colorGradient = gradient;
+            float a;
+            if (t < _tailFraction * 0.45f) a = Mathf.Lerp(0.95f, 0.45f, t / Mathf.Max(1e-6f, _tailFraction * 0.45f));
+            else if (t < _tailFraction) a = Mathf.Lerp(0.45f, 0.14f,
+                (t - _tailFraction * 0.45f) / Mathf.Max(1e-6f, _tailFraction * 0.55f));
+            else a = Mathf.Lerp(0.14f, 0.07f, (t - _tailFraction) / Mathf.Max(1e-6f, 1f - _tailFraction));
+            return a;
         }
 
         private void LateUpdate()
         {
-            if (_pathRelativeToParentKm == null || _simulation == null) return;
+            if (_pathRelativeToParentKm == null || _simulation == null || _renderer == null) return;
 
             // An orbit nobody is on is not an orbit.
             //
@@ -153,7 +235,7 @@ namespace CosmoSynth.Runtime
             // viewer has no way to tell which of the two is the bug.
             if (_view != null && !_view.IsKnown)
             {
-                if (_line != null && _line.enabled) _line.enabled = false;
+                if (_renderer.enabled) _renderer.enabled = false;
                 return;
             }
 
@@ -169,70 +251,73 @@ namespace CosmoSynth.Runtime
             int phase = PhaseIndex(count);
 
             // Rotated so vertex 0 is the body. This is the whole of the comet-tail effect; the
-            // gradient does the rest.
+            // gradient baked into the vertex colours does the rest.
             for (int i = 0; i < count; i++)
             {
                 int source = phase - i;
                 if (source < 0) source += count;
-                _vertices[i] = origin.ToRender(parentAbsolute + _pathRelativeToParentKm[source]);
+                _points[i] = origin.ToRender(parentAbsolute + _pathRelativeToParentKm[source]);
             }
 
             if (_camera == null) _camera = Camera.main;
-            if (_camera == null)
-            {
-                _line.SetPositions(_vertices);
-                return;
-            }
 
             // Distance to the CLOSEST part of the orbit, sampled coarsely, plus the orbit's own
-            // size and centre — everything the width and the legibility test need, in one pass.
-            //
-            // A LineRenderer has one width for the whole line, so sizing it from a single vertex
-            // is wrong for any orbit large compared to its distance: pick a far vertex and the
-            // near half of the ellipse is drawn hundreds of units thick, sweeping grey bands
-            // across the view. The nearest point makes the visible part correct and lets the far
-            // part fall below a pixel, which is where it belongs.
-            Vector3 cameraLocal = transform.InverseTransformPoint(_camera.transform.position);
+            // size and centre — everything the legibility test needs, in one pass. The width no
+            // longer needs any of it: it is angular, set once on the material.
             Vector3 centreLocal = origin.ToRender(parentAbsolute);
+            Vector3 cameraLocal = _camera != null
+                ? transform.InverseTransformPoint(_camera.transform.position)
+                : centreLocal;
 
             float nearest = float.MaxValue;
             float meanRadius = 0f;
             int samples = 0;
-            int step = Mathf.Max(1, _vertices.Length / 16);
-            for (int i = 0; i < _vertices.Length; i += step)
+            int step = Mathf.Max(1, count / 16);
+            for (int i = 0; i < count; i += step)
             {
-                nearest = Mathf.Min(nearest, Vector3.Distance(cameraLocal, _vertices[i]));
-                meanRadius += Vector3.Distance(centreLocal, _vertices[i]);
+                nearest = Mathf.Min(nearest, Vector3.Distance(cameraLocal, _points[i]));
+                meanRadius += Vector3.Distance(centreLocal, _points[i]);
                 samples++;
             }
             if (nearest >= float.MaxValue) nearest = 1f;
             if (samples > 0) meanRadius /= samples;
 
-            // Local units and world units differ by the anchor's scale, which is identity today
-            // but need not stay that way; the width calculation below is in world units.
-            float scale = Mathf.Max(1e-6f, transform.lossyScale.x);
-            nearest *= scale;
+            if (_camera == null)
+            {
+                WriteVertices(count);
+                return;
+            }
 
-            float worldPerPixel = ViewportInfo.WorldPerPixel(_camera, nearest);
+            // Local units and world units differ by the anchor's scale, which is identity today
+            // but need not stay that way.
+            float scale = Mathf.Max(1e-6f, transform.lossyScale.x);
+            float worldPerPixel = ViewportInfo.WorldPerPixel(_camera, nearest * scale);
             float apparentPixels = worldPerPixel > 0f ? 2f * meanRadius * scale / worldPerPixel : 0f;
 
             if (!IsLegible(Vector3.Distance(cameraLocal, centreLocal), meanRadius, apparentPixels)) return;
 
-            _line.SetPositions(_vertices);
+            WriteVertices(count);
+        }
 
-            // Constant apparent width: an orbit line is a diagram, and a diagram that becomes
-            // invisible when you zoom out has failed at its job.
-            //
-            // Via ViewportInfo, not Camera.pixelHeight — see that class. Trusting the camera here
-            // is what drew these as centimetre-thick slabs: a viewport reported as a couple of
-            // pixels tall makes one pixel enormous.
-            float width = ViewportInfo.WorldPerPixel(_camera, nearest) * _widthPixels;
+        /// <summary>Push this frame's path into the four-vertices-per-segment streams.</summary>
+        private void WriteVertices(int count)
+        {
+            int segments = count - 1;
+            if (segments < 1 || _vertices.Count != segments * 4) return;
 
-            // A hard cap still, because an orbit is a diagram drawn over the scene and a path more
-            // than a few millimetres thick at arm's length has stopped being a line. The cap now
-            // scales with distance rather than being an absolute 4 mm, so it constrains a path
-            // beside your hand without also flattening one across the room.
-            _line.widthMultiplier = Mathf.Clamp(width, 1e-5f, Mathf.Max(0.004f, nearest * 0.006f));
+            for (int s = 0; s < segments; s++)
+            {
+                int b = s * 4;
+                Vector3 a = _points[s], c = _points[s + 1];
+                _vertices[b] = a; _vertices[b + 1] = a;
+                _vertices[b + 2] = c; _vertices[b + 3] = c;
+                _others[b] = c; _others[b + 1] = c;
+                _others[b + 2] = a; _others[b + 3] = a;
+            }
+
+            _mesh.SetVertices(_vertices);
+            _mesh.SetUVs(0, _others);
+            _mesh.RecalculateBounds();
         }
 
         /// <summary>
@@ -266,12 +351,11 @@ namespace CosmoSynth.Runtime
             //
             // And big enough to be a shape at all. With the whole Solar System on a table every
             // moon's orbit is still being drawn — Phobos' is seven ten-millionths of a unit
-            // across — while the line width has a four-millimetre floor, so each one renders as a
+            // across — while the line has a floor of about two pixels, so each one renders as a
             // blob some thousands of times wider than the path it represents, piled on the planet
-            // it belongs to. That is the cyan smudge over the Sun in the captured frame, and it
-            // is thirteen line renderers of per-frame work to produce it.
+            // it belongs to. That is the cyan smudge over the Sun in the captured frame.
             bool legible = distanceToCentre > meanRadius * 1.5f && apparentPixels > MinimumApparentPixels;
-            if (_line.enabled != legible) _line.enabled = legible;
+            if (_renderer.enabled != legible) _renderer.enabled = legible;
             return legible;
         }
 
@@ -293,10 +377,10 @@ namespace CosmoSynth.Runtime
 
         /// <summary>Diagnostics: why this orbit is or is not on screen, and how thick it is.</summary>
         public string Describe() =>
-            $"{_view?.Body?.Id,-10} drawn={(_line != null && _line.enabled ? "y" : "n")} " +
+            $"{_view?.Body?.Id,-10} drawn={(_renderer != null && _renderer.enabled ? "y" : "n")} " +
             $"viewer={_lastCentreDistance:G4} radius={_lastMeanRadius:G4} " +
             $"ratio={(_lastMeanRadius > 0f ? _lastCentreDistance / _lastMeanRadius : 0f):F2} " +
-            $"px={_lastApparentPixels:F1} width={(_line != null ? _line.widthMultiplier : 0f):G3}";
+            $"px={_lastApparentPixels:F1} width={_widthDmm:G3}dmm";
 
         /// <summary>
         /// Which sample the body currently sits on.
@@ -332,12 +416,14 @@ namespace CosmoSynth.Runtime
         public void Dim(float factor)
         {
             _dim = Mathf.Clamp01(factor);
-            if (_line != null) ApplyGradient();
+            if (_material != null) _material.SetFloat(IntensityId, _dim);
         }
 
         private void OnDestroy()
         {
-            if (_line != null && _line.material != null && Application.isPlaying) Destroy(_line.material);
+            if (!Application.isPlaying) return;
+            if (_material != null) Destroy(_material);
+            if (_mesh != null) Destroy(_mesh);
         }
     }
 }

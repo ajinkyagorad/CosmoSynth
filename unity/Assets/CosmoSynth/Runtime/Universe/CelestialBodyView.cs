@@ -110,14 +110,31 @@ namespace CosmoSynth.Runtime
 
             if (_renderer != null)
             {
-                // Instanced so every body can carry its own colour without a material each.
-                _renderer.material.color = CosmoTheme.FromLinear(Body.DisplayColor);
-                _renderer.material.SetFloat("_Glossiness", 0.03f);
-                _renderer.material.SetFloat("_Metallic", 0f);
+                // CosmoSynth/Body, explicitly. CreatePrimitive hands back a renderer already
+                // carrying URP's own Lit material, and taking that is the keyword-stripping
+                // magenta failure CosmoShaders exists to prevent: URP/Lit is multi-variant, the
+                // whole scene is built at runtime so no asset references the variant this needs,
+                // and the build step strips what nothing references. It works perfectly in the
+                // editor, where every variant is loaded.
+                Material material = CosmoShaders.Material(CosmoShaders.Body);
+                if (material == null)
+                {
+                    _renderer.enabled = false;
+                }
+                else
+                {
+                    // Instanced so every body can carry its own colour without a material each.
+                    material.color = CosmoTheme.LinearRgb(Body.DisplayColor);
+                    material.SetFloat(SmoothnessId, 0.03f);
 
-                // Stars emit rather than reflect. Without this the Sun renders as a dark ball,
-                // because nothing is lighting it.
-                if (Body.IsStar) _renderer.material.EnableKeyword("_EMISSION");
+                    // Stars emit rather than reflect. Without this the Sun renders as a dark ball,
+                    // because nothing is lighting it. There are no shader keywords any more: the
+                    // emission term is a colour, and black is off.
+                    if (Body.IsStar) material.SetColor(EmissionId, CosmoTheme.Neutral);
+
+                    material.SetColor(AmbientId, CosmoTheme.AmbientFill);
+                    _renderer.sharedMaterial = material;
+                }
             }
 
             // The sky-sphere representation. Built now rather than on demand, because creating a
@@ -126,7 +143,7 @@ namespace CosmoSynth.Runtime
             var pointObject = new GameObject("Star Point");
             pointObject.transform.SetParent(transform, worldPositionStays: false);
             _starPoint = pointObject.AddComponent<StarPointBillboard>();
-            _starPoint.Initialise(CosmoTheme.FromLinear(Body.DisplayColor));
+            _starPoint.Initialise(CosmoTheme.LinearRgb(Body.DisplayColor));
         }
 
         private StarPointBillboard _starPoint;
@@ -213,7 +230,91 @@ namespace CosmoSynth.Runtime
             }
 
             UpdateVisualScale(ctx, placement);
+            ApplyLighting();
         }
+
+        /// <summary>Direction to this body's host star, in world space. Read by the ring and the shell.</summary>
+        public Vector3 LightDirectionWS { get; private set; } = Vector3.up;
+
+        /// <summary>This body's host star's colour and intensity, as the shaders receive it.</summary>
+        public Color LightColour { get; private set; } = CosmoTheme.Neutral;
+
+        private CelestialBodyView _hostStar;
+        private bool _hostStarResolved;
+
+        /// <summary>
+        /// Light this body from the star it actually orbits.
+        ///
+        /// Not from a Unity light: a universe has many stars, one camera sees several systems at
+        /// once, and the Android quality level allows exactly one per-pixel light. A single
+        /// directional or point light gets the terminator right on one system and wrong on every
+        /// other — and the star it was attached to came from <c>RootIds[0]</c> whenever the focus
+        /// could not be resolved, which is insertion order, which put the light that models the
+        /// whole Solar System on an exoplanet host eleven parsecs away the moment that catalogue
+        /// merged. <c>CelestialCatalog.HostStarOf</c> walks the parent chain instead, which is one
+        /// function replacing the four copies of that loop this codebase had.
+        ///
+        /// The host is resolved once and remembered: the parent chain is a property of the
+        /// catalogue, and the catalogue rebuilds every view when it changes.
+        /// </summary>
+        private void ApplyLighting()
+        {
+            if (_renderer == null) return;
+
+            if (!_hostStarResolved)
+            {
+                _hostStarResolved = true;
+                CelestialBody star = _simulation.HostStarOf(Body.Id);
+                if (star != null && _simulation.Views.TryGetValue(star.Id, out CelestialBodyView view))
+                {
+                    _hostStar = view;
+                    double temperature = star.EffectiveTemperatureK ?? 5772.0;
+                    // 3.2 blew every planet out to pure white under the old point light. This is
+                    // close to what actually lands on the surface, and it is the one knob 7.4's
+                    // re-tune turns after the switch to Linear.
+                    LightColour = CosmoTheme.LinearRgb(
+                        PlanetGenerator.BlackBodyColor(temperature) * (double)StarLook.StarLightIntensity);
+                }
+            }
+
+            // A star lights itself from nowhere; its own surface is emissive.
+            if (_hostStar != null && _hostStar != this)
+            {
+                Double3 toStar = _hostStar.AbsolutePositionKm - AbsolutePositionKm;
+                if (toStar.SqrMagnitude > 0.0)
+                {
+                    LightDirectionWS = _simulation.transform.TransformDirection(
+                        _simulation.Origin.MapDirection(toStar.Normalized));
+                }
+            }
+
+            ApplyLightingTo(_renderer.sharedMaterial);
+            if (_model != null && _renderer.sharedMaterials.Length > 1)
+            {
+                Material[] materials = _renderer.sharedMaterials;
+                for (int i = 0; i < materials.Length; i++) ApplyLightingTo(materials[i]);
+            }
+        }
+
+        private void ApplyLightingTo(Material material)
+        {
+            if (material == null) return;
+            material.SetVector(LightDirId, LightDirectionWS);
+            material.SetColor(LightColorId, LightColour);
+            // Envelope mode: the eye is inside d0 of a body large enough that a similarity would
+            // put its surface inside the near plane, so the vertex shader compresses each vertex
+            // about the centre eye instead. Nothing else in the frame changes.
+            material.SetFloat(PerVertexCompressId, PerVertexCompressed ? 1f : 0f);
+        }
+
+        private static readonly int SmoothnessId = Shader.PropertyToID("_Smoothness");
+        private static readonly int EmissionId = Shader.PropertyToID("_Emission");
+        private static readonly int AmbientId = Shader.PropertyToID("_Ambient");
+        private static readonly int NormalMapId = Shader.PropertyToID("_NormalMap");
+        private static readonly int SurfaceMapId = Shader.PropertyToID("_SurfaceMap");
+        private static readonly int LightDirId = Shader.PropertyToID("_LightDirWS");
+        private static readonly int LightColorId = Shader.PropertyToID("_LightColor");
+        private static readonly int PerVertexCompressId = Shader.PropertyToID("_PerVertexCompress");
 
         /// <summary>The similarity this body was placed with this frame. 1 means exact.</summary>
         public double GroupScale { get; private set; } = 1.0;
@@ -331,16 +432,20 @@ namespace CosmoSynth.Runtime
             else
             {
                 angle = floorAngle;
-                colour = CosmoTheme.FromLinear(Body.DisplayColor);
+                colour = CosmoTheme.LinearRgb(Body.DisplayColor);
             }
 
             if (angle < floorAngle) angle = floorAngle;
 
+            // The billboard takes the ANGLE. It used to take a world diameter, which meant
+            // multiplying by the distance here and dividing by it again inside a CPU billboard —
+            // and a CPU billboard is one quad built from one camera transform and shown to two
+            // eyes. CosmoSynth/Point expands the corners against each eye's own projection.
             float diameter = distance * (float)angle;
 
             _starPoint.SetColour(colour);
             _starPoint.SetRenderQueue(StarPointBillboard.SkyQueue);
-            _starPoint.SetVisible(true, diameter);
+            _starPoint.SetVisible(true, (float)angle);
 
             // Kept in step so anything reading RenderedRadius — selection, the rim highlight —
             // still agrees with what is on screen.
@@ -432,19 +537,20 @@ namespace CosmoSynth.Runtime
             var materials = new Material[model.Submeshes.Length];
             for (int i = 0; i < materials.Length; i++)
             {
-                Material material = CosmoShaders.Material(CosmoShaders.Standard);
+                Material material = CosmoShaders.Material(CosmoShaders.Body);
+                if (material == null) { _renderer.enabled = false; return; }
                 Color baseColour = model.Submeshes[i].Color;
 
                 material.color = baseColour;
-                material.SetFloat("_Metallic", Mathf.Min(model.Submeshes[i].Metallic, MaximumModelMetallic));
-                material.SetFloat("_Glossiness",
+                material.SetFloat(SmoothnessId,
                     Mathf.Clamp(model.Submeshes[i].Smoothness, 0f, MaximumModelSmoothness));
+                material.SetColor(AmbientId, CosmoTheme.AmbientFill);
 
                 // Mixed toward white before being scaled, so a near-black submesh still emits.
                 // Several shipped models carry parts below 0.05 luminance — Parker's is 0.007 —
-                // and a fraction of nothing is nothing.
-                material.EnableKeyword("_EMISSION");
-                material.SetColor("_EmissionColor",
+                // and a fraction of nothing is nothing. CosmoSynth/Body multiplies this by the
+                // albedo, so it is a fraction of the submesh's own colour and there is no keyword.
+                material.SetColor(EmissionId,
                     CosmoTheme.Scaled(CosmoTheme.Desaturate(baseColour, 0.65f), ModelEmission));
 
                 materials[i] = material;
@@ -454,22 +560,11 @@ namespace CosmoSynth.Runtime
             _renderer.materials = materials;
         }
 
-        /// <summary>
-        /// Ceiling on a baked metallic value.
-        ///
-        /// glTF's default <c>metallicFactor</c> is 1.0, so any model whose material omits it
-        /// arrives fully metallic — and this scene has no skybox and no reflection probe, only a
-        /// point light at the star and a flat ambient. A metal has no diffuse response at all;
-        /// everything it shows is a reflection of an environment which here is black. The ISS
-        /// ships with metallic 0.5 on five submeshes and 1.0 on the sixth, Perseverance with 1.0
-        /// on four of six, and the ISS rendered as six near-black pixels on Earth's disc —
-        /// indistinguishable from dirt on the lens, in a captured frame, with the loader
-        /// cheerfully reporting "24/24 applied".
-        ///
-        /// Clamped here rather than only at bake time so already-shipped meshes are fixed without
-        /// a re-bake, and so the renderer's own lighting assumptions live next to the renderer.
-        /// </summary>
-        private const float MaximumModelMetallic = 0.12f;
+        // The metallic clamp that used to stand here is gone with the metal. CosmoSynth/Body
+        // has no metallic term at all: a metal shows a reflection of an environment, this scene
+        // has no skybox and no reflection probe, and the ISS's baked metallic 1.0 therefore
+        // rendered it as six near-black pixels on Earth's disc while the loader reported
+        // "24/24 applied". A term whose only correct value is zero is better deleted than clamped.
 
         /// <summary>
         /// Ceiling on a baked smoothness value; several models carry 0.5 to 0.72.
@@ -745,45 +840,42 @@ namespace CosmoSynth.Runtime
         {
             if (_renderer == null || texture == null) return;
 
-            Material material = _renderer.material;
+            Material material = _renderer.sharedMaterial;
+            if (material == null) return;
             material.mainTexture = texture;
 
-            if (normalMap != null)
-            {
-                material.EnableKeyword("_NORMALMAP");
-                material.SetTexture("_BumpMap", normalMap);
-                material.SetFloat("_BumpScale", 1f);
-            }
+            // Always bound, and never as a NormalMap-typed import (R13): CosmoSynth/Body unpacks
+            // with UnpackNormalRGBNoScale, and Unity swizzles a NormalMap-typed texture into
+            // DXT5nm/ASTC with X in alpha — which the shader would read as garbage, silently, on
+            // the terminator. PlanetTextureBaker creates these with linear: true.
+            if (normalMap != null) material.SetTexture(NormalMapId, normalMap);
 
+            // Smoothness rides in the surface map's ALPHA, so oceans come out glossy enough to
+            // throw a sun glint while rock stays matte. With the map present the scalar is the
+            // multiplier and must be 1, or the map is silently scaled to nothing.
             if (surfaceMap != null)
             {
-                material.EnableKeyword("_METALLICGLOSSMAP");
-                material.SetTexture("_MetallicGlossMap", surfaceMap);
-                // With a gloss map present the scalar acts as a multiplier, so it must be 1 or
-                // the map is silently scaled down to nothing.
-                material.SetFloat("_Glossiness", 1f);
-                material.SetFloat("_GlossMapScale", 1f);
+                material.SetTexture(SurfaceMapId, surfaceMap);
+                material.SetFloat(SmoothnessId, 1f);
             }
 
             // The tint multiplies the texture, so leave it white or the map is double-darkened
             // by the colour it was already painted with.
             material.color = CosmoTheme.Neutral;
 
-            // Rough and non-metallic.
+            // Rough, with no metal anywhere.
             //
-            // Standard defaults to 0.5 smoothness, which puts a broad specular highlight in the
-            // middle of the lit face — a planet rendered like polished plastic, blowing out to
-            // pure white exactly where the surface detail is. Rock, ice and cloud are all
-            // diffuse; the only body that genuinely wants a highlight is an ocean, and that
-            // needs a specular mask this shader has no channel for.
-            if (surfaceMap == null) material.SetFloat("_Glossiness", 0.03f);
-            material.SetFloat("_Metallic", 0f);
+            // A broad specular highlight in the middle of the lit face is a planet rendered like
+            // polished plastic, blowing out to pure white exactly where the surface detail is.
+            // Rock, ice and cloud are all diffuse; the only body that genuinely wants a highlight
+            // is an ocean, and that is what the surface map's alpha is for.
+            if (surfaceMap == null) material.SetFloat(SmoothnessId, 0.03f);
 
             if (Body.IsStar)
             {
-                material.EnableKeyword("_EMISSION");
-                material.SetTexture("_EmissionMap", texture);
-                material.SetColor("_EmissionColor", CosmoTheme.Scaled(CosmoTheme.Neutral, 2.2f));
+                // CosmoSynth/Body multiplies the emission by the albedo, and the albedo IS this
+                // texture — so one colour does what a separate emission map used to.
+                material.SetColor(EmissionId, CosmoTheme.Scaled(CosmoTheme.Neutral, 2.2f));
             }
 
             HasSurfaceTexture = true;

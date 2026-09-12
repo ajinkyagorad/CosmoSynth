@@ -120,7 +120,11 @@ namespace CosmoSynth.Core
 
             public RenderTransform(Double3 originKm, double unitsPerKm)
             {
-                if (unitsPerKm <= 0.0) throw new ArgumentOutOfRangeException(nameof(unitsPerKm));
+                // Written as a positive test, not a negated one: NaN <= 0.0 is FALSE, so the
+                // obvious form lets a NaN scale straight through and every ToRender after it
+                // returns NaN with no exception anywhere. ScaleLimits.Clamp already tests NaN
+                // explicitly; two guards on one quantity must not disagree about it.
+                if (!(unitsPerKm > 0.0)) throw new ArgumentOutOfRangeException(nameof(unitsPerKm));
                 OriginKm = originKm;
                 UnitsPerKm = unitsPerKm;
             }

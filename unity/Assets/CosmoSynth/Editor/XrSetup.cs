@@ -117,6 +117,7 @@ namespace CosmoSynth.EditorTools
             EnsureFeatures();
             EnsureRenderSettings();
             EnsureColorSpace();
+            EnsureStaticBatchingOff();
             EnsureUrp();
             EnsureFramePacing();
             EnsureBothInputHandlers();
@@ -473,6 +474,77 @@ namespace CosmoSynth.EditorTools
         /// is the wrong shape. It is a project-wide decision and changing it re-tunes every
         /// colour in the app, which is why it belongs in Phase 0 and not later.
         /// </summary>
+        /// <summary>
+        /// Turn static and dynamic batching off for Android (R12).
+        ///
+        /// Static batching is ON by default for Android and it bakes vertices into world space,
+        /// which silently destroys three object-space assumptions: CosmoSynth/Volume's raymarch
+        /// entry point, CosmoSynth/Sky's vertices-are-ICRF-directions, and CosmoSynth/Ribbon's
+        /// otherOS endpoint. The "DisableBatching"="True" tags on those three shaders are the
+        /// belt; this is the braces, and G0c has a row for it. Practical exposure today is low —
+        /// nothing is marked BatchingStatic — which is exactly why it would be reintroduced by a
+        /// later layer with nobody noticing.
+        /// </summary>
+        private static void EnsureStaticBatchingOff()
+        {
+            const string androidTarget = "Android";
+
+            // Through SerializedObject, like EnsureBothInputHandlers, and NOT through
+            // PlayerSettings.SetBatchingForPlatform: that overload is internal in Unity 6, so it
+            // does not compile at all here. The serialised field is m_BuildTargetBatching, a list
+            // that is EMPTY by default -- and empty means the defaults, which for Android is
+            // static batching ON. G0c reads m_StaticBatching: 0 out of the YAML this writes.
+            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset");
+            if (assets == null || assets.Length == 0)
+            {
+                Fail("could not open ProjectSettings.asset to turn batching off");
+                return;
+            }
+
+            var serialized = new SerializedObject(assets[0]);
+            SerializedProperty list = serialized.FindProperty("m_BuildTargetBatching");
+            if (list == null || !list.isArray)
+            {
+                Fail("m_BuildTargetBatching property not found");
+                return;
+            }
+
+            SerializedProperty entry = null;
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                SerializedProperty candidate = list.GetArrayElementAtIndex(i);
+                SerializedProperty target = candidate.FindPropertyRelative("m_BuildTarget");
+                if (target != null && target.stringValue == androidTarget) { entry = candidate; break; }
+            }
+
+            if (entry == null)
+            {
+                list.InsertArrayElementAtIndex(list.arraySize);
+                entry = list.GetArrayElementAtIndex(list.arraySize - 1);
+                SerializedProperty target = entry.FindPropertyRelative("m_BuildTarget");
+                if (target == null)
+                {
+                    Fail("m_BuildTargetBatching entries have no m_BuildTarget field");
+                    return;
+                }
+                target.stringValue = androidTarget;
+            }
+
+            SerializedProperty staticBatching = entry.FindPropertyRelative("m_StaticBatching");
+            SerializedProperty dynamicBatching = entry.FindPropertyRelative("m_DynamicBatching");
+            if (staticBatching == null || dynamicBatching == null)
+            {
+                Fail("m_StaticBatching / m_DynamicBatching not found on the Android batching entry");
+                return;
+            }
+
+            staticBatching.intValue = 0;
+            dynamicBatching.intValue = 0;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Log("android batching static=0 dynamic=0");
+        }
+
         private static void EnsureColorSpace()
         {
             if (PlayerSettings.colorSpace == ColorSpace.Linear)

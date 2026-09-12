@@ -32,7 +32,9 @@ namespace CosmoSynth.Runtime
         [SerializeField] private int _envelopeGroups;
         [SerializeField] private int _enclosingGroups;
         [SerializeField] private int _pushConflicts;
+        [SerializeField] private int _volumeOcclusion;
         [SerializeField] private float _farthestRenderedMetres;
+        private bool _historyValid;
 
         private readonly List<GroupNode> _nodes = new List<GroupNode>();
         private readonly List<CelestialBodyView> _ordered = new List<CelestialBodyView>();
@@ -60,6 +62,12 @@ namespace CosmoSynth.Runtime
         /// <summary>The farthest rendered surface this frame, metres. Must stay inside the far plane.</summary>
         public float FarthestRenderedMetres => _farthestRenderedMetres;
 
+        /// <summary>
+        /// Drawn bodies inside or in front of an active enclosing volume (R6). Red on the render
+        /// line: each one punches a body-shaped hole through the whole of that volume.
+        /// </summary>
+        public int VolumeOcclusion => _volumeOcclusion;
+
         /// <summary>The context built this frame, for anything that needs the eye or the scale.</summary>
         public FrameContext Context { get; private set; }
 
@@ -73,26 +81,60 @@ namespace CosmoSynth.Runtime
         /// </summary>
         private bool TryResolve()
         {
-            if (_simulation == null)
+            if (_simulation == null) _simulation = FindAnyObjectByType<UniverseSimulation>();
+
+            // Hoisted out of the null branch above, and named rather than a lambda.
+            //
+            // _simulation is a [SerializeField], so a prefab or an inspector assignment means the
+            // branch above never runs — and the subscriptions used to live inside it. One rebuild
+            // then happened because _topologyDirty starts true, and every body added afterwards
+            // was never placed, silently, with nothing logged. The lambdas also captured `this`
+            // for the life of the event; named handlers can be unsubscribed, and OnDestroy does.
+            if (!_subscribed && _simulation != null)
             {
-                _simulation = FindAnyObjectByType<UniverseSimulation>();
-                if (_simulation != null)
-                {
-                    _simulation.CatalogLoaded += _ => _topologyDirty = true;
-                    _simulation.BodiesChanged += () => _topologyDirty = true;
-                }
+                _subscribed = true;
+                _simulation.CatalogLoaded += OnCatalogLoaded;
+                _simulation.BodiesChanged += OnBodiesChanged;
             }
+
             if (_camera == null) _camera = Camera.main;
             return _simulation != null && _simulation.Origin != null && _camera != null;
         }
 
+        private bool _subscribed;
+
+        private void OnCatalogLoaded(CelestialCatalog catalog) => _topologyDirty = true;
+
+        private void OnBodiesChanged() => _topologyDirty = true;
+
+        private void OnDestroy()
+        {
+            if (!_subscribed || _simulation == null) return;
+            _simulation.CatalogLoaded -= OnCatalogLoaded;
+            _simulation.BodiesChanged -= OnBodiesChanged;
+            _subscribed = false;
+        }
+
+        /// <summary>
+        /// The constant half of the shader globals, before anything can draw.
+        ///
+        /// See <see cref="Placement.PublishConstants"/>: unset, _CS_Compress is zero and every
+        /// compressing vertex shader emits NaN for the whole of the catalogue's streaming window.
+        /// </summary>
+        private void OnEnable() => Placement.PublishConstants();
+
         private void LateUpdate()
         {
-            if (!TryResolve() || _simulation.Catalog == null) return;
+            if (!TryResolve()) return;
 
+            // Above the catalogue guard. The eye and the ICRF mapping do not depend on the
+            // catalogue, and the shaders need both from frame 1 — the sky shell, the star field
+            // and every point layer are anchored on them.
             FrameContext ctx = BuildContext();
             Context = ctx;
             Placement.PublishGlobals(ctx);
+
+            if (_simulation.Catalog == null) return;
 
             if (_topologyDirty) RebuildTopology();
             if (_ordered.Count == 0) return;
@@ -105,12 +147,20 @@ namespace CosmoSynth.Runtime
                 _previous = new GroupPlacement[_nodes.Count];
             }
 
-            _pushConflicts = ScaledSpace.Solve(_nodes, ctx.EyeKm, ctx.UnitsPerKm, _previous, _placement);
+            // No hysteresis across a topology rebuild. `previous` is read BY INDEX, and a
+            // rebuild renumbers every node from the catalogue — so after an add or a remove,
+            // previous[i] describes a different body and the Rigid/Envelope cut can flip for one
+            // frame on an arbitrary set of groups. A visible pop at exactly the moment content
+            // arrives. Solve documents null as "first frame", which is what this is.
+            _pushConflicts = ScaledSpace.Solve(_nodes, ctx.EyeKm, ctx.UnitsPerKm,
+                _historyValid ? _previous : null, _placement);
+            _historyValid = true;
 
             _rigidGroups = 0;
             _envelopeGroups = 0;
             _enclosingGroups = 0;
             _farthestRenderedMetres = 0f;
+            _volumeOcclusion = 0;
 
             for (int i = 0; i < _ordered.Count; i++)
             {
@@ -135,6 +185,8 @@ namespace CosmoSynth.Runtime
                         (float)p.RenderedFarMetres + view.RenderedRadius);
                 }
             }
+
+            CountVolumeOcclusion();
 
             // Hysteresis: next frame's cut is decided partly by this frame's, so a group sitting
             // on the 9 m threshold does not flip mode with every twitch of the head.
@@ -172,6 +224,7 @@ namespace CosmoSynth.Runtime
         private void RebuildTopology()
         {
             _topologyDirty = false;
+            _historyValid = false;
             _ordered.Clear();
             _indexById.Clear();
             _nodes.Clear();
@@ -182,6 +235,66 @@ namespace CosmoSynth.Runtime
                 _indexById[body.Id] = _ordered.Count;
                 _ordered.Add(view);
                 _nodes.Add(default);
+            }
+
+            AssertParentsPrecedeChildren();
+        }
+
+        /// <summary>
+        /// The one thing FillNodes and ScaledSpace.Solve both assume and neither states: a body's
+        /// parent has a LOWER index than the body.
+        ///
+        /// Both silently drop the link when it does not hold, which degrades a moon to an
+        /// independent group — exactly the per-body placement the solver's own tests prove breaks
+        /// a transit. Catalog.Traverse is depth-first from the roots, so it holds today; a change
+        /// to the traversal order would otherwise turn moons back into independent groups with
+        /// nothing anywhere noticing. One pass over a list that is already built.
+        /// </summary>
+        private void AssertParentsPrecedeChildren()
+        {
+            for (int i = 0; i < _ordered.Count; i++)
+            {
+                CelestialBodyView view = _ordered[i];
+                if (view == null) continue;
+                string parentId = view.Body.ParentId;
+                if (string.IsNullOrEmpty(parentId)) continue;
+                if (!_indexById.TryGetValue(parentId, out int parent) || parent < i) continue;
+
+                Debug.LogError(
+                    $"[CosmoSynth] catalogue order puts '{parentId}' (index {parent}) at or after " +
+                    $"its child '{view.Body.Id}' (index {i}). The child will be placed as an " +
+                    "independent group, which breaks intra-group depth order — see ScaledSpace.");
+            }
+        }
+
+        /// <summary>
+        /// R6: drawn bodies inside or in front of an active enclosing volume, this frame.
+        ///
+        /// The volume shaders use ZTest LEqual on their BACK face, so an opaque surface nearer
+        /// than that face rejects the whole primitive and the entire ray integral is lost — a
+        /// body-shaped hole through the whole cloud, near half included. That cost is accepted
+        /// and bounded (contract 7.1 rule 5, 13); what is not acceptable is it being invisible,
+        /// so the count goes on the render line and the play-mode gate reads it.
+        ///
+        /// Zero cost while nothing encloses, which is every frame of the foundation alpha: no
+        /// layer declares MayEnclose until the dust volume lands.
+        /// </summary>
+        private void CountVolumeOcclusion()
+        {
+            if (_enclosingGroups == 0) return;
+
+            for (int v = 0; v < _ordered.Count; v++)
+            {
+                if (_placement[v].Mode != GroupMode.Enclosing) continue;
+                double back = _placement[v].RenderedFarMetres;
+
+                for (int i = 0; i < _ordered.Count; i++)
+                {
+                    CelestialBodyView body = _ordered[i];
+                    if (body == null || !body.IsGeometryDrawn) continue;
+                    if (_placement[i].Mode == GroupMode.Enclosing) continue;
+                    if (_placement[i].RenderedNearMetres < back) _volumeOcclusion++;
+                }
             }
         }
 

@@ -180,7 +180,17 @@ namespace CosmoSynth.Core
         {
             if (nodes == null) return 0;
             int n = nodes.Count;
-            if (result == null || result.Length < n) return 0;
+            // Not a return of 0. Zero is the value that means "no conflicts", and both
+            // RenderDiagnostics.IsHealthy and the play-mode `push` assertion key off exactly that
+            // — so a caller that mis-sized the array would silently re-use last frame's placements
+            // and be reported healthy. A short result array is a programming error, not a runtime
+            // condition, and it says so.
+            if (result == null || result.Length < n)
+            {
+                throw new System.ArgumentException(
+                    $"result must hold at least {n} placements, not {(result == null ? 0 : result.Length)}",
+                    nameof(result));
+            }
 
             for (int i = 0; i < n; i++)
             {
@@ -362,13 +372,25 @@ namespace CosmoSynth.Core
                 result[g].RenderedNearMetres = sG * (dG - rG);
                 result[g].RenderedFarMetres = sG * (dG + rG);
 
-                // Descendants collapsed into this owner ride its similarity.
+                // Descendants collapsed into this owner ride its similarity — ALL of it.
+                //
+                // Propagating the new scale and leaving the depth extents at their pre-push values
+                // leaves a Collapsed node reporting a scale and a depth that disagree, and those
+                // fields are read for exactly those nodes: ScaleRenderer folds every drawn view's
+                // RenderedFarMetres into the far-plane headroom the render line prints. Recomputed
+                // from the node rather than rescaled, so one expression covers a push, a re-push
+                // and a first placement.
                 if (result[g].OwnsSubtree)
                 {
                     for (int i = g + 1; i < n; i++)
                     {
-                        if (result[i].Mode == GroupMode.Collapsed && result[i].RigidOwner == g)
-                            result[i].Scale = sG;
+                        if (result[i].Mode != GroupMode.Collapsed || result[i].RigidOwner != g) continue;
+
+                        result[i].Scale = sG;
+                        double di = Double3.Distance(nodes[i].AnchorKm, eyeKm) * unitsPerKm;
+                        double ri = nodes[i].LeafRadiusKm * unitsPerKm;
+                        result[i].RenderedNearMetres = sG * System.Math.Max(0.0, di - ri);
+                        result[i].RenderedFarMetres = sG * (di + ri);
                     }
                 }
             }

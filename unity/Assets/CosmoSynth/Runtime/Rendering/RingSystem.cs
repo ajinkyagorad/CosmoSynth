@@ -23,6 +23,12 @@ namespace CosmoSynth.Runtime
         private CelestialBodyView _body;
         private MeshRenderer _renderer;
 
+        private static readonly int LightDirId = Shader.PropertyToID("_LightDirWS");
+        private static readonly int LightColorId = Shader.PropertyToID("_LightColor");
+        private static readonly int AmbientId = Shader.PropertyToID("_Ambient");
+        private static readonly int ParentCentreId = Shader.PropertyToID("_ParentCentreWS");
+        private static readonly int PerVertexCompressId = Shader.PropertyToID("_PerVertexCompress");
+
         public void Track(CelestialBodyView body) => _body = body;
 
         private void Awake() => _renderer = GetComponent<MeshRenderer>();
@@ -50,6 +56,23 @@ namespace CosmoSynth.Runtime
             float parentScale = parent != null ? Mathf.Max(1e-9f, parent.lossyScale.x) : 1f;
 
             transform.localScale = Vector3.one * (radius / parentScale);
+
+            // The planet shadow, from the planet as DRAWN.
+            //
+            // CosmoSynth/Ring casts it with an analytic ray-sphere test toward the host star, and
+            // the radius it tests against has to be the drawn one: every rigid group renders at
+            // its own similarity, so the physical radius would cast a shadow the wrong size at
+            // every scale but one. Both come from the view, which is the only thing that knows
+            // either — and which asks IsGeometryDrawn before answering, above.
+            Material material = _renderer != null ? _renderer.sharedMaterial : null;
+            if (material == null) return;
+
+            material.SetVector(LightDirId, _body.LightDirectionWS);
+            material.SetColor(LightColorId, _body.LightColour);
+            material.SetColor(AmbientId, CosmoTheme.AmbientFill);
+            Vector3 centre = _body.transform.position;
+            material.SetVector(ParentCentreId, new Vector4(centre.x, centre.y, centre.z, radius));
+            material.SetFloat(PerVertexCompressId, _body.PerVertexCompressed ? 1f : 0f);
         }
     }
 }

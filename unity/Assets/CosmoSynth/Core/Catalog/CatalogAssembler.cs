@@ -41,9 +41,16 @@ namespace CosmoSynth.Core
         /// name and its root ordering, so the base file must come first — that ordering is what
         /// <c>RootIds[0]</c> means, and it is load-bearing.
         ///
-        /// A document that is missing or malformed is reported in <paramref name="log"/> and
-        /// skipped. It is never fatal: a build shipped without the spacecraft file should show
-        /// the Solar System, not nothing.
+        /// A missing or malformed document after the first is reported in <paramref name="log"/>
+        /// and skipped: a build shipped without the spacecraft file should show the Solar System,
+        /// not nothing.
+        ///
+        /// <b>A malformed BASE document is fatal and returns null.</b> Skipping it would promote
+        /// whichever later document happened to parse, and then the catalogue's name, its root
+        /// ordering and <c>RootIds[0]</c> all come from the spacecraft or the exoplanet file —
+        /// which is the same defect (RootIds[0] naming the wrong thing) that put the light
+        /// modelling the Solar System on a star eleven parsecs away, one layer up. Returning null
+        /// sends the caller to its own fallback, which says so out loud.
         ///
         /// Returns null when nothing could be parsed at all, so the caller can fall back rather
         /// than adopt an empty universe.
@@ -55,9 +62,12 @@ namespace CosmoSynth.Core
             for (int i = 0; sources != null && i < sources.Count; i++)
             {
                 Source source = sources[i];
+                bool isBase = i == 0;
+
                 if (!source.HasContent)
                 {
                     log?.Add($"{source.Label}: not present, skipped");
+                    if (isBase) return null;
                     continue;
                 }
 
@@ -69,6 +79,11 @@ namespace CosmoSynth.Core
                 catch (System.Exception exception)
                 {
                     log?.Add($"{source.Label}: malformed, skipped ({exception.Message})");
+                    if (isBase)
+                    {
+                        log?.Add("base document unusable: refusing to promote a later source, skipped");
+                        return null;
+                    }
                     continue;
                 }
 

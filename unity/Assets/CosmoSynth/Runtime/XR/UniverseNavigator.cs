@@ -141,7 +141,14 @@ namespace CosmoSynth.Runtime
             Vector3 worldDirection = rotation * _moveInput;
 
             double speed = CurrentSpeedKmPerSec * _speedMultiplier;
-            Double3 stepKm = _simulation.Origin.UnmapDirection(worldDirection) * (speed * deltaTime);
+
+            // Through the anchor into the universe's own space, THEN into ICRF. UnmapDirection
+            // expects a universe-host-LOCAL direction; handing it a world one steers correctly
+            // only while the universe is unrotated, and drifts off-axis as soon as the anchor is
+            // turned — which the two-hand gesture and the anchor placement both do. XrLocomotion
+            // already does this; the two navigators must not disagree about what a direction is.
+            Vector3 localDirection = _simulation.transform.InverseTransformDirection(worldDirection);
+            Double3 stepKm = _simulation.Origin.UnmapDirection(localDirection) * (speed * deltaTime);
 
             _absolutePositionKm += stepKm;
             _initialised = true;
@@ -183,7 +190,10 @@ namespace CosmoSynth.Runtime
             Double3 toTarget = target.AbsolutePositionKm - _absolutePositionKm;
             if (toTarget.SqrMagnitude <= 0.0) return;
 
-            Vector3 direction = _simulation.Origin.MapDirection(toTarget.Normalized);
+            // MapDirection answers in the universe host's LOCAL space; a LookRotation axis is a
+            // world one. The same mismatch as the move vector above, in the other direction.
+            Vector3 direction = _simulation.transform.TransformDirection(
+                _simulation.Origin.MapDirection(toTarget.Normalized));
             Quaternion rotation = Quaternion.LookRotation(direction, Vector3.up);
             Vector3 euler = rotation.eulerAngles;
 

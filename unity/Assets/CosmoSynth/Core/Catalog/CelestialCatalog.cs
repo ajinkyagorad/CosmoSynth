@@ -17,6 +17,23 @@ namespace CosmoSynth.Core
         private readonly Dictionary<string, List<string>> _childIds = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         private readonly List<string> _rootIds = new List<string>();
 
+        /// <summary>
+        /// Ids in the order they were added, which is the order the source documents list them.
+        ///
+        /// <see cref="RootIds"/> is built from this rather than from the dictionary, so that
+        /// "RootIds is in insertion order" — which three comments in this codebase, CONTRACT C10
+        /// and <c>CatalogAssembler</c>'s whole reason for existing all assert — is actually true.
+        /// It was not: <see cref="Rebuild"/> sorted the roots ordinally, so RootIds[0] was
+        /// whichever root sorted first alphabetically. With the exoplanets merged that is an
+        /// `exo-*` id ahead of `sun`, which is exactly the failure the assembler was written to
+        /// prevent, surviving inside the type it was supposed to be prevented in.
+        ///
+        /// A Dictionary enumerates in insertion order only while nothing is removed, and
+        /// <see cref="Remove"/> exists — a removal frees a slot that the next insert reuses. So
+        /// the order is tracked rather than inferred.
+        /// </summary>
+        private readonly List<string> _order = new List<string>();
+
         /// <summary>Free-text name of this catalogue, e.g. "Solar System (JPL DE440)".</summary>
         public string Name { get; set; } = "Untitled catalogue";
 
@@ -45,9 +62,20 @@ namespace CosmoSynth.Core
                 throw new ArgumentException($"Catalogue already contains a body with id '{body.Id}'.", nameof(body));
 
             _byId[body.Id] = body;
+            _order.Add(body.Id);
         }
 
-        public bool Remove(string id) => _byId.Remove(id);
+        public bool Remove(string id)
+        {
+            if (id == null || !_byId.Remove(id)) return false;
+            for (int i = 0; i < _order.Count; i++)
+            {
+                if (!StringComparer.OrdinalIgnoreCase.Equals(_order[i], id)) continue;
+                _order.RemoveAt(i);
+                break;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Absorb another catalogue's bodies into this one.
@@ -68,6 +96,10 @@ namespace CosmoSynth.Core
             {
                 if (_byId.ContainsKey(body.Id)) { collisions++; continue; }
                 _byId[body.Id] = body;
+                // Not through Add(): this path deliberately skips the duplicate-id throw. It must
+                // still keep _order, or a merged body is in the catalogue but in no tree at all —
+                // Rebuild walks _order, so the spacecraft ended up with no reference frame.
+                _order.Add(body.Id);
                 added++;
             }
 
@@ -123,8 +155,9 @@ namespace CosmoSynth.Core
             _childIds.Clear();
             _rootIds.Clear();
 
-            foreach (var body in _byId.Values)
+            foreach (string id in _order)
             {
+                if (!_byId.TryGetValue(id, out var body)) continue;
                 if (string.IsNullOrEmpty(body.ParentId))
                 {
                     _rootIds.Add(body.Id);
@@ -148,16 +181,19 @@ namespace CosmoSynth.Core
                 children.Add(body.Id);
             }
 
-            _rootIds.Sort(StringComparer.Ordinal);
+            // Roots are NOT sorted: RootIds[0] is the first root of the first document, which
+            // is what UniverseSimulation.SetFocus, CosmoSynthBootstrap and UniverseNavigator all
+            // read it as. Children still are, because nothing claims an order for them and a
+            // stable one is worth having.
             foreach (var children in _childIds.Values) children.Sort(StringComparer.Ordinal);
         }
 
         /// <summary>
         /// The star that lights a body: the first star on its chain of parents.
         ///
-        /// Not <c>RootIds[0]</c>, which is what the renderer used to ask. RootIds is in insertion
-        /// order, so the moment a second star system merged into the catalogue the light that
-        /// models the entire Solar System was attached to whichever root happened to sort first —
+        /// Not <c>RootIds[0]</c>, which is what the renderer used to ask. RootIds names the roots
+        /// of the merged tree, so the moment a second star system merged in, the light that
+        /// models the entire Solar System was attached to whichever root came first —
         /// 61 Vir, 11 parsecs away — and every planet went dark while the build reported success.
         ///
         /// A star returns itself. A body with no star above it (a rogue planet, an unparented

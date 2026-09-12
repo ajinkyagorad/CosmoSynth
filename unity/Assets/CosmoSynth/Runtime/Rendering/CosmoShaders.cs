@@ -16,47 +16,88 @@ namespace CosmoSynth.Runtime
     /// twenty <c>Shader.Find</c> calls, so the editor's always-included list is generated from
     /// the same array the runtime uses and cannot drift from it. And <see cref="Load"/> fails
     /// loudly rather than handing back a null that silently becomes pink.
+    ///
+    /// <see cref="All"/> is the single source of truth for what the build must include. Adding a
+    /// shader to the runtime means adding it here and nowhere else; a shader file that is not in
+    /// this array is not in the player, whatever else references it.
     /// </summary>
     public static class CosmoShaders
     {
-        public const string Standard = "Standard";
-        public const string UnlitColor = "Unlit/Color";
-        public const string UnlitTransparent = "Unlit/Transparent";
-        public const string SpritesDefault = "Sprites/Default";
-        public const string ParticlesUnlit = "Particles/Standard Unlit";
+        // ---- The eleven. Contract 7.2 and Appendix A.1. --------------------------------------
+        // All are single-variant URP HLSL under Runtime/Shaders, sharing CosmoCore.hlsl. Queues
+        // are the contract's 2.2 table and are declared in the shader, not set here.
 
-        /// <summary>Ours, in Runtime/Shaders. Still needs listing — a runtime-built scene
-        /// references it no more than it references Unity's own.</summary>
+        /// <summary>Opaque lit body: planets, moons, spacecraft. Queue 2000.</summary>
+        public const string Body = "CosmoSynth/Body";
+
+        /// <summary>Additive point-sprite billboards: stars, galaxies, markers. Queue 3050
+        /// (a material in sky mode sets 1010).</summary>
+        public const string Point = "CosmoSynth/Point";
+
+        /// <summary>Screen-constant-width anti-aliased line: orbits, figures, grids. Queue 3060.</summary>
+        public const string Ribbon = "CosmoSynth/Ribbon";
+
+        /// <summary>Inside-out eye-anchored sky sphere: the CMB. Queue 1000.</summary>
+        public const string Sky = "CosmoSynth/Sky";
+
+        /// <summary>Bounded raymarch volume: the Milky Way dust cube. Queue 3010.</summary>
+        public const string Volume = "CosmoSynth/Volume";
+
+        /// <summary>Analytic single-scattering atmosphere. Queue 3100. See CosmoAtmosphere.shader.</summary>
         public const string Atmosphere = "CosmoSynth/Atmosphere";
 
-        /// <summary>Soft selection outline. See CosmoRim.shader.</summary>
+        /// <summary>Soft selection outline. Queue 3100. See CosmoRim.shader.</summary>
         public const string Rim = "CosmoSynth/Rim";
 
+        /// <summary>Planetary rings, premultiplied over with an analytic planet shadow. Queue 3000.</summary>
+        public const string Ring = "CosmoSynth/Ring";
+
+        /// <summary>Flat opaque colour: beacon bars, the pointer ray. Queue 2000.</summary>
+        public const string Unlit = "CosmoSynth/Unlit";
+
+        /// <summary>Panel backing (queue 3200) and accent (the accent material sets 3201).</summary>
+        public const string Panel = "CosmoSynth/Panel";
+
         /// <summary>
-        /// What <c>TextMesh</c> draws glyphs with.
+        /// What <c>TextMesh</c> draws glyphs with. Queue 3210.
         ///
         /// Listed for the same reason as everything else here: every label and panel in the app is
         /// created at runtime, so no asset references this shader and the build step is free to
         /// strip it. The failure would be the whole interface — every panel, every body label —
         /// rendering as pink quads on the device while the editor showed it working perfectly.
         /// </summary>
-        public const string Text = "GUI/Text Shader";
+        public const string Text = "CosmoSynth/Text";
 
         /// <summary>
         /// The complete set. The editor writes exactly this into Always Included Shaders, so
         /// adding a shader to the runtime means adding it here and nowhere else.
+        ///
+        /// These are the only shader names the runtime may ask for. In particular no
+        /// <c>Universal Render Pipeline/*</c> shader may be referenced at runtime (gate G0d):
+        /// URP's own shaders are multi-variant, and a runtime-built scene strips the variants it
+        /// never referenced, which is the keyword half of the same magenta failure.
         /// </summary>
         public static readonly string[] All =
         {
-            Standard,
-            UnlitColor,
-            UnlitTransparent,
-            SpritesDefault,
-            ParticlesUnlit,
+            Body,
+            Point,
+            Ribbon,
+            Sky,
+            Volume,
             Atmosphere,
             Rim,
+            Ring,
+            Unlit,
+            Panel,
             Text,
         };
+
+        // The six built-in names that used to live here are gone, with their last callers.
+        // Standard, Unlit/Color, Unlit/Transparent, Sprites/Default, Particles/Standard Unlit and
+        // GUI/Text Shader have no UniversalForward or SRPDefaultUnlit pass under URP, so a
+        // material built on any of them draws nothing at all — and CreatePrimitive's own default
+        // material is URP/Lit, which is multi-variant and therefore strippable, which is the other
+        // half of the same magenta failure. Every runtime material now comes from Material() above.
 
         /// <summary>
         /// Look up a shader, complaining loudly if it is missing.
@@ -79,13 +120,35 @@ namespace CosmoSynth.Runtime
             return shader;
         }
 
-        /// <summary>Create a material from a named shader, with the same loud failure.</summary>
+        /// <summary>
+        /// Create a material from a named shader, with the same loud failure.
+        ///
+        /// <b>Returns null when even the fallback is missing.</b> Callers must handle that — skip
+        /// the renderer, leave the component inert — rather than being handed a Material wrapping
+        /// a null shader. <c>new Material(null)</c> throws from inside Unity, and it throws inside
+        /// whichever <c>Awake</c> was building its material, taking that component down with it.
+        /// That is not degrading; it is the same total, unexplained failure this class exists to
+        /// replace, with two error lines in front of it. A null return degrades: the object does
+        /// not draw, the log says which shader is missing, and the rest of the scene still runs.
+        /// </summary>
         public static Material Material(string name)
         {
             Shader shader = Load(name);
-            // Falling back to Standard keeps the object visible and grey rather than magenta, so
-            // a missing shader degrades instead of screaming.
-            return new Material(shader != null ? shader : Shader.Find(Standard));
+            // Falling back to Unlit keeps the object visible and flat rather than magenta, so a
+            // missing shader degrades instead of screaming. It used to fall back to Standard,
+            // which under URP is itself missing — the fallback had the same failure as the thing
+            // it was catching.
+            if (shader == null && name != Unlit) shader = Load(Unlit);
+            if (shader == null)
+            {
+                Debug.LogError(
+                    "[CosmoSynth] No material for '" + name + "' and none for the " + Unlit +
+                    " fallback either — the CosmoSynth shader set is not in this build at all. " +
+                    "Nothing that asked for a material will draw. Run " +
+                    "CosmoSynth.EditorTools.XrSetup and rebuild.");
+                return null;
+            }
+            return new Material(shader);
         }
     }
 }

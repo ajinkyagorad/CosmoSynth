@@ -337,6 +337,14 @@ namespace CosmoSynth.EditorTools
 
                 // The sky shell is placed per eye at a declared radius and is exempt by design;
                 // everything else is CPU-placed and must sit inside the frustum.
+                //
+                // The exemption is now implemented rather than only claimed. It was a comment over
+                // a loop that exempted nothing, and the shell it described is real geometry: the
+                // old 900-unit sphere measured about 1559 m against a 1800 m limit, so the
+                // assertion passed only while the camera stayed within 240 m of the anchor and
+                // would then have failed for a reason with nothing to do with what it checks.
+                if (IsShaderPlaced(r)) continue;
+
                 Bounds b = r.bounds;
                 float distance = Vector3.Distance(camera.transform.position, b.center) + b.extents.magnitude;
                 if (distance > farthest) { farthest = distance; farthestPath = HierarchyPath(r.transform); }
@@ -358,17 +366,51 @@ namespace CosmoSynth.EditorTools
             // ---- angular size survives the compression
             report.Append(AssertAngularSize(simulation, renderer));
 
-            // ---- nothing is magenta
+            // ---- every material is drawn by a shader that will be in the build
+            //
+            // The check this replaces looked for Hidden/InternalErrorShader, which in the EDITOR
+            // can never appear for the failure it was named after: every shader in the project is
+            // loaded here, so Shader.Find always succeeds and the fallback never happens. It is
+            // the project's own verification-gap pattern — the check passed for a reason unrelated
+            // to its name, on a tree where eight runtime sites asked for built-in shaders that do
+            // not exist in a URP player.
+            //
+            // What discriminates is the NAME: CosmoShaders.All is exactly what XrSetup writes into
+            // Always Included Shaders, so a material on any other shader is a material that may
+            // not survive the build. This one fails on the tree the old one passed.
+            var offenders = new System.Collections.Generic.SortedDictionary<string, string>();
             int magenta = 0;
             foreach (Renderer r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
             {
                 if (r == null) continue;
                 foreach (Material m in r.sharedMaterials)
                 {
-                    if (m != null && m.shader != null && m.shader.name.StartsWith("Hidden/InternalError")) magenta++;
+                    if (m == null) continue;
+                    if (m.shader == null)
+                    {
+                        offenders["(null shader)"] = HierarchyPath(r.transform);
+                        continue;
+                    }
+                    if (m.shader.name.StartsWith("Hidden/InternalError")) magenta++;
+                    if (System.Array.IndexOf(CosmoShaders.All, m.shader.name) < 0)
+                        offenders[m.shader.name] = HierarchyPath(r.transform);
                 }
             }
-            report.AppendLine($"  shaders: {magenta} renderer(s) on the internal error shader");
+
+            report.AppendLine($"  shaders: {offenders.Count} shader name(s) outside CosmoShaders.All, " +
+                              $"{magenta} renderer(s) on the internal error shader");
+            foreach (var entry in offenders) report.AppendLine($"    {entry.Key}  (e.g. {entry.Value})");
+
+            if (offenders.Count > 0)
+            {
+                var names = new System.Text.StringBuilder();
+                foreach (var entry in offenders)
+                {
+                    if (names.Length > 0) names.Append(", ");
+                    names.Append(entry.Key).Append(" on ").Append(entry.Value);
+                }
+                Fail("shaders", $"{offenders.Count} shader(s) not in CosmoShaders.All: {names}");
+            }
             if (magenta > 0) Fail("shaders", $"{magenta} material(s) fell back to Hidden/InternalErrorShader");
 
             report.AppendLine($"  view '{view}' asserted");
@@ -939,6 +981,27 @@ namespace CosmoSynth.EditorTools
 
         private static string Shorten(string path) =>
             path.Length <= 46 ? path : "..." + path.Substring(path.Length - 43);
+
+        /// <summary>
+        /// True when this renderer's geometry is placed by a shader rather than by its transform,
+        /// so its world bounds say nothing about where it is drawn.
+        ///
+        /// Two shapes: CosmoSynth/Sky, whose object-space vertices are ICRF directions anchored at
+        /// the eye, and any CosmoSynth/Point material in sky mode (_Space = 2), which is the star
+        /// shell. Both sit at the declared sky radius from THIS eye however large their mesh
+        /// bounds are.
+        /// </summary>
+        private static bool IsShaderPlaced(Renderer renderer)
+        {
+            foreach (Material m in renderer.sharedMaterials)
+            {
+                if (m == null || m.shader == null) continue;
+                if (m.shader.name == CosmoShaders.Sky) return true;
+                if (m.shader.name == CosmoShaders.Point && m.HasFloat("_Space") &&
+                    m.GetFloat("_Space") > 1.5f) return true;
+            }
+            return false;
+        }
 
         private static string HierarchyPath(Transform transform)
         {

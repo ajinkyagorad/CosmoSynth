@@ -30,9 +30,5 @@ namespace CosmoSynth.Core
             if (double.IsNaN(unitsPerKm) || unitsPerKm <= 0.0) return MinUnitsPerKm;
             return MathD.Clamp(unitsPerKm, MinUnitsPerKm, MaxUnitsPerKm);
         }
-
-        /// <summary>True when a scale is inside the ladder without clamping.</summary>
-        public static bool Contains(double unitsPerKm) =>
-            unitsPerKm >= MinUnitsPerKm && unitsPerKm <= MaxUnitsPerKm;
     }
 }

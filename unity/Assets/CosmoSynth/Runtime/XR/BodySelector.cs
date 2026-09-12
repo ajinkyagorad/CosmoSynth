@@ -67,7 +67,8 @@ namespace CosmoSynth.Runtime
             _ray.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _ray.receiveShadows = false;
 
-            _rayMaterial = CosmoShaders.Material(CosmoShaders.UnlitColor);
+            _rayMaterial = CosmoShaders.Material(CosmoShaders.Unlit);
+            if (_rayMaterial == null) { _ray.enabled = false; return; }
             _rayMaterial.color = CosmoTheme.Accent;
             _ray.sharedMaterial = _rayMaterial;
             _ray.enabled = false;
@@ -106,6 +107,7 @@ namespace CosmoSynth.Runtime
             // soft outline hugging the silhouette that does not fight the atmosphere sitting in
             // the same few percent of radius.
             _highlightMaterial = CosmoShaders.Material(CosmoShaders.Rim);
+            if (_highlightMaterial == null) { renderer.enabled = false; sphere.SetActive(false); return; }
             _highlightMaterial.SetColor("_Color", CosmoTheme.WithAlpha(CosmoTheme.Accent, 0.6f));
             _highlightMaterial.SetFloat("_Power", 2.5f);
             renderer.sharedMaterial = _highlightMaterial;
