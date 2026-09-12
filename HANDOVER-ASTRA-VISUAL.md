@@ -220,3 +220,36 @@ exactly the layers that fix the emptiness, so the data work and the visual work 
 A capture from the seven fixed views that a stranger would call beautiful, holding the 72 Hz budget
 on Quest 3, with every gate green, and a before/after pair against `/tmp/cs-baseline/app-running.png`
 for each view. Then a build on the owner's headset, because nothing above is proven until it is worn.
+
+---
+
+## Appendix — the five technique documents are written, and reconciled
+
+§5's brief was answered as five documents in `docs/design/visual/`: `image-pipeline.md`,
+`starfield.md`, `galaxy-and-sky.md`, `planets-and-air.md`, `staging-and-bridge.md` — ~5,900 lines
+of maths, constants, shader source, costed arithmetic and V/I tags. **Read
+`docs/design/VISUAL-PLAN.md` before acting on any of them**: it reconciles the five into one frame
+budget, one dependency order and one phased plan, and resolves seventeen contradictions between them.
+
+**Budget verdict.** Draws 116 of 150, vertices 1.092 M of 1.2 M, transparent fragments 1.95 of 3.0,
+point sprites 0.329 of 0.5, raymarch 30.04 of 33, texture 61 MB of 100, APK ~55 MB of 150 — all pass,
+and the design *returns* 18 draw ceilings, 0.29 M vertex ceilings and 26 MB of texture against §7.3's
+own rows. **One axis busts, for one unmeasured constant.** κ (ms per step-coverage for a 3D-texture
+march step) decides the frame: break-even **κ = 0.281**; at the inferred 0.06 the worst frame is
+4.35 ms of 11.0, at Fractarium's measured *upper bound* 0.338 it is 12.70 and misses 72 Hz by 15 %.
+Cut 1 — the Galaxy volume from 30 steps to 20 — moves break-even to 0.42, above that bound, so it
+fits whatever the probe says. One thing in this frame is expensive and it is that step count.
+
+**The decisions that matter most.** No HDR buffer and no post pass anywhere: the alternative costs
+6.5–8.0 ms of 11.0 and `UberPost` returns alpha 1, killing passthrough app-wide. The response curve
+lives at the point of emission and every operator returns exactly 0 for 0, because the room is behind
+the picture. Stars are flux-true with no luminosity compression — it emerges from the point-spread
+wing — giving 1,500 : 1 of range where the build ships 2.5 : 1 and renders Sirius, Vega and Deneb
+identically. `dust`, `nebulae`, `mwDisc` and `mwBand` collapse to one volume plus one baked direction
+cube; an atmosphere draws only while its disc is ≥ 2/(k−1) px, turning nine draws into one and
+buying back the 3 step-coverages that had no margin.
+
+**Do first, in order:** fix the galactic matrix; bring `lane/foundation-shaders` to R1/R7/R30; move
+the Sun's light off 61 Vir; derive the capture fov from `PixelsPerRadian` (the harness validates every
+pixel rule 21.8 % too generously); run the κ probe. Tune nothing before Linear lands — every constant
+in all five documents was chosen against a Gamma framebuffer.

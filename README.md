@@ -1,5 +1,18 @@
 # COSMOSYNTH
 
+<!-- quest-passthrough-rule:start -->
+## Global Quest 3 passthrough rule
+
+**Passthrough must work without requiring a drawn/enabled VR play boundary wherever the platform supports it.** Follow the [shared native/WebXR implementation rule](../QUEST-PASSTHROUGH-POLICY.md). Keep boundary behavior tied to the experience mode. This is a standing requirement for current and future releases; existing binaries are not certified by this documentation change.
+<!-- quest-passthrough-rule:end -->
+
+<!-- quest-controller-rule:start -->
+## Global Quest 3 controller rule
+
+**Help stays hidden by default.** Use official Touch Plus models with input-driven button/trigger/stick animation. Optional help shows only usable actions immediately beside the actual controls, without arrows or leader lines. Follow the [shared convention and official asset paths](../QUEST-CONTROLLER-CONVENTIONS.md). This is a requirement for future work; existing releases may still need implementation.
+<!-- quest-controller-rule:end -->
+
+
 **A scientifically grounded universe engine for XR.**
 Explore the known universe. Generate the unknown. Touch space in VR/MR.
 
