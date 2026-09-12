@@ -94,6 +94,10 @@ while IFS='|' read -r id what cmd stcmd; do
     ran=$((ran + 1)); continue
   fi
 
+  # G0f's drop test is the one slow gate and is --full only (CONTRACT 10.6), so --full has
+  # to reach it. No other gate takes the flag.
+  [ "$FULL" -eq 1 ] && [ "$id" = "G0f" ] && cmd="$cmd --full"
+
   out=$(bash -c "$cmd" 2>&1); rc=$?
   printf '%s\n' "$out" > "$LOGDIR/$id.log"
   ran=$((ran + 1))

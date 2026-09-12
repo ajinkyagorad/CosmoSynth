@@ -1,0 +1,4 @@
+50
+# MB of unity/Assets/StreamingAssets. CONTRACT C22: B projects about 36 MB (6.7 today plus
+# 29.3 added), so 50 leaves room for one deliberate raise and no more. Raising it is an
+# integrator commit, because a budget that can never be hit is not a budget.
