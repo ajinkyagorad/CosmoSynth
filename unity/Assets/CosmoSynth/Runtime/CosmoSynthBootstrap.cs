@@ -142,11 +142,7 @@ namespace CosmoSynth.Runtime
             // Point-and-pinch selection with the world-space provenance panel.
             host.AddComponent<BodySelector>();
 
-            // Wrist dashboard: the scale ladder and destination list. Parented to the tracking
-            // space rather than to the universe, because it belongs to the user, not the scene.
-            var dashboardObject = new GameObject("Wrist Dashboard");
-            dashboardObject.transform.SetParent(Rig.Origin.CameraFloorOffsetObject.transform, false);
-            dashboardObject.AddComponent<WristDashboard>();
+            BuildNavigationAndInterface(host);
 
             // Surface textures, generated on worker threads and applied a body at a time.
             host.AddComponent<PlanetTextureBaker>();
@@ -158,13 +154,16 @@ namespace CosmoSynth.Runtime
             // that star's own measured position and discarded when you leave.
             host.AddComponent<NearbyStarSystems>();
 
-            // Names for whatever is on screen. Parented under the simulation, so labels travel
-            // with the universe when the anchor is moved, exactly as the bodies do.
+            // Names for whatever is on screen. One mesh for all of them, parented to the rig
+            // rather than to the universe: the label mesh rides the camera so each label carries
+            // its own depth, which is what lets twenty-four of them cost one draw call.
             var labelObject = new GameObject("Body Labels");
-            labelObject.transform.SetParent(host.transform, false);
-            labelObject.AddComponent<BodyLabelLayer>();
+            labelObject.transform.SetParent(Rig.Origin.CameraFloorOffsetObject.transform, false);
+            var labels = labelObject.AddComponent<BodyLabelLayer>();
+            labels.Bind(Simulation, Options, host.GetComponent<BodySelector>(), Travel, Rig.Camera);
 
-            if (_showHud) host.AddComponent<ProvenanceHud>();
+            UniverseAnchor.gameObject.GetComponent<AnchorBeacon>()
+                .Bind(Rig, Simulation, Options, host.GetComponent<XrHandInput>());
 
             Simulation.CatalogLoaded += OnCatalogLoaded;
 
@@ -291,6 +290,69 @@ namespace CosmoSynth.Runtime
                     cameraObject.AddComponent<DesktopInputSource>();
                 navigator.AbsolutePositionKm = Simulation.Origin.OriginKm;
             }
+        }
+
+        /// <summary>Every switch the viewer can throw that is not a layer's own.</summary>
+        public ViewOptions Options { get; private set; }
+
+        /// <summary>The one thing that moves the view: Travel, Follow and Free.</summary>
+        public TravelController Travel { get; private set; }
+
+        /// <summary>Every continuous change of scale, and the readout.</summary>
+        public ScaleControl Scale { get; private set; }
+
+        /// <summary>Everywhere the viewer can go, assembled from the rungs, the catalogue and the layers.</summary>
+        public DestinationIndex Destinations { get; private set; }
+
+        public MeasureTool Measure { get; private set; }
+
+        public WristPanel Panel { get; private set; }
+
+        /// <summary>
+        /// Navigation and the interface, wired in one place.
+        ///
+        /// Everything here takes its references by hand rather than looking them up: a component
+        /// that finds its own collaborators works until there are two of something, and then finds
+        /// the wrong one silently.
+        /// </summary>
+        private void BuildNavigationAndInterface(GameObject host)
+        {
+            Options = new ViewOptions();
+            Options.Layers.ApplyDefaults();
+
+            Destinations = new DestinationIndex(Simulation);
+            Simulation.BodiesChanged += Destinations.MarkDirty;
+            Simulation.CatalogLoaded += _ => Destinations.MarkDirty();
+
+            Travel = host.AddComponent<TravelController>();
+            Travel.Bind(Simulation, Options, Destinations, UniverseAnchor, host.transform, Rig.Camera);
+
+            Scale = host.AddComponent<ScaleControl>();
+            Measure = host.AddComponent<MeasureTool>();
+            Measure.Bind(Simulation, Rig.GetComponent<ScaleRenderer>(), Options, Rig.Camera);
+
+            var selector = host.GetComponent<BodySelector>();
+            Scale.Bind(Simulation, host.GetComponent<XrInput>(), selector, Travel, Options);
+            if (selector.Card != null)
+                selector.Card.Bind(Simulation, Options, Travel, Destinations, Rig.Camera);
+
+            var model = new PanelModel();
+            model.Bind(Simulation, _clock, Options, Scale, Travel, Destinations, Measure, selector, Rig, Recenter);
+            Options.Changed += model.Rebuild;
+            model.Rebuild();
+
+            // The panel belongs to the user, not to the scene, so it hangs off the tracking space
+            // rather than off the universe: a grab that moves the solar system must not move the
+            // interface with it.
+            var panelObject = new GameObject("Wrist Panel");
+            panelObject.transform.SetParent(Rig.Origin.CameraFloorOffsetObject.transform, false);
+            Panel = panelObject.AddComponent<WristPanel>();
+            Panel.Bind(Rig, host.GetComponent<XrInput>(), host.GetComponent<XrHandInput>(), Options, model,
+                Travel, selector, Measure, Destinations);
+
+            // Kept only so the harness's rung<N> view still resolves; the integrator deletes it
+            // with PlayModeShot's move to rung:<id>.
+            panelObject.AddComponent<WristDashboard>();
         }
 
         private void Start() => StartCoroutine(PlaceAnchorWhenTrackingSettles());

@@ -43,7 +43,6 @@ namespace CosmoSynth.Runtime
         private Double3 _absolutePositionKm;
         private float _yaw;
         private float _pitch;
-        private CelestialBodyView _travelTarget;
         private bool _initialised;
 
         /// <summary>The viewer's absolute position, km. Authoritative; the transform follows it.</summary>
@@ -67,7 +66,6 @@ namespace CosmoSynth.Runtime
         public CelestialBodyView NearestBody { get; private set; }
 
         /// <summary>The body being travelled to, or null.</summary>
-        public CelestialBodyView TravelTarget => _travelTarget;
 
         public float SpeedMultiplier
         {
@@ -85,9 +83,7 @@ namespace CosmoSynth.Runtime
         public void Look(Vector2 delta) => _lookInput = delta;
 
         /// <summary>Begin travelling to a body. Cancelled by any manual movement.</summary>
-        public void TravelTo(CelestialBodyView target) => _travelTarget = target;
 
-        public void CancelTravel() => _travelTarget = null;
 
         private void Awake()
         {
@@ -119,8 +115,7 @@ namespace CosmoSynth.Runtime
 
             CurrentSpeedKmPerSec = ScaleSpace.NavigationSpeed(surfaceKm, _secondsToCrossScene);
 
-            if (_travelTarget != null) UpdateTravel(Time.unscaledDeltaTime);
-            else UpdateManual(Time.unscaledDeltaTime);
+            UpdateManual(Time.unscaledDeltaTime);
 
             ApplyToTransform();
         }
@@ -147,33 +142,10 @@ namespace CosmoSynth.Runtime
             _initialised = true;
         }
 
-        private void UpdateTravel(float deltaTime)
-        {
-            if (_travelTarget == null) return;
-
-            Double3 toTarget = _travelTarget.AbsolutePositionKm - _absolutePositionKm;
-            double distance = toTarget.Magnitude;
-
-            double radius = _travelTarget.Body.EquatorialRadiusKm ?? 1.0;
-            double arrival = radius * _arrivalRadii;
-
-            if (distance <= arrival)
-            {
-                _travelTarget = null;
-                return;
-            }
-
-            // Exponential approach: cover a fixed fraction of the remaining gap each second.
-            // This is what makes an interstellar hop and a hop across a room take a similar
-            // time, and it decelerates into arrival without needing a separate braking phase.
-            double remaining = distance - arrival;
-            double step = remaining * (1.0 - System.Math.Exp(-_approachRate * deltaTime));
-
-            _absolutePositionKm += toTarget.Normalized * step;
-            _initialised = true;
-
-            LookAt(_travelTarget);
-        }
+        // UpdateTravel, TravelTo, CancelTravel and TravelTarget are DELETED (CONTRACT 5.7.1).
+        // There were three unrelated travel mechanisms — this one, the wrist dashboard's teleport
+        // and the harness's FlyToStar — and only one of them changed scale, so "go there" meant a
+        // different motion depending on which surface asked. TravelController is the one.
 
         /// <summary>Point the viewer at a body.</summary>
         public void LookAt(CelestialBodyView target)

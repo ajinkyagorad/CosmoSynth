@@ -35,9 +35,27 @@ namespace CosmoSynth.Runtime
         /// <summary>The instant being drawn.</summary>
         public readonly CosmicTime Now;
 
+        /// <summary>
+        /// The per-frame answers every layer's visibility condition is a function of (CONTRACT 4.2).
+        ///
+        /// Added by lane `nav-ui`: <c>CosmoLayer.UpdateWeight</c> is defined in terms of it, and the
+        /// LAYERS tab, the destination list and the picks are all functions of layer weight. The
+        /// seven-argument constructor is kept so <c>ScaleRenderer</c> compiles unchanged until the
+        /// integrator's own layer kit populates this field.
+        /// </summary>
+        public readonly LayerContext LayerContext;
+
         public FrameContext(Double3 eyeKm, Vector3 eyeWorld, Vector3 eyeUniverse, double unitsPerKm,
             Matrix4x4 icrfToWorld, float pixelsPerRadian, CosmicTime now)
+            : this(eyeKm, eyeWorld, eyeUniverse, unitsPerKm, icrfToWorld, pixelsPerRadian, now,
+                   default(LayerContext))
         {
+        }
+
+        public FrameContext(Double3 eyeKm, Vector3 eyeWorld, Vector3 eyeUniverse, double unitsPerKm,
+            Matrix4x4 icrfToWorld, float pixelsPerRadian, CosmicTime now, LayerContext layerContext)
+        {
+            LayerContext = layerContext;
             EyeKm = eyeKm;
             EyeWorld = eyeWorld;
             EyeUniverse = eyeUniverse;

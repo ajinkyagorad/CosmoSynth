@@ -31,6 +31,20 @@ namespace CosmoSynth.Core
             return MathD.Clamp(unitsPerKm, MinUnitsPerKm, MaxUnitsPerKm);
         }
 
+        /// <summary>
+        /// True when a scale has reached one end of the ladder, and which end.
+        ///
+        /// The haptic bump and the "limit: ..." flash both need to know which wall was hit. Asking
+        /// twice, once per direction, is how two controls come to disagree about where the wall is
+        /// — which is exactly the bug in the WebXR Atlas this ports, whose slider and whose
+        /// two-hand gesture allow tops 5.2 decades apart.
+        /// </summary>
+        public static bool AtLimit(double unitsPerKm, out bool atMax)
+        {
+            atMax = unitsPerKm >= MaxUnitsPerKm;
+            return atMax || unitsPerKm <= MinUnitsPerKm;
+        }
+
         /// <summary>True when a scale is inside the ladder without clamping.</summary>
         public static bool Contains(double unitsPerKm) =>
             unitsPerKm >= MinUnitsPerKm && unitsPerKm <= MaxUnitsPerKm;

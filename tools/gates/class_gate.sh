@@ -23,7 +23,7 @@ bad()  { printf '  FAIL  %s\n' "$1"; fail=1; }
 # Type declarations, ignoring comments and the `class` inside a doc comment.
 types() {   # $1 = file -> "kind<TAB>name" per line
   sed -e 's://.*::' "$1" 2>/dev/null \
-    | grep -oE '\b(class|struct|interface|enum)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' \
+    | grep -oE '\b(class|struct|interface|enum|record)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' \
     | awk '{print $1"\t"$2}'
 }
 mono_classes() {   # classes with a MonoBehaviour base
@@ -69,6 +69,11 @@ CS
   cat > "$S/Catalog.cs" <<'CS'
 public static class Catalog { public const int N = 1; }
 CS
+  # A positional record named after its file. CONTRACT 4.2 mandates records for Destination,
+  # LayerDef, LayerParam, Rung and LayerBudget, and the scanner used to miss all five.
+  cat > "$S/Waypoint.cs" <<'CS'
+public sealed record Waypoint(string Id, double Distance);
+CS
   out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
   if [ "$rc" -ne 0 ]; then
     echo "SELF-TEST FAIL: the good fixture did not pass"; printf '%s\n' "$out"; rm -rf "$d"; return 1
@@ -89,6 +94,8 @@ public class Hidden : MonoBehaviour {}'
 'public class NotWrong : MonoBehaviour {}'
   check_bad "no type named after the file" Empty.cs \
 'public class Something {}'
+  check_bad "record named unlike its file" Wrong2.cs \
+'public sealed record NotWrong2(int A);'
 
   rm -rf "$d"
   [ "$ok" -eq 1 ] || return 1

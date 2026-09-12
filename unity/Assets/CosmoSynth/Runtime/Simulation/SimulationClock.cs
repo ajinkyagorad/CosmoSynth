@@ -26,24 +26,23 @@ namespace CosmoSynth.Runtime
         /// The time-warp ladder, in simulated seconds per real second. Each step is a round
         /// number a person can hold in their head.
         /// </summary>
-        public static readonly double[] WarpRates =
+        /// <summary>
+        /// The ladder itself moved to <c>Core/Time/WarpLadder.cs</c> (CONTRACT 5.8.1): 28 signed
+        /// steps, mirrored about real time, with <b>no zero</b> — pause is a separate state that
+        /// keeps the warp, so stepping out of pause returns to the rate you were running at rather
+        /// than to whichever side the last press came from.
+        ///
+        /// This array survives as a forward for anything still reading the old forward-only one.
+        /// </summary>
+        public static double[] WarpRates
         {
-            0.0,           // paused
-            1.0,           // real time
-            10.0,
-            60.0,          // a minute per second
-            600.0,
-            3600.0,        // an hour per second
-            21600.0,
-            86400.0,       // a day per second
-            604800.0,      // a week per second
-            2592000.0,     // a month per second
-            31557600.0,    // a year per second
-            315576000.0,   // a decade per second
-            3155760000.0,  // a century per second
-            3.155760e11,   // ten millennia per second
-            3.155760e13    // a million years per second
-        };
+            get
+            {
+                var rates = new double[WarpLadder.MaxIndex + 1];
+                for (int i = 1; i <= WarpLadder.MaxIndex; i++) rates[i] = WarpLadder.Rate(i);
+                return rates;
+            }
+        }
 
         [Header("Epoch")]
         [Tooltip("ISO-8601 UTC instant the simulation starts from. Empty means the real current time.")]
@@ -78,13 +77,14 @@ namespace CosmoSynth.Runtime
             }
         }
 
-        /// <summary>Simulated seconds elapsed per real second.</summary>
-        public double WarpRate => _running ? WarpRates[Mathf.Clamp(_warpIndex, 0, WarpRates.Length - 1)] : 0.0;
+        /// <summary>Simulated seconds elapsed per real second. Negative runs time backwards.</summary>
+        public double WarpRate => _running ? WarpLadder.Rate(_warpIndex) : 0.0;
 
+        /// <summary>Signed index into the warp ladder: -14 to +14, never 0.</summary>
         public int WarpIndex
         {
             get => _warpIndex;
-            set => _warpIndex = Mathf.Clamp(value, 0, WarpRates.Length - 1);
+            set => _warpIndex = WarpLadder.Clamp(value);
         }
 
         public bool IsRunning
@@ -93,7 +93,8 @@ namespace CosmoSynth.Runtime
             set => _running = value;
         }
 
-        public bool IsPaused => !_running || _warpIndex == 0;
+        /// <summary>Pause is its own state, and it keeps the warp it was running at.</summary>
+        public bool IsPaused => !_running;
 
         /// <summary>Simulated seconds that elapsed during the last frame.</summary>
         public double LastStepSeconds { get; private set; }
@@ -135,9 +136,9 @@ namespace CosmoSynth.Runtime
             _now += LastStepSeconds;
         }
 
-        public void FasterWarp() => WarpIndex = _warpIndex + 1;
+        public void FasterWarp() => WarpIndex = WarpLadder.Step(_warpIndex, 1);
 
-        public void SlowerWarp() => WarpIndex = _warpIndex - 1;
+        public void SlowerWarp() => WarpIndex = WarpLadder.Step(_warpIndex, -1);
 
         public void TogglePause() => _running = !_running;
 
@@ -153,20 +154,7 @@ namespace CosmoSynth.Runtime
         }
 
         /// <summary>A short label for the current warp rate, for the HUD.</summary>
-        public string WarpLabel
-        {
-            get
-            {
-                double rate = WarpRates[Mathf.Clamp(_warpIndex, 0, WarpRates.Length - 1)];
-                if (!_running || rate == 0.0) return "paused";
-                if (rate < 60.0) return $"{rate:0.#}x";
-                if (rate < 3600.0) return $"{rate / 60.0:0.#} min/s";
-                if (rate < 86400.0) return $"{rate / 3600.0:0.#} hr/s";
-                if (rate < 31557600.0) return $"{rate / 86400.0:0.#} day/s";
-                if (rate < 3.15576e11) return $"{rate / 31557600.0:0.#} yr/s";
-                return $"{rate / 31557600.0:0.###e0} yr/s";
-            }
-        }
+        public string WarpLabel => _running ? WarpLadder.Label(_warpIndex) : "paused";
 
         /// <summary>
         /// Parse a subset of ISO-8601: <c>YYYY-MM-DD</c> optionally followed by

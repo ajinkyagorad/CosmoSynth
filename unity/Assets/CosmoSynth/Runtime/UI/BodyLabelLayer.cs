@@ -5,277 +5,229 @@ using UnityEngine;
 namespace CosmoSynth.Runtime
 {
     /// <summary>
-    /// Names the bodies on screen.
+    /// Names for whatever is on screen: bodies, and everything the layers offer through
+    /// <c>CollectLabels</c>.
     ///
-    /// The app had no labels at all. A captured frame of the whole Solar System shows nine
-    /// featureless discs and a dozen ellipses, and there is no way to tell which is Mars — the
-    /// data is all there, in a catalogue of 211 bodies with measured radii and provenance for
-    /// every field, and none of it is legible in the one view that shows the most of it. A
-    /// planetarium without labels is a screensaver.
+    /// <b>One mesh for all of them.</b> A legacy <c>TextMesh</c> per label is one draw call each and
+    /// dynamic batching is off, so twenty-four labels were twenty-four draws — a sixth of the whole
+    /// 150-draw frame budget spent on text. The glyphs go into a single mesh parented to the camera,
+    /// each at its own depth so the labels stay sorted against the bodies they name.
     ///
-    /// Two things make labels work rather than make the view worse:
+    /// <b>Only drawn things are labelled.</b> A body that has dropped below the visibility floor
+    /// keeps a stale <c>RenderedRadius</c>, and a label placed from one used to float in empty space
+    /// where the planet had been. <c>IsGeometryDrawn</c> is re-checked every frame, because a
+    /// selection outlives the body.
     ///
-    /// <b>They are ranked, not exhaustive.</b> 211 names would cover the sky. Bodies compete on
-    /// apparent size and the largest handful win, so what gets named is what the viewer can
-    /// actually see, and the set changes as they move rather than being a fixed list.
-    ///
-    /// <b>They are decluttered in screen space.</b> Two labels overlapping is worse than one label
-    /// missing — overlapping text is unreadable and, worse, ambiguous about which body either
-    /// belongs to. A greedy pass drops any label whose box collides with one already placed. This
-    /// is the same rule cartographers use, for the same reason.
+    /// <b>No crowd shrink.</b> At the measured 1140 px/rad a 19 dmm caption is 21.7 px, which is
+    /// above a legibility floor but not comfortably; shrinking a crowded label pushes it under. So
+    /// crowding drops labels instead, and the selected, followed and travel-target labels are one
+    /// size up.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)]
-    [AddComponentMenu("CosmoSynth/Body Labels")]
+    [AddComponentMenu("CosmoSynth/Body Label Layer")]
     public sealed class BodyLabelLayer : MonoBehaviour
     {
-        [Tooltip("Most labels drawn at once. Beyond this the view is a word cloud.")]
-        [SerializeField] private int _maximumLabels = 14;
+        /// <summary>At most this many world labels (§5.6.10). Today's build drew 14.</summary>
+        public const int MaximumLabels = 24;
 
-        [Tooltip("Apparent diameter, in pixels, at which an unremarkable body earns a name.")]
-        [SerializeField] private float _minimumPixels = 3f;
-
-        private UniverseSimulation _simulation;
-        private Camera _camera;
-
-        private readonly List<TextMesh> _pool = new List<TextMesh>();
-        private readonly List<Candidate> _candidates = new List<Candidate>();
-        private readonly List<Rect> _placed = new List<Rect>();
+        /// <summary>Minimum separation in viewport fractions before a label is dropped.</summary>
+        public const float DeclutterRadius = 0.055f;
 
         private struct Candidate
         {
-            public CelestialBodyView View;
-            public double Pixels;
-            public Vector3 Viewport;
+            public string Text;
+            public Vector3 World;
+            public float Priority;
+            public bool Emphasised;
+            public Color Colour;
+            public LabelCategory Category;
+        }
+
+        private readonly List<Candidate> _candidates = new List<Candidate>(128);
+        private readonly List<LabelCandidate> _fromLayers = new List<LabelCandidate>(64);
+        private readonly List<Vector2> _placed = new List<Vector2>(MaximumLabels);
+
+        private UniverseSimulation _simulation;
+        private ViewOptions _options;
+        private BodySelector _selector;
+        private TravelController _travel;
+        private Camera _camera;
+        private CosmoTextMesh _mesh;
+
+        /// <summary>How many labels were drawn this frame; the play-mode report prints it.</summary>
+        public int Drawn { get; private set; }
+
+        public void Bind(UniverseSimulation simulation, ViewOptions options, BodySelector selector,
+            TravelController travel, Camera camera)
+        {
+            _simulation = simulation;
+            _options = options;
+            _selector = selector;
+            _travel = travel;
+            _camera = camera;
+        }
+
+        private void Awake()
+        {
+            if (_simulation == null) _simulation = FindAnyObjectByType<UniverseSimulation>();
+            if (_camera == null) _camera = Camera.main;
         }
 
         private void LateUpdate()
         {
-            if (_simulation == null) _simulation = FindAnyObjectByType<UniverseSimulation>();
-            if (_camera == null) _camera = Camera.main;
-            if (_simulation?.Catalog == null || _camera == null)
-            {
-                HideFrom(0);
-                return;
-            }
+            if (_mesh == null) _mesh = new CosmoTextMesh(transform, "World Labels");
+            if (_camera == null) { _mesh.Visible = false; return; }
+
+            bool show = _options == null || (_options.LabelsMaster && !_options.CleanView);
+            _mesh.Visible = show;
+            if (!show) { Drawn = 0; return; }
+
+            // The mesh rides the camera, so a label's local z is its forward distance and its
+            // angular size converts to metres there.
+            _mesh.Root.SetPositionAndRotation(_camera.transform.position, _camera.transform.rotation);
 
             Gather();
             Place();
         }
 
-        /// <summary>
-        /// Collect what is on screen and worth naming, most significant first.
-        ///
-        /// Significance is not apparent size alone, which was the first thing tried and which
-        /// labels nothing at all in the view that needs labels most. With the whole Solar System
-        /// on a table every planet is under a tenth of a pixel across — the report says "bodies at
-        /// 1 px or larger: 0 of 211" — and each is drawn at the minimum-visible floor instead. A
-        /// size threshold therefore rejects the entire Solar System and names only whatever the
-        /// user last selected.
-        ///
-        /// So a planet, dwarf planet or nearby star is named because of what it is, and anything
-        /// else has to earn it by being big on screen. That is what a star chart does: it labels
-        /// the objects that have names, not the objects that happen to be bright.
-        /// </summary>
         private void Gather()
         {
             _candidates.Clear();
+            if (_simulation == null) return;
+
+            string selectedId = _selector != null && _selector.Selected != null ? _selector.Selected.Body.Id : null;
+            string followedId = _travel != null ? _travel.FollowingId : null;
+            string targetId = _travel != null && _travel.Target != null ? _travel.Target.BodyId : null;
 
             foreach (CelestialBodyView view in _simulation.Views.Values)
             {
-                if (view == null) continue;
+                if (view == null || view.Body == null) continue;
+                if (!view.IsPointable) continue;
 
-                // Never name something that is not there.
-                //
-                // A label is the strongest claim this app makes about a position — it is a name
-                // written in space with a name's worth of authority — and it was being written
-                // over spacecraft the catalogue explicitly does not know the position of. Cassini
-                // is labelled above Saturn today because nothing here consulted the window that
-                // CelestialBodyView already refuses to draw it outside of.
-                if (!view.IsKnown) continue;
+                LabelCategory category = view.Body.Type == BodyType.Spacecraft
+                    ? LabelCategory.Spacecraft
+                    : view.Body.Site.HasValue ? LabelCategory.Sites : LabelCategory.Bodies;
+                if (_options != null && !_options.LabelCategoryOn(category)) continue;
 
-                // The focused body is always a candidate however small it is drawn: it is the one
-                // the user asked about, and losing its name at the moment it becomes distant is
-                // exactly when the name is most wanted.
-                bool focused = _simulation.FocusBody == view;
-                double score = Significance(view, focused);
-                if (score <= 0.0) continue;
+                bool emphasised = view.Body.Id == selectedId || view.Body.Id == followedId ||
+                                  view.Body.Id == targetId;
 
-                Vector3 viewport = _camera.WorldToViewportPoint(view.transform.position);
-                if (viewport.z <= 0f) continue;                      // behind the camera
-                if (viewport.x < -0.05f || viewport.x > 1.05f) continue;
-                if (viewport.y < -0.05f || viewport.y > 1.05f) continue;
+                // Apparent size is the ranking, because a label is worth drawing in proportion to
+                // how much of the view its subject occupies.
+                float priority = (float)view.ApparentDiameterPixels + (emphasised ? 1e6f : 0f);
 
-                _candidates.Add(new Candidate { View = view, Pixels = score, Viewport = viewport });
-            }
-
-            _candidates.Sort((a, b) => b.Pixels.CompareTo(a.Pixels));
-        }
-
-        /// <summary>
-        /// How much this body deserves a name, or zero for "not at all".
-        ///
-        /// The floor per body type is what keeps the ranking meaningful when everything on screen
-        /// is drawn at the same minimum size: without it a table-top Solar System is a dozen
-        /// bodies all scoring zero, and which of them gets named is down to dictionary order.
-        /// Apparent size still wins wherever it is a real number, so a planet filling the view
-        /// outranks the star it orbits.
-        /// </summary>
-        private double Significance(CelestialBodyView view, bool focused)
-        {
-            if (focused) return double.MaxValue;
-
-            double pixels = view.ApparentDiameterPixels;
-
-            if (NamedByType(view))
-            {
-                return view.Body.Type switch
+                float above = view.IsGeometryDrawn ? view.RenderedRadius : 0f;
+                _candidates.Add(new Candidate
                 {
-                    BodyType.Star => System.Math.Max(pixels, 3.0),
-                    BodyType.Planet => System.Math.Max(pixels, 2.0),
-
-                    // A spacecraft ranks just under a planet and above the rest. It is drawn
-                    // thousands of times life size and is still a few pixels, so apparent size
-                    // says nothing useful about whether it is worth naming — and once it drops
-                    // below the size at which its mesh is legible, CelestialBodyView replaces
-                    // that mesh with a marker dot. A dot with no name is an unexplained speck.
-                    // The name is what makes the degradation a representation instead of a
-                    // glitch, so it has to survive exactly the threshold the mesh does not.
-                    BodyType.Spacecraft => System.Math.Max(pixels, 1.5),
-
-                    _ => System.Math.Max(pixels, 1.0)
-                };
+                    Text = view.Body.Name,
+                    World = view.transform.position + _camera.transform.up * (above * 1.15f),
+                    Priority = priority,
+                    Emphasised = emphasised,
+                    Colour = CosmoTheme.Provenance(view.Body.Provenance != null
+                        ? view.Body.Provenance.WeakestClass()
+                        : ProvenanceClass.Unknown),
+                    Category = category
+                });
             }
 
-            return pixels >= _minimumPixels ? pixels : 0.0;
+            GatherFromLayers();
+            _candidates.Sort((a, b) => b.Priority.CompareTo(a.Priority));
         }
 
-        /// <summary>
-        /// Whether this body is named for what it is rather than for how large it looks.
-        ///
-        /// A body pulled onto the sky sphere is one of several hundred catalogue stars light years
-        /// away, whose distance is not even being drawn truthfully. Naming those by type would
-        /// bury the system the user is standing in under the rest of the galaxy.
-        /// </summary>
-        private static bool NamedByType(CelestialBodyView view) =>
-            !view.DrawnAsPoint &&
-            (view.Body.Type == BodyType.Star ||
-             view.Body.Type == BodyType.Planet ||
-             view.Body.Type == BodyType.DwarfPlanet ||
-             view.Body.Type == BodyType.Spacecraft);
+        private void GatherFromLayers()
+        {
+            IReadOnlyList<CosmoLayer> layers = LayerRegistry.All;
+            for (int i = 0; i < layers.Count; i++)
+            {
+                CosmoLayer layer = layers[i];
+                if (layer == null || layer.Weight <= 0f) continue;
+
+                _fromLayers.Clear();
+                layer.CollectLabels(_fromLayers);
+
+                for (int j = 0; j < _fromLayers.Count; j++)
+                {
+                    LabelCandidate candidate = _fromLayers[j];
+                    if (_options != null && !_options.LabelCategoryOn(candidate.Category)) continue;
+
+                    Vector3 world = candidate.IsDirectionOnly
+                        ? _camera.transform.position +
+                          _simulation.Origin.MapDirection(candidate.DirectionIcrf).normalized * 50f
+                        : _simulation.transform.TransformPoint(_simulation.Origin.ToRender(candidate.PositionKm));
+
+                    _candidates.Add(new Candidate
+                    {
+                        Text = candidate.Text,
+                        World = world,
+                        Priority = candidate.Priority,
+                        Emphasised = false,
+                        Colour = CosmoTheme.Provenance(candidate.Provenance),
+                        Category = candidate.Category
+                    });
+                }
+            }
+        }
 
         private void Place()
         {
+            _mesh.Begin();
             _placed.Clear();
-            int used = 0;
+            Drawn = 0;
 
-            for (int i = 0; i < _candidates.Count && used < _maximumLabels; i++)
+            for (int i = 0; i < _candidates.Count && Drawn < MaximumLabels; i++)
             {
                 Candidate candidate = _candidates[i];
-                TextMesh label = Label(used);
 
-                string name = candidate.View.Body.Name ?? candidate.View.Body.Id;
+                Vector3 viewport = _camera.WorldToViewportPoint(candidate.World);
+                if (viewport.z <= 0.05f || viewport.x < -0.05f || viewport.x > 1.05f ||
+                    viewport.y < -0.05f || viewport.y > 1.05f) continue;
 
-                // Type size is angular, so a label beside a planet across the room and one beside
-                // a hologram on the table subtend the same angle and read the same.
-                float distance = Vector3.Distance(_camera.transform.position,
-                    candidate.View.transform.position);
-                label.characterSize = CosmoText.CharacterSizeFor(
-                    CosmoTheme.Metres(CosmoTheme.TypeCaption, distance));
-
-                // Sit the label clear of the body's drawn disc, up and to the right — one
-                // consistent direction, so which name belongs to which dot is never in question.
-                //
-                // Only for something that is actually on screen: IsGeometryDrawn (via
-                // IsPointable) is re-read here rather than trusted from when the candidate was
-                // chosen, because the two are different frames and a body can stop being drawn
-                // between them.
-                if (!candidate.View.IsPointable) continue;
-                float clearance = candidate.View.RenderedRadius +
-                                  CosmoTheme.Metres(CosmoTheme.SpaceRow, distance);
-                Vector3 worldOffset = (_camera.transform.up + _camera.transform.right).normalized * clearance;
-                Vector3 worldPosition = candidate.View.transform.position + worldOffset;
-
-                if (!TryReserve(name, label.characterSize, worldPosition, distance)) continue;
-
-                // Parented to this layer, which sits under the simulation transform — so a label
-                // moves with the universe when the anchor is placed in the room, exactly as the
-                // body it names does. Writing world position here would leave every label behind
-                // the moment the user grabbed the scene.
-                label.transform.position = worldPosition;
-                label.transform.rotation = Quaternion.LookRotation(
-                    worldPosition - _camera.transform.position, _camera.transform.up);
-
-                bool focused = _simulation.FocusBody == candidate.View;
-                Color colour = focused ? CosmoTheme.Accent : CosmoTheme.TextSecondary;
-
-                // Fade only the labels that earned their place by being large, and only near the
-                // threshold — otherwise a body drifting across the cut-off flickers its name on
-                // and off. A body named for what it is does not fade, because it does not pop.
-                float alpha = 1f;
-                if (!focused && !NamedByType(candidate.View))
+                // Greedy screen-space rejection: the highest-priority label in a crowded patch
+                // wins and the rest are dropped, rather than every label shrinking below legible.
+                var screen = new Vector2(viewport.x, viewport.y);
+                bool crowded = false;
+                for (int p = 0; p < _placed.Count; p++)
                 {
-                    alpha = Mathf.Lerp(0.35f, 1f,
-                        Mathf.InverseLerp(_minimumPixels, _minimumPixels * 3f, (float)candidate.Pixels));
+                    if (Vector2.Distance(_placed[p], screen) >= DeclutterRadius) continue;
+                    crowded = true;
+                    break;
                 }
-                label.color = CosmoTheme.WithAlpha(colour, alpha);
+                if (crowded) continue;
 
-                label.text = name;
-                label.gameObject.SetActive(true);
-                used++;
+                Vector3 local = _camera.transform.InverseTransformPoint(candidate.World);
+                float dmm = candidate.Emphasised ? CosmoTheme.TypeBody : CosmoTheme.TypeCaption;
+                float characterSize = CosmoText.CharacterSizeFor(CosmoTheme.Metres(dmm, local.z));
+                float width = CosmoText.MeasureWidth(candidate.Text, characterSize);
+
+                _mesh.AddLine(candidate.Text, local.x - 0.5f * width, local.y, local.z, characterSize,
+                    candidate.Emphasised ? CosmoTheme.TextPrimary : candidate.Colour);
+
+                // The on-universe honesty badge rides under the focus's own label, in the headset.
+                if (candidate.Emphasised)
+                {
+                    string badge = HonestyState.FocusBadge(_options);
+                    if (badge != null)
+                    {
+                        float badgeSize = CosmoText.CharacterSizeFor(
+                            CosmoTheme.Metres(CosmoTheme.TypeCaption, local.z));
+                        float badgeWidth = CosmoText.MeasureWidth(badge, badgeSize);
+                        _mesh.AddLine(badge, local.x - 0.5f * badgeWidth,
+                            local.y - CosmoTheme.Metres(30f, local.z), local.z, badgeSize, CosmoTheme.Warning);
+                    }
+                }
+
+                _placed.Add(screen);
+                Drawn++;
             }
 
-            HideFrom(used);
+            _mesh.End();
         }
 
-        /// <summary>
-        /// Claim screen space for a label, or refuse if something already has it.
-        /// </summary>
-        private bool TryReserve(string name, float characterSize, Vector3 worldPosition, float distance)
-        {
-            // Convert the label's world extent to a viewport-space box. Measuring the text and
-            // projecting it is what makes the test size-aware: a long name needs more room than a
-            // short one, and a nearby label needs far more than a distant one.
-            Vector2 extent = CosmoText.Measure(name, characterSize);
-            float worldPerPixel = ViewportInfo.WorldPerPixel(_camera, distance);
-            if (worldPerPixel <= 0f) return false;
+        /// <summary>Diagnostics for the play-mode report.</summary>
+        public string Describe() =>
+            $"{Drawn} of {_candidates.Count} candidates, {(_mesh != null ? _mesh.Glyphs : 0)} glyphs, 1 draw";
 
-            int verticalPixels = ViewportInfo.VerticalPixels(_camera);
-            Vector3 viewport = _camera.WorldToViewportPoint(worldPosition);
-
-            float halfWidth = extent.x / worldPerPixel / verticalPixels * 0.5f;
-            float halfHeight = extent.y / worldPerPixel / verticalPixels * 0.5f;
-
-            // Anchored upper-left, so the box extends right and down from the anchor point.
-            var box = new Rect(viewport.x, viewport.y - halfHeight * 2f, halfWidth * 2f, halfHeight * 2f);
-
-            for (int i = 0; i < _placed.Count; i++)
-            {
-                if (_placed[i].Overlaps(box)) return false;
-            }
-
-            _placed.Add(box);
-            return true;
-        }
-
-        private TextMesh Label(int index)
-        {
-            while (_pool.Count <= index)
-            {
-                TextMesh created = CosmoText.Create(transform, $"Label {_pool.Count}", 0.01f,
-                    TextAnchor.UpperLeft, CosmoTheme.TextSecondary);
-                created.gameObject.SetActive(false);
-                _pool.Add(created);
-            }
-            return _pool[index];
-        }
-
-        private void HideFrom(int index)
-        {
-            for (int i = index; i < _pool.Count; i++)
-            {
-                if (_pool[i].gameObject.activeSelf) _pool[i].gameObject.SetActive(false);
-            }
-        }
+        private void OnDestroy() => _mesh?.Destroy();
     }
 }

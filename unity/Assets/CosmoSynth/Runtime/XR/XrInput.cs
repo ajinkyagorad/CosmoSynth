@@ -11,36 +11,53 @@ namespace CosmoSynth.Runtime
         Right
     }
 
+    /// <summary>Which input a binding is for.</summary>
+    public enum BindDevice : byte { Controller, Hand, Keyboard }
+
     /// <summary>
-    /// The single owner of the controller bindings.
+    /// When a binding applies. An <b>enum, not prose</b> (R37): the column used to be free text with
+    /// ten spellings for about six states — "any", "default", "panel", "ray on the panel" — and a
+    /// gate comparing sentences would have passed a real collision.
+    /// </summary>
+    public enum BindContext : byte
+    {
+        Any, Default, PanelRay, NotPanelRay, PanelTouch, Measure,
+        Sandbox, HasSelection, ExhibitStage, RealOrFictionalStage, TrayHot
+    }
+
+    /// <summary>One row of the binding table. A struct, because C# 10 record structs are not available.</summary>
+    public readonly struct Binding
+    {
+        public readonly string Control, Action;
+        public readonly BindDevice Device;
+        public readonly BindContext Context;
+
+        public Binding(string control, BindDevice device, BindContext context, string action)
+        {
+            Control = control;
+            Device = device;
+            Context = context;
+            Action = action;
+        }
+    }
+
+    /// <summary>
+    /// The single owner of the bindings.
     ///
-    /// It exists because four components were each reading the raw devices for themselves, and
-    /// between them they had bound one physical control to several unrelated actions. None of
-    /// this was visible in any one file; every collision lived in the gap between two of them:
-    ///
-    /// <list type="bullet">
-    /// <item><b>The trigger did three things at once.</b> <c>BodySelector</c> treated it as
-    /// select, <c>XrHandInput</c> folded it into the grip test so it also grabbed the universe,
-    /// and <c>XrLocomotion</c> read it as a 6x speed boost. One pull re-targeted the selection,
-    /// started dragging the world, and — because locomotion returns early while the manipulator
-    /// is grabbing — did <i>not</i> boost, so the third binding was dead code that still cost the
-    /// other two their meaning.</item>
-    /// <item><b>Stick click both paused time and activated the wrist menu</b>, so choosing a
-    /// destination also stopped the clock.</item>
-    /// <item><b>The A button both recentred the universe and activated the wrist menu</b>, so
-    /// travelling somewhere immediately hauled the universe back in front of the user.</item>
-    /// <item><b>The left stick both flew and drove the menu</b>, with nothing arbitrating: flying
-    /// with the wrist turned up scrolled the destination list at the same time.</item>
-    /// </list>
+    /// It exists because four components each read the raw devices for themselves, and between them
+    /// they had bound one physical control to several unrelated actions — none of it visible in any
+    /// one file. The trigger meant select <i>and</i> grab <i>and</i> boost; stick click meant pause
+    /// <i>and</i> confirm; A meant recentre <i>and</i> confirm.
     ///
     /// Fixing those individually would not stop it happening again, because the property that was
     /// violated — each control means one thing — is not stateable in any single component. It is
-    /// stateable here. Every binding is in <see cref="Bindings"/>, one screenful, and a second
-    /// claim on a control is a visible duplicate rather than an emergent behaviour.
+    /// stateable here, and <c>binding_gate.py</c> keys uniqueness on the
+    /// (Control, Device, Context) triple, so a second claim is a gate failure rather than an
+    /// emergent behaviour.
     ///
-    /// Arbitration is explicit for the one control that genuinely is modal: the left stick flies,
-    /// unless the dashboard is open, in which case it drives the dashboard and locomotion stands
-    /// down. Modes are fine; undeclared modes are not.
+    /// The two genuinely modal controls are arbitrated explicitly: <see cref="ClaimStick"/> for the
+    /// sticks, and <see cref="SetPanelHot"/> for the hand that is on the panel — whose pinch,
+    /// trigger and grip stand down while the claim holds. <b>The other hand is unaffected.</b>
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-100)]
@@ -48,28 +65,79 @@ namespace CosmoSynth.Runtime
     public sealed class XrInput : MonoBehaviour
     {
         /// <summary>
-        /// The complete binding table, for the legend and for review.
+        /// The complete binding table (Appendix E), and the source of the on-screen legend.
         ///
-        /// Kept as data rather than as prose in a comment so the on-screen legend is generated
-        /// from the same source the code uses. The old legend was written by hand and was already
-        /// wrong — it advertised "trigger: boost" for a trigger that mostly grabbed, and never
-        /// mentioned the wrist dashboard at all.
+        /// Kept as data rather than as prose so the legend is generated from what the code does.
+        /// The hand-written one had already drifted: it advertised "trigger: boost" for a trigger
+        /// that mostly grabbed, and never mentioned the wrist panel at all.
         /// </summary>
-        public static readonly (string Control, string Action)[] Bindings =
+        public static readonly Binding[] Bindings =
         {
-            ("L stick", "fly"),
-            ("R stick", "rise · turn"),
-            ("grip", "hold · scale"),
-            ("R trigger", "select"),
-            ("L trigger", "boost"),
-            ("X", "dashboard"),
-            ("A", "recentre"),
-            ("Y / B", "time warp"),
-            ("R click", "pause"),
+            new Binding("L stick", BindDevice.Controller, BindContext.RealOrFictionalStage, "fly along the full head direction; speed from the nearest object of any layer"),
+            new Binding("L stick X", BindDevice.Controller, BindContext.ExhibitStage, "yaw the diorama"),
+            new Binding("L stick click", BindDevice.Controller, BindContext.Any, "FOLLOW / FREE on the selection"),
+            new Binding("L trigger", BindDevice.Controller, BindContext.Any, "boost: flight x1-x6, zoom x1-x4"),
+            new Binding("L grip", BindDevice.Controller, BindContext.Any, "grab the stage; with R grip, scale plus a yaw twist"),
+            new Binding("X", BindDevice.Controller, BindContext.Any, "wrist panel open / close / recall"),
+            new Binding("Y", BindDevice.Controller, BindContext.Any, "time: step slower, towards reverse"),
+            new Binding("L menu, hold 0.8 s", BindDevice.Controller, BindContext.Any, "recentre"),
+            new Binding("R stick X", BindDevice.Controller, BindContext.Any, "snap turn 30 deg, or smooth turn if enabled"),
+            new Binding("R stick Y", BindDevice.Controller, BindContext.NotPanelRay, "zoom, 0.6 decades per second"),
+            new Binding("R stick Y", BindDevice.Controller, BindContext.PanelRay, "scroll the panel"),
+            new Binding("R stick click", BindDevice.Controller, BindContext.Any, "pause / play"),
+            new Binding("R trigger", BindDevice.Controller, BindContext.Default, "select"),
+            new Binding("R trigger", BindDevice.Controller, BindContext.PanelRay, "press"),
+            new Binding("R trigger", BindDevice.Controller, BindContext.Measure, "pick a measure point"),
+            new Binding("R trigger, hold, pull, release", BindDevice.Controller, BindContext.Sandbox, "aim and launch a probe"),
+            new Binding("R grip", BindDevice.Controller, BindContext.Any, "grab the stage; with L grip, scale plus twist"),
+            new Binding("A", BindDevice.Controller, BindContext.HasSelection, "GO to the selection"),
+            new Binding("B", BindDevice.Controller, BindContext.Any, "time: step faster"),
+            new Binding("pinch, hold and move", BindDevice.Hand, BindContext.Default, "grab and drag the stage"),
+            new Binding("pinch with both hands", BindDevice.Hand, BindContext.Any, "scale by the span ratio squared, plus a yaw twist"),
+            new Binding("tap-pinch", BindDevice.Hand, BindContext.Default, "select"),
+            new Binding("tap-pinch", BindDevice.Hand, BindContext.PanelRay, "press a pinned panel out of reach"),
+            new Binding("tap-pinch", BindDevice.Hand, BindContext.Measure, "pick a measure point"),
+            new Binding("double tap-pinch", BindDevice.Hand, BindContext.Default, "GO to the object"),
+            new Binding("index fingertip on the panel", BindDevice.Hand, BindContext.PanelTouch, "touch press, slider drag or drag-scroll"),
+            new Binding("index tip within 5 cm of the watch", BindDevice.Hand, BindContext.Any, "panel open / close / recall"),
+            new Binding("pinch near the launch body, pull back, release", BindDevice.Hand, BindContext.Sandbox, "launch a probe"),
+            new Binding("pinch on a tray specimen", BindDevice.Hand, BindContext.TrayHot, "grab it off the shelf"),
+            new Binding("W A S D", BindDevice.Keyboard, BindContext.RealOrFictionalStage, "fly"),
+            new Binding("Q E", BindDevice.Keyboard, BindContext.RealOrFictionalStage, "down, up"),
+            new Binding("right-drag", BindDevice.Keyboard, BindContext.Any, "look"),
+            new Binding("wheel", BindDevice.Keyboard, BindContext.NotPanelRay, "zoom 0.1 decade per notch"),
+            new Binding("Shift", BindDevice.Keyboard, BindContext.Any, "boost"),
+            new Binding("Ctrl", BindDevice.Keyboard, BindContext.Any, "slow"),
+            new Binding("left click", BindDevice.Keyboard, BindContext.Default, "select"),
+            new Binding("left click", BindDevice.Keyboard, BindContext.PanelRay, "press"),
+            new Binding("left click", BindDevice.Keyboard, BindContext.Measure, "pick a measure point"),
+            new Binding("double click", BindDevice.Keyboard, BindContext.Default, "GO"),
+            new Binding("G", BindDevice.Keyboard, BindContext.HasSelection, "GO"),
+            new Binding("F", BindDevice.Keyboard, BindContext.HasSelection, "FOLLOW toggle"),
+            new Binding("X", BindDevice.Keyboard, BindContext.HasSelection, "FREE"),
+            new Binding(",", BindDevice.Keyboard, BindContext.Any, "time slower"),
+            new Binding(".", BindDevice.Keyboard, BindContext.Any, "time faster"),
+            new Binding("Space", BindDevice.Keyboard, BindContext.Any, "pause"),
+            new Binding("N", BindDevice.Keyboard, BindContext.Any, "Now"),
+            new Binding("Tab", BindDevice.Keyboard, BindContext.Any, "show or hide the panel"),
+            new Binding("1-5", BindDevice.Keyboard, BindContext.Any, "panel tabs GO, LAYERS, TIME, TOOLS, INFO"),
+            new Binding("Page Up", BindDevice.Keyboard, BindContext.Any, "the next rung up the ladder"),
+            new Binding("Page Down", BindDevice.Keyboard, BindContext.Any, "the next rung down the ladder"),
+            new Binding("M", BindDevice.Keyboard, BindContext.Any, "measure mode"),
+            new Binding("R", BindDevice.Keyboard, BindContext.Any, "recentre"),
+            // lane:ui BEGIN
+            // lane:ui END
+            // lane:fiction BEGIN
+            // lane:fiction END
+            // lane:audio BEGIN
+            // lane:audio END
         };
 
         [Tooltip("Stick displacement past which a direction counts as a deliberate press.")]
         [SerializeField] private float _stickPressThreshold = 0.65f;
+
+        [Tooltip("How long the menu button must be held to recentre.")]
+        [SerializeField] private float _menuHoldSeconds = 0.8f;
 
         private readonly List<InputDevice> _leftDevices = new List<InputDevice>();
         private readonly List<InputDevice> _rightDevices = new List<InputDevice>();
@@ -88,8 +156,9 @@ namespace CosmoSynth.Runtime
             public bool Primary;
             public bool Secondary;
             public bool StickClick;
+            public bool Menu;
+            public float MenuHeld;
 
-            // Previous-frame copies, for edge detection.
             public bool PreviousPrimary;
             public bool PreviousSecondary;
             public bool PreviousStickClick;
@@ -102,6 +171,15 @@ namespace CosmoSynth.Runtime
             if (hand == Hand.Left) return ref _left;
             return ref _right;
         }
+
+        /// <summary>Right-handed by default; Left mirrors every L/R pair and moves the watch.</summary>
+        public Handedness Handedness { get; set; } = Handedness.Right;
+
+        /// <summary>The hand that points and presses.</summary>
+        public Hand Dominant => Handedness == Handedness.Left ? Hand.Left : Hand.Right;
+
+        /// <summary>The hand that wears the watch and flies.</summary>
+        public Hand NonDominant => Handedness == Handedness.Left ? Hand.Right : Hand.Left;
 
         // ---- Raw, per hand ---------------------------------------------------
 
@@ -124,33 +202,32 @@ namespace CosmoSynth.Runtime
 
         // ---- Bound actions, edge-triggered -----------------------------------
 
-        /// <summary>Right trigger. The universal "click" — and now the only thing it does.</summary>
+        /// <summary>Dominant trigger. Select, press or a measure pick, depending on context.</summary>
         public bool SelectPressed { get; private set; }
 
-        /// <summary>A, on the right hand.</summary>
+        /// <summary>Menu, held. Recentre: it was A, which also confirmed.</summary>
         public bool RecenterPressed { get; private set; }
 
-        /// <summary>X, on the left hand.</summary>
-        public bool DashboardTogglePressed { get; private set; }
+        /// <summary>X on the non-dominant hand: the wrist panel.</summary>
+        public bool PanelTogglePressed { get; private set; }
 
-        /// <summary>B, on the right hand.</summary>
+        /// <summary>A on the dominant hand: GO to the selection.</summary>
+        public bool GoPressed { get; private set; }
+
+        /// <summary>Non-dominant stick click: FOLLOW / FREE.</summary>
+        public bool FollowTogglePressed { get; private set; }
+
         public bool WarpFasterPressed { get; private set; }
 
-        /// <summary>Y, on the left hand.</summary>
         public bool WarpSlowerPressed { get; private set; }
 
-        /// <summary>Right stick click. Left stick click is deliberately unbound — the left stick
-        /// is the one under the thumb during flight, and a pause you can trigger by gripping
-        /// harder while manoeuvring is a control that fires when you did not mean it.</summary>
+        /// <summary>Dominant stick click: pause / play.</summary>
         public bool PauseTogglePressed { get; private set; }
 
-        /// <summary>Left trigger, as an analogue throttle.</summary>
-        public float BoostAxis => _left.Trigger;
+        /// <summary>Non-dominant trigger, as an analogue throttle for flight and zoom.</summary>
+        public float BoostAxis => State(NonDominant).Trigger;
 
-        /// <summary>
-        /// A discrete step from a stick, for menu navigation: one event per push rather than one
-        /// per frame while held.
-        /// </summary>
+        /// <summary>A discrete step from a stick: one event per push rather than one per frame.</summary>
         public Vector2Int StickStep(Hand hand)
         {
             ref HandState state = ref State(hand);
@@ -159,8 +236,6 @@ namespace CosmoSynth.Runtime
                 Mathf.Abs(state.Stick.x) > _stickPressThreshold ? Mathf.Sign(state.Stick.x) : 0f,
                 Mathf.Abs(state.Stick.y) > _stickPressThreshold ? Mathf.Sign(state.Stick.y) : 0f);
 
-            // Only the dominant axis, so a diagonal push does not both move the highlight and
-            // switch the page.
             if (Mathf.Abs(now.x) > 0f && Mathf.Abs(now.y) > 0f)
             {
                 if (Mathf.Abs(state.Stick.x) > Mathf.Abs(state.Stick.y)) now.y = 0f;
@@ -177,38 +252,52 @@ namespace CosmoSynth.Runtime
 
         // ---- Arbitration -----------------------------------------------------
 
-        private object _navigationStickOwner;
+        private readonly object[] _stickOwners = new object[2];
+        private readonly bool[] _panelHot = new bool[2];
 
         /// <summary>
-        /// Claim the left stick for something other than flying.
+        /// Claim one stick for something other than flying or zooming.
         ///
-        /// Returns false if someone else already holds it, so two claimants cannot both act on
-        /// the same push — which is precisely what locomotion and the dashboard used to do.
+        /// Generalises the old single-stick claim to both, because the panel now scrolls with the
+        /// dominant stick while the same stick zooms everywhere else.
         /// </summary>
-        public bool ClaimNavigationStick(object owner)
+        public bool ClaimStick(Hand hand, object owner)
         {
-            if (_navigationStickOwner != null && !ReferenceEquals(_navigationStickOwner, owner)) return false;
-            _navigationStickOwner = owner;
+            int index = (int)hand;
+            if (_stickOwners[index] != null && !ReferenceEquals(_stickOwners[index], owner)) return false;
+            _stickOwners[index] = owner;
             return true;
         }
 
-        public void ReleaseNavigationStick(object owner)
+        public void ReleaseStick(Hand hand, object owner)
         {
-            if (ReferenceEquals(_navigationStickOwner, owner)) _navigationStickOwner = null;
+            int index = (int)hand;
+            if (ReferenceEquals(_stickOwners[index], owner)) _stickOwners[index] = null;
         }
 
-        /// <summary>True when nothing has taken the left stick, so flight may use it.</summary>
-        public bool NavigationStickFree => _navigationStickOwner == null;
+        public bool StickFree(Hand hand) => _stickOwners[(int)hand] == null;
+
+        /// <summary>Kept for the locomotion path: the non-dominant stick is the flight stick.</summary>
+        public bool ClaimNavigationStick(object owner) => ClaimStick(NonDominant, owner);
+
+        public void ReleaseNavigationStick(object owner) => ReleaseStick(NonDominant, owner);
+
+        public bool NavigationStickFree => StickFree(NonDominant);
+
+        /// <summary>
+        /// Mark a hand as being on the panel: its pinch, trigger and grip do not select or grab
+        /// while the claim holds. The other hand is unaffected.
+        /// </summary>
+        public void SetPanelHot(Hand hand, bool hot) => _panelHot[(int)hand] = hot;
+
+        public bool IsPanelHot(Hand hand) => _panelHot[(int)hand];
 
         // ---- Haptics ---------------------------------------------------------
 
         /// <summary>
-        /// A short buzz in one hand.
-        ///
-        /// There was none anywhere in the app. In a headset a selection that produces no click,
-        /// no detent and no tick is genuinely hard to tell from a selection that did not
-        /// register, and the user's response is to press again — which is how a working control
-        /// comes to feel broken.
+        /// A short buzz in one hand. There was none anywhere in the app, and in a headset a
+        /// selection that produces no click is hard to tell from one that did not register — so
+        /// the user presses again, and a working control comes to feel broken.
         /// </summary>
         public void Pulse(Hand hand, float amplitude = 0.35f, float seconds = 0.04f)
         {
@@ -230,16 +319,39 @@ namespace CosmoSynth.Runtime
             Read(InputDeviceCharacteristics.Left, _leftDevices, ref _left);
             Read(InputDeviceCharacteristics.Right, _rightDevices, ref _right);
 
-            // Bindings, in one place. Each physical control appears exactly once.
-            SelectPressed = _right.Trigger > 0.6f && !_right.PreviousTriggerDown;
-            RecenterPressed = _right.Primary && !_right.PreviousPrimary;
-            DashboardTogglePressed = _left.Primary && !_left.PreviousPrimary;
-            WarpFasterPressed = _right.Secondary && !_right.PreviousSecondary;
-            WarpSlowerPressed = _left.Secondary && !_left.PreviousSecondary;
-            PauseTogglePressed = _right.StickClick && !_right.PreviousStickClick;
+            Hold(ref _left, Time.unscaledDeltaTime);
+            Hold(ref _right, Time.unscaledDeltaTime);
+
+            ref HandState dominant = ref State(Dominant);
+            ref HandState other = ref State(NonDominant);
+
+            // Bindings, in one place. Each physical control appears exactly once, and the hand it
+            // is on follows Handedness rather than being hard-coded to the right.
+            SelectPressed = !IsPanelHot(Dominant) && dominant.Trigger > 0.6f && !dominant.PreviousTriggerDown;
+            GoPressed = dominant.Primary && !dominant.PreviousPrimary;
+            PanelTogglePressed = other.Primary && !other.PreviousPrimary;
+            WarpFasterPressed = dominant.Secondary && !dominant.PreviousSecondary;
+            WarpSlowerPressed = other.Secondary && !other.PreviousSecondary;
+            PauseTogglePressed = dominant.StickClick && !dominant.PreviousStickClick;
+            FollowTogglePressed = other.StickClick && !other.PreviousStickClick;
+            RecenterPressed = other.MenuHeld >= _menuHoldSeconds;
+            if (RecenterPressed) other.MenuHeld = float.NegativeInfinity;
 
             Latch(ref _left);
             Latch(ref _right);
+        }
+
+        private static void Hold(ref HandState state, float deltaTime)
+        {
+            if (state.Menu)
+            {
+                if (float.IsNegativeInfinity(state.MenuHeld)) return;
+                state.MenuHeld += deltaTime;
+            }
+            else
+            {
+                state.MenuHeld = 0f;
+            }
         }
 
         private static void Latch(ref HandState state)
@@ -264,6 +376,7 @@ namespace CosmoSynth.Runtime
                 state.Primary = false;
                 state.Secondary = false;
                 state.StickClick = false;
+                state.Menu = false;
                 return;
             }
 
@@ -292,6 +405,21 @@ namespace CosmoSynth.Runtime
 
             device.TryGetFeatureValue(CommonUsages.primary2DAxisClick, out bool click);
             state.StickClick = click;
+
+            device.TryGetFeatureValue(CommonUsages.menuButton, out bool menu);
+            state.Menu = menu;
+        }
+
+        /// <summary>The legend for one device, generated from the table the code reads.</summary>
+        public static List<string> Legend(BindDevice device)
+        {
+            var lines = new List<string>(Bindings.Length);
+            for (int i = 0; i < Bindings.Length; i++)
+            {
+                if (Bindings[i].Device != device) continue;
+                lines.Add(Bindings[i].Control + " · " + Bindings[i].Action);
+            }
+            return lines;
         }
     }
 }

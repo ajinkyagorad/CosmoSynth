@@ -1,231 +1,195 @@
-using System.Text;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace CosmoSynth.Runtime
 {
     /// <summary>
-    /// A marker at the universe's anchor, a control legend, and a status card — the three things
-    /// that explain an empty headset.
+    /// The status card: what the app is doing, what it could not load, and the honesty statement —
+    /// <b>in the headset</b>, not only in a desktop IMGUI window nobody wearing one can read.
     ///
-    /// This exists because of a specific failure: the first Quest build showed passthrough and
-    /// nothing else. From inside the headset there was no way to tell whether the app had crashed,
-    /// failed to load its data, placed the solar system behind the user, or rendered it too small
-    /// to see — all four look identical, and there is no console on the device. The marker is
-    /// deliberately the dumbest thing that can still be seen: an unlit mesh at a known place, at a
-    /// fixed size in metres, drawn before any of the simulation runs.
+    /// Frame one shows it 0.8 m ahead with one line per data file, because "passthrough works but
+    /// there is nothing in it" must never be a state the user has to diagnose. A healthy run
+    /// collapses it to a single line at five seconds and hides it at twenty; an unhealthy one keeps
+    /// it, in <c>Warning</c>, until it is dismissed.
     ///
-    /// What it was <i>not</i> allowed to be is the app's main interface, and that is what it had
-    /// become. Being the only surface visible at launch, its diagnostics were the first and often
-    /// only thing a user read — seven lines of unbacked centred text, sized in metres so it grew
-    /// with distance, positioned 18 cm above an anchor holding a 55 cm globe, which put it inside
-    /// the planet. The shipped screenshot shows "XR: NOT ACTIVE (flat)" written across the middle
-    /// of Earth. So it now sits beside the hologram rather than in it, on a real panel, with the
-    /// legend a reader needs separated from the diagnostics a developer needs.
+    /// It keeps the name <c>AnchorBeacon</c> because the harness and the bootstrap both reference
+    /// it, and renaming a component in a runtime-built scene is how a MonoScript stops binding.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(60)]
     [AddComponentMenu("CosmoSynth/Anchor Beacon")]
     public sealed class AnchorBeacon : MonoBehaviour
     {
-        [Tooltip("Edge length of the marker cross, in metres.")]
-        [SerializeField] private float _sizeMetres = 0.06f;
+        /// <summary>How far ahead of the eyes the card sits.</summary>
+        public const float CardDistanceMetres = 0.8f;
 
-        [Tooltip("Hide the marker and diagnostics once the simulation has bodies on screen.")]
-        [SerializeField] private bool _hideWhenHealthy = true;
+        /// <summary>When a healthy card collapses to one line.</summary>
+        public const float CollapseSeconds = 5f;
 
-        [Tooltip("Seconds the control legend stays up after the app is healthy.")]
-        [SerializeField] private float _legendSeconds = 20f;
+        /// <summary>When a healthy card disappears.</summary>
+        public const float DismissSeconds = 20f;
 
-        private UniverseSimulation _simulation;
+        private readonly List<string> _lines = new List<string>(12);
+        private readonly List<string> _problems = new List<string>(4);
+
         private XrRig _rig;
-        private XrHandInput _input;
-        private Transform _marker;
-        private CosmoPanel _panel;
-        private Material _material;
-        private float _elapsed;
-        private bool _healthy;
+        private UniverseSimulation _simulation;
+        private ViewOptions _options;
+        private XrHandInput _hands;
 
-        private void Awake()
+        private CosmoSurface _surface;
+        private float _age;
+        private bool _dismissed;
+
+        public void Bind(XrRig rig, UniverseSimulation simulation, ViewOptions options, XrHandInput hands)
         {
-            _simulation = FindAnyObjectByType<UniverseSimulation>();
-            _rig = FindAnyObjectByType<XrRig>();
-            _input = FindAnyObjectByType<XrHandInput>();
-
-            BuildMarker();
-            _panel = new CosmoPanel(transform, "Status Card");
+            _rig = rig;
+            _simulation = simulation;
+            _options = options;
+            _hands = hands;
         }
 
-        private void BuildMarker()
+        /// <summary>A progress or state line: "solar_system loaded (31 bodies)".</summary>
+        public void SetLine(string key, string text)
         {
-            var markerObject = new GameObject("Beacon");
-            markerObject.transform.SetParent(transform, false);
-            _marker = markerObject.transform;
-
-            // Three thin bars forming an axis cross. Unlit, so it shows even with no light in the
-            // scene — one of the things that could be wrong.
-            _material = CosmoShaders.Material(CosmoShaders.UnlitColor);
-            _material.color = CosmoTheme.Accent;
-
-            CreateBar(new Vector3(1f, 0.06f, 0.06f));
-            CreateBar(new Vector3(0.06f, 1f, 0.06f));
-            CreateBar(new Vector3(0.06f, 0.06f, 1f));
-        }
-
-        private void CreateBar(Vector3 proportions)
-        {
-            var bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            bar.name = "Bar";
-            bar.transform.SetParent(_marker, false);
-            bar.transform.localScale = proportions * _sizeMetres;
-            DestroyImmediate(bar.GetComponent<Collider>());
-            bar.GetComponent<MeshRenderer>().sharedMaterial = _material;
-        }
-
-        private void Update()
-        {
-            _elapsed += Time.unscaledDeltaTime;
-
-            _healthy = _simulation != null && _simulation.Catalog != null && _simulation.Views.Count > 0;
-
-            // Once the app is clearly working, the marker gets out of the way — immediately, not
-            // after a grace period.
-            //
-            // It used to linger eight seconds, which sounds harmless and is not: the marker sits
-            // at the anchor, the anchor is wherever the interesting thing has been placed, and a
-            // 4.6 degree unlit cross is then drawn straight through it. In the whole-system view
-            // that is a cyan cross over the Sun. The beacon exists to explain an empty view; the
-            // moment the view is not empty, the planets say everything it was there to say, and
-            // the status card beside them carries the rest.
-            bool showMarker = !_hideWhenHealthy || !_healthy;
-            if (_marker.gameObject.activeSelf != showMarker) _marker.gameObject.SetActive(showMarker);
-
-            UpdatePanel();
-        }
-
-        private void UpdatePanel()
-        {
-            bool showLegend = !_healthy || _elapsed < _legendSeconds;
-            _panel.Opacity = showLegend ? Mathf.Clamp01(_legendSeconds - _elapsed) : 0f;
-            if (!showLegend || _rig?.Camera == null) return;
-
-            Transform camera = _rig.Camera.transform;
-
-            // Beside the hologram, not above or below it.
-            //
-            // Above was where it used to be, 18 cm up, which for a 55 cm globe is inside the
-            // planet — the shipped screenshot has "XR: NOT ACTIVE (flat)" written across Earth.
-            // Below is no better: the anchor already sits 25 cm under the eyeline, so clearing a
-            // 27 cm radius puts the card 48 degrees down, outside a 60 degree frustum entirely.
-            // There is room to the side and nowhere else, and the left is free because the
-            // provenance panel opens to the right.
-            float clearance = _sizeMetres * 2f;
-            // The focus body's radius is only meaningful while its geometry is on screen. A body
-            // that has handed over to the point path keeps a RenderedRadius that describes the
-            // dot, and one that is outside its ephemeris window keeps whatever it last had.
-            if (_simulation != null && _simulation.FocusBody != null &&
-                _simulation.FocusBody.IsGeometryDrawn)
+            for (int i = 0; i < _lines.Count; i++)
             {
-                clearance = Mathf.Max(clearance, _simulation.FocusBody.RenderedRadius);
+                if (!_lines[i].StartsWith(key + ": ", System.StringComparison.Ordinal)) continue;
+                _lines[i] = key + ": " + text;
+                return;
             }
-            clearance += _panel.Size.x * 0.5f + _sizeMetres;
-
-            // Keep it out at the edge even when the focused body is tiny.
-            //
-            // Clearing the focus alone is the right rule for a globe filling the view and the
-            // wrong one for a Solar System on a table, where the focus is a two-millimetre dot and
-            // the card slides in to sit on top of the orbits. Half the anchor distance is a little
-            // over twenty-five degrees off-axis: out of the way, comfortably inside the frustum.
-            float distanceToAnchor = Vector3.Distance(transform.position, camera.position);
-            clearance = Mathf.Max(clearance, distanceToAnchor * 0.5f);
-
-            _panel.Root.position = transform.position - camera.right * clearance;
-
-            float distance = _panel.FaceViewer(camera);
-
-            // Caption type on a narrow measure. This card is a reference consulted once, not a
-            // panel of values read repeatedly, and it has to fit beside a globe that already
-            // occupies 40 degrees of the view.
-            _panel.SetContent(_healthy ? "COSMOSYNTH" : "COSMOSYNTH — STARTING", BuildBody(), distance,
-                CosmoTheme.TypeCaption, 300f);
+            _lines.Add(key + ": " + text);
         }
 
         /// <summary>
-        /// The legend first, diagnostics second — and the diagnostics only while something is
-        /// wrong.
-        ///
-        /// Nothing about the controls is guessable. An app whose sticks fly and whose face buttons
-        /// warp time has to say so somewhere the user is already looking, or they will push the
-        /// stick, arrive somewhere they did not intend, and conclude the controls are broken
-        /// rather than undocumented. The legend is generated from <see cref="XrInput.Bindings"/>
-        /// rather than written out here, because the hand-written version had already drifted from
-        /// the code: it advertised the trigger as "boost" when the trigger mostly grabbed the
-        /// universe, and never mentioned the wrist dashboard at all.
+        /// A problem. It is drawn in <c>Warning</c> and the card stays until dismissed — nothing
+        /// fails silently, and a missing file is a line the user can read rather than an empty room.
         /// </summary>
-        private string BuildBody()
+        public void SetProblem(string text)
         {
-            var body = new StringBuilder();
-
-            for (int i = 0; i < XrInput.Bindings.Length; i++)
-            {
-                (string control, string action) = XrInput.Bindings[i];
-                if (i > 0) body.AppendLine();
-                body.Append($"{control} — {action}");
-            }
-
-            // The render path, always — not only when something is already known to be wrong.
-            // A frame that is being composited incorrectly still reports itself as healthy by
-            // every other measure the app has, so this is the one line that would have named a
-            // tiled eye buffer without anyone having to describe pixels over a chat window.
-            body.AppendLine();
-            body.AppendLine();
-            body.Append(RenderDiagnostics.OneLine());
-            RenderDiagnostics.LogOnce();
-
-            if (_healthy && _simulation != null) return body.ToString();
-
-            body.AppendLine();
-
-            body.AppendLine();
-            body.AppendLine();
-
-            if (_rig != null)
-            {
-                body.AppendLine(_rig.XrActive
-                    ? $"XR {UnityEngine.XR.XRSettings.loadedDeviceName} " +
-                      $"{UnityEngine.XR.XRSettings.eyeTextureWidth}x{UnityEngine.XR.XRSettings.eyeTextureHeight}"
-                    : "XR not active — flat fallback");
-                body.AppendLine($"passthrough {(_rig.PassthroughEnabled ? "on" : "off")}");
-            }
-
-            if (_simulation == null || _simulation.Catalog == null)
-            {
-                body.Append($"catalogue loading… {_elapsed:F0}s");
-                return body.ToString();
-            }
-
-            body.AppendLine($"{_simulation.Catalog.Count} bodies · {_simulation.Views.Count} views");
-            body.AppendLine($"1 km = {_simulation.Origin.UnitsPerKm:G3} units");
-
-            // The number that actually explains a blank view: how big the focused body is on
-            // screen right now.
-            if (_simulation.FocusBody != null)
-            {
-                body.AppendLine($"{_simulation.FocusBody.Body.Name} " +
-                                $"{_simulation.FocusBody.ApparentDiameterPixels:F0} px, " +
-                                $"{_simulation.FocusBody.Representation}");
-            }
-
-            if (_input != null) body.Append($"input: {_input.StatusLine}");
-
-            return body.ToString();
+            if (string.IsNullOrEmpty(text) || _problems.Contains(text)) return;
+            _problems.Add(text);
+            _dismissed = false;
         }
 
-        /// <summary>Diagnostics: the status card's size and placement.</summary>
-        public string DescribePanel() => _panel != null ? _panel.Describe() : "(none)";
+        public void Dismiss() => _dismissed = true;
 
-        private void OnDestroy()
+        public bool Healthy => _problems.Count == 0;
+
+        private void Awake()
         {
-            if (_material != null && Application.isPlaying) Destroy(_material);
-            _panel?.Destroy();
+            if (_rig == null) _rig = FindAnyObjectByType<XrRig>();
+            if (_simulation == null) _simulation = FindAnyObjectByType<UniverseSimulation>();
+            if (_hands == null) _hands = FindAnyObjectByType<XrHandInput>();
         }
+
+        private void LateUpdate()
+        {
+            if (_surface == null) _surface = new CosmoSurface(transform, "Status Card");
+            if (_rig == null || _rig.Camera == null) return;
+
+            _age += Time.unscaledDeltaTime;
+
+            bool show = !_dismissed && (!Healthy || _age < DismissSeconds) &&
+                        (_options == null || !_options.CleanView);
+            if (!show) { _surface.Opacity = 0f; return; }
+
+            Transform camera = _rig.Camera.transform;
+            Vector3 forward = camera.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 1e-6f) forward = Vector3.forward;
+            forward.Normalize();
+
+            _surface.Root.position = camera.position + forward * CardDistanceMetres + Vector3.up * -0.05f;
+            _surface.Root.rotation = Quaternion.LookRotation(forward, Vector3.up);
+            _surface.Opacity = 1f;
+
+            Layout(Vector3.Distance(_surface.Root.position, camera.position));
+        }
+
+        private void Layout(float distance)
+        {
+            bool collapsed = Healthy && _age > CollapseSeconds;
+
+            _surface.Begin(distance);
+
+            float pad = _surface.Dmm(CosmoTheme.SpacePanelPadding);
+            float titleHeight = _surface.Dmm(40f);
+            float lineHeight = _surface.Dmm(30f);
+
+            var body = new List<string>(16);
+            var colours = new List<Color>(16);
+
+            if (!collapsed)
+            {
+                for (int i = 0; i < _lines.Count; i++) { body.Add(_lines[i]); colours.Add(CosmoTheme.TextSecondary); }
+                for (int i = 0; i < _problems.Count; i++) { body.Add("! " + _problems[i]); colours.Add(CosmoTheme.Warning); }
+
+                if (_options != null)
+                {
+                    body.Add(HonestyState.Statement(_options));
+                    colours.Add(CosmoTheme.Warning);
+                }
+
+                // The first-run hint, generated from the bindings for whatever input is live.
+                string hint = Hint();
+                if (hint != null && _age < DismissSeconds) { body.Add(hint); colours.Add(CosmoTheme.TextMuted); }
+            }
+            else
+            {
+                body.Add(Summary());
+                colours.Add(CosmoTheme.TextSecondary);
+            }
+
+            string title = Healthy ? "CosmoSynth 2.0" : "CosmoSynth 2.0 · needs attention";
+            float width = _surface.MeasureWidth(title, CosmoTheme.TypeTitle);
+            for (int i = 0; i < body.Count; i++)
+                width = Mathf.Max(width, _surface.MeasureWidth(body[i], CosmoTheme.TypeCaption));
+
+            float height = 2f * pad + titleHeight + body.Count * lineHeight;
+            float left = -0.5f * width;
+            float top = 0.5f * height - pad;
+
+            _surface.Text(title, left, top, CosmoTheme.TypeTitle,
+                Healthy ? CosmoTheme.TextPrimary : CosmoTheme.Warning);
+            top -= titleHeight;
+
+            for (int i = 0; i < body.Count; i++)
+            {
+                _surface.Text(body[i], left, top, CosmoTheme.TypeCaption, colours[i]);
+                top -= lineHeight;
+            }
+
+            _surface.End(width + 2f * pad, height);
+        }
+
+        private string Summary()
+        {
+            if (_simulation?.Catalog == null) return "loading the universe";
+            return "all data loaded · " + _simulation.Catalog.Count + " bodies";
+        }
+
+        private string Hint()
+        {
+            if (_age > DismissSeconds) return null;
+            bool hands = _hands != null && _hands.Active == XrHandInput.Modality.Hands;
+            BindDevice device = hands ? BindDevice.Hand
+                : _rig != null && _rig.XrActive ? BindDevice.Controller : BindDevice.Keyboard;
+
+            return device switch
+            {
+                BindDevice.Hand => "Pinch with both hands and pull apart to zoom out · tap your wrist for the map",
+                BindDevice.Controller => "Right stick to zoom · X for the map",
+                _ => "Wheel to zoom · Tab for the map"
+            };
+        }
+
+        /// <summary>Diagnostics; the play-mode report prints this line.</summary>
+        public string DescribePanel() =>
+            _surface == null
+                ? "(none)"
+                : $"{(Healthy ? "healthy" : _problems.Count + " problems")} age={_age:F1}s {_surface.Describe()}";
+
+        private void OnDestroy() => _surface?.Destroy();
     }
 }

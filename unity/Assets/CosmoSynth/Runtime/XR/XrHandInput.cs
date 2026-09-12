@@ -294,6 +294,41 @@ namespace CosmoSynth.Runtime
         /// </summary>
         public bool SelectTap => _rightPinch.TapReleased || _leftPinch.TapReleased;
 
+        /// <summary>
+        /// World position of a tracked hand's index fingertip.
+        ///
+        /// The panel's whole touch model is a function of this one point, and it is why the panel
+        /// works with no controllers at all — which the wrist dashboard it replaces did not.
+        /// </summary>
+        public bool TryGetIndexTipWorld(Hand hand, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (_handSubsystem == null || !_handSubsystem.running) return false;
+
+            XRHand xrHand = hand == Hand.Left ? _handSubsystem.leftHand : _handSubsystem.rightHand;
+            if (!xrHand.isTracked) return false;
+            if (!xrHand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose pose)) return false;
+
+            position = ToWorld(pose.position);
+            return true;
+        }
+
+        /// <summary>World pose of a tracked hand's wrist, which is where the watch face sits.</summary>
+        public bool TryGetWristWorld(Hand hand, out Vector3 position, out Quaternion rotation)
+        {
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            if (_handSubsystem == null || !_handSubsystem.running) return false;
+
+            XRHand xrHand = hand == Hand.Left ? _handSubsystem.leftHand : _handSubsystem.rightHand;
+            if (!xrHand.isTracked) return false;
+            if (!xrHand.GetJoint(XRHandJointID.Wrist).TryGetPose(out Pose pose)) return false;
+
+            position = ToWorld(pose.position);
+            rotation = pose.rotation;
+            return true;
+        }
+
         /// <summary>Human-readable state, for the status card.</summary>
         public string StatusLine => Active switch
         {

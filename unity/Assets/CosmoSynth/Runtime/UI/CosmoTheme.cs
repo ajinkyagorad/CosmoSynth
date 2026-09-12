@@ -4,96 +4,88 @@ using UnityEngine;
 namespace CosmoSynth.Runtime
 {
     /// <summary>
-    /// The one place colour, type size and panel construction are decided.
+    /// The one place colour, type size and surface art are decided.
     ///
-    /// Before this existed each panel invented its own. <c>ProvenanceHud</c> and
-    /// <c>SpatialPanel</c> both defined the provenance colours and they had already drifted —
-    /// "measured" was (0.45, 0.85, 0.55) in one file and (0.45, 0.90, 0.55) in the other — so the
-    /// same fact was a different green depending on which surface you read it on. Two panels
-    /// generated near-identical backing textures with different alphas and different edge
-    /// falloffs. Nothing was shared, so nothing was consistent, and there was no way to change
-    /// the look of the app except by editing every file that draws.
+    /// Before this existed each panel invented its own, and the provenance colours had already
+    /// drifted between two files, so the same fact was a different green depending which surface
+    /// you read it on.
     ///
-    /// <b>Sizes are angular, not linear.</b> This is the part a flat-screen habit gets wrong. A
-    /// panel worn on the wrist is read at 35 cm and one beside a planet at 3 m; a type size in
-    /// metres that suits one is illegible or absurd on the other. Everything here is expressed in
-    /// <b>dmm</b> — millimetres subtended at one metre, which is a milliradian, which is the
-    /// angle the eye actually resolves. Multiply by the viewing distance to get metres. That
-    /// makes "is this readable?" a question with one answer instead of one per surface.
+    /// <b>Sizes are angular, not linear.</b> Everything here is in <b>dmm</b> — millimetres
+    /// subtended at one metre, which is a milliradian, which is the angle the eye resolves.
+    /// Multiply by the viewing distance for metres. A panel worn on the wrist is read at 42 cm and
+    /// one beside a planet at 3 m; a size in metres that suits one is illegible or absurd on the
+    /// other.
     /// </summary>
     public static class CosmoTheme
     {
         // ---- Palette ---------------------------------------------------------
-        //
-        // Tuned against two backdrops the app genuinely has to work on: black space, where an
-        // unbordered dark panel simply disappears, and passthrough, where a bright room shows
-        // through anything translucent. Hence a defined stroke on every panel and a surface
-        // alpha high enough to hold contrast over a lit wall.
 
-        /// <summary>Panel fill. Deliberately near-opaque — see the class remarks.</summary>
+        /// <summary>Panel fill. Deliberately near-opaque: it has to hold contrast over a lit wall.</summary>
         public static readonly Color Surface = new Color(0.043f, 0.063f, 0.090f, 0.93f);
 
-        /// <summary>Fill for a raised row: the selected item in a list.</summary>
+        /// <summary>Fill for a raised row: hover, and the selected item in a list.</summary>
         public static readonly Color SurfaceRaised = new Color(0.106f, 0.169f, 0.235f, 0.96f);
 
         /// <summary>Panel edge. Without this a dark panel has no silhouette against space.</summary>
         public static readonly Color Stroke = new Color(0.180f, 0.278f, 0.376f, 0.95f);
 
-        /// <summary>Edge of the panel that currently has input.</summary>
+        /// <summary>Edge of the surface that currently has input.</summary>
         public static readonly Color StrokeActive = new Color(0.310f, 0.640f, 0.820f, 1f);
 
         /// <summary>Headings and values. ~15:1 against <see cref="Surface"/>.</summary>
         public static readonly Color TextPrimary = new Color(0.910f, 0.941f, 0.969f);
 
-        /// <summary>Labels and supporting text. ~7:1 — still comfortably readable.</summary>
+        /// <summary>Labels and supporting text. ~7:1.</summary>
         public static readonly Color TextSecondary = new Color(0.604f, 0.682f, 0.761f);
 
-        /// <summary>Hints and units. ~3.5:1: legible, never used for anything load-bearing.</summary>
+        /// <summary>Hints, units and disabled controls. ~3.5:1: legible, never load-bearing.</summary>
         public static readonly Color TextMuted = new Color(0.392f, 0.471f, 0.549f);
 
-        /// <summary>Interactive accent. Cyan, chosen because no body in the catalogue is cyan —
-        /// so "this is a control" is never confused with "this is a planet".</summary>
-        public static readonly Color Accent = new Color(0.310f, 0.765f, 0.969f);
+        /// <summary>
+        /// Interactive accent (§5.6.9).
+        ///
+        /// Moved from (0.310, 0.765, 0.969), which sat 14 degrees of hue from the Inferred blue —
+        /// close enough that an Accent control and an Inferred fact read as the same category.
+        /// This one is 28 degrees from Inferred and 50 from Measured, and still cyan, which is a
+        /// colour no body in the catalogue has.
+        /// </summary>
+        public static readonly Color Accent = new Color(0.200f, 0.867f, 0.929f);
 
-        /// <summary>Warning / not-to-scale notices.</summary>
-        public static readonly Color Warning = new Color(0.949f, 0.694f, 0.361f);
+        /// <summary>
+        /// Warnings and every honesty chip (§5.6.9).
+        ///
+        /// Moved from (0.949, 0.694, 0.361), which was <b>byte-identical</b> to the Procedural
+        /// provenance colour — so "SIZES NOT TO SCALE" was drawn in the colour that means
+        /// "procedurally generated" and read as a category rather than as a warning. Coral, and
+        /// always with a <c>!</c> glyph, because colour is never the only channel.
+        /// </summary>
+        public static readonly Color Warning = new Color(0.973f, 0.451f, 0.388f);
 
         /// <summary>Plain white, as a token so no other file has to name a colour to get one.</summary>
         public static readonly Color Neutral = new Color(1f, 1f, 1f, 1f);
 
+        /// <summary>Fully transparent, for a rect that is laid out but not drawn.</summary>
+        public static readonly Color Invisible = new Color(0f, 0f, 0f, 0f);
+
         // ---- Render clears ---------------------------------------------------
-        //
-        // The single most consequential colour in the project, and the one the inspector draws
-        // with the same swatch as its opposite.
 
         /// <summary>
-        /// The passthrough clear. <b>Alpha zero is the whole point.</b>
-        ///
-        /// Quest composites passthrough UNDERNEATH the app's framebuffer, so alpha is coverage:
-        /// alpha 1 means "this pixel is mine, hide the room". (0, 0, 0, 1) is therefore an opaque
-        /// black wall, not an empty scene — and it looks correct everywhere except on the headset,
-        /// which is the worst possible failure mode.
+        /// The passthrough clear. <b>Alpha zero is the whole point.</b> Quest composites
+        /// passthrough underneath the app's framebuffer, so alpha is coverage: (0,0,0,1) is an
+        /// opaque black wall that looks correct everywhere except on the headset.
         /// </summary>
         public static readonly Color PassthroughClear = new Color(0f, 0f, 0f, 0f);
 
-        /// <summary>The full-space clear: a very dark blue, opaque, for when there is no room to show.</summary>
+        /// <summary>The full-space clear: very dark blue, opaque, for when there is no room to show.</summary>
         public static readonly Color SpaceClear = new Color(0.004f, 0.005f, 0.011f, 1f);
 
-        /// <summary>
-        /// Ambient fill, so a night side reads as unlit rather than as missing geometry.
-        /// Starting value; re-measure it under Linear colour space.
-        /// </summary>
+        /// <summary>Ambient fill, so a night side reads as unlit rather than as missing geometry.</summary>
         public static readonly Color AmbientFill = new Color(0.05f, 0.055f, 0.07f, 1f);
 
         /// <summary>The tint of ring particles: dirty ice, warmer than the panel palette.</summary>
         public static readonly Color RingDust = new Color(0.88f, 0.84f, 0.76f, 1f);
 
         // ---- Combinators -----------------------------------------------------
-        //
-        // These exist so that "take this colour and change one thing about it" does not have to
-        // name a colour. Every `new Color(...)` outside this file was one of three operations, and
-        // gate G0d cannot tell an alpha override from a palette choice — but a reader can, and so
-        // can these.
 
         /// <summary>The same colour at a different opacity.</summary>
         public static Color WithAlpha(Color colour, float alpha) =>
@@ -107,21 +99,16 @@ namespace CosmoSynth.Runtime
         public static Color Desaturate(Color colour, float saturation) =>
             Color.Lerp(Neutral, colour, saturation);
 
-        /// <summary>
-        /// A Core colour triple as a Unity colour. Core is engine-free, so every physically
-        /// derived colour — a black-body temperature, a catalogue's display colour — arrives as a
-        /// Double3 and has to cross here.
-        /// </summary>
+        /// <summary>A Core colour triple as a Unity colour.</summary>
         public static Color FromLinear(Double3 rgb) =>
             new Color((float)rgb.x, (float)rgb.y, (float)rgb.z, 1f);
 
         /// <summary>
         /// Provenance colours — the app's most meaning-bearing palette, defined once.
         ///
-        /// Balanced for roughly equal perceived lightness, so the five read as a set of
-        /// categories rather than as a scale from good to bad. They are never the only channel:
-        /// every surface that uses them also carries a glyph, because roughly one man in twelve
-        /// cannot separate the green from the amber.
+        /// They appear <b>only</b> on provenance glyphs, badges and data text. Controls use
+        /// neutrals and Accent and are told apart by caption and position, never by hue, so a
+        /// category colour can never be mistaken for a claim about where a number came from.
         /// </summary>
         public static Color Provenance(ProvenanceClass provenanceClass) => provenanceClass switch
         {
@@ -132,10 +119,7 @@ namespace CosmoSynth.Runtime
             _ => new Color(0.541f, 0.576f, 0.627f)
         };
 
-        /// <summary>
-        /// The glyph that carries the same meaning as the colour, for the colour-blind and for
-        /// any surface that cannot tint part of a string.
-        /// </summary>
+        /// <summary>The glyph that carries the same meaning as the colour, for the colour-blind.</summary>
         public static char ProvenanceGlyph(ProvenanceClass provenanceClass) => provenanceClass switch
         {
             ProvenanceClass.Measured => '=',
@@ -146,19 +130,13 @@ namespace CosmoSynth.Runtime
         };
 
         // ---- Type scale, in dmm (millimetres at one metre) --------------------
-        //
-        // Calibrated against a captured frame rather than guessed: the anchor beacon's readout
-        // measured 26 dmm on screen and reads as comfortably large, so body text sits just under
-        // it. Meta's own guidance is a ~1 degree minimum for sustained reading; 24 dmm of line
-        // height is about 1.4 degrees per line and 0.9 of a degree of cap height, which clears it.
 
         public const float TypeDisplay = 44f;
         public const float TypeTitle = 32f;
         public const float TypeBody = 24f;
         public const float TypeCaption = 19f;
 
-        /// <summary>Diagnostics only. Below the comfortable-reading floor on purpose: this is
-        /// text you consult, not text you read.</summary>
+        /// <summary>Diagnostics only: text you consult, not text you read.</summary>
         public const float TypeMicro = 16f;
 
         // ---- Spacing, also in dmm --------------------------------------------
@@ -169,101 +147,108 @@ namespace CosmoSynth.Runtime
         public const float CornerRadius = 26f;
         public const float StrokeWidth = 3f;
 
+        /// <summary>Button row height (§5.6.3): 60 dmm, 25 mm at the 0.42 m wrist distance.</summary>
+        public const float ButtonHeight = 60f;
+
+        /// <summary>Gap between buttons, 16 dmm.</summary>
+        public const float ButtonGap = 16f;
+
+        /// <summary>Minimum button width, 150 dmm.</summary>
+        public const float ButtonMinWidth = 150f;
+
+        /// <summary>Distance a worn panel is read at, and the one its dmm are converted through.</summary>
+        public const float WristDistanceMetres = 0.42f;
+
         /// <summary>Convert an angular size to metres at a given viewing distance.</summary>
         public static float Metres(float dmm, float viewingDistanceMetres) =>
             dmm * 0.001f * Mathf.Max(0.05f, viewingDistanceMetres);
 
-        // ---- Panel art -------------------------------------------------------
+        // ---- Surface art -----------------------------------------------------
+        //
+        // One atlas, two tiles, so every rectangle a surface draws — the backing, every button,
+        // every chip, the selection bar — comes from one texture and therefore one material and
+        // one mesh. §7.3 allows the whole interface SIX draw calls; one TextMesh and one quad per
+        // row would be fifty.
 
-        /// <summary>
-        /// The rounded-rectangle panel sprite: dark fill, a defined stroke, and antialiased
-        /// corners.
-        ///
-        /// Generated rather than shipped, so there is no asset to import and no import setting to
-        /// get wrong. It is drawn from a signed distance to the rounded rectangle, which is what
-        /// makes the corners and the stroke crisp at any size — the previous panels used a
-        /// smoothstep on the distance to the nearest <i>edge</i>, which is not a corner radius at
-        /// all: it produces a rectangle with a soft haze all the way round, and stretching a
-        /// 64-pixel texture across 13 cm turned that haze into a centimetre of mush with no
-        /// discernible edge.
-        ///
-        /// The texture is generated once and shared. Nine-slicing would be better still, but a
-        /// single sprite at this resolution holds up to the sizes these panels are actually drawn
-        /// at and costs one texture for the whole application.
-        /// </summary>
-        public static Texture2D PanelTexture
+        /// <summary>Left half of the atlas: a rounded rectangle with a stroke.</summary>
+        public static readonly Rect AtlasPanel = new Rect(0f, 0f, 0.5f, 1f);
+
+        /// <summary>Right half: a softer borderless fill, for rows and chips.</summary>
+        public static readonly Rect AtlasFill = new Rect(0.5f, 0f, 0.5f, 1f);
+
+        private static Texture2D _surfaceAtlas;
+
+        public static Texture2D SurfaceAtlas
         {
             get
             {
-                if (_panelTexture != null) return _panelTexture;
-                _panelTexture = BuildPanelTexture(256, 0.16f, 0.018f);
-                return _panelTexture;
-            }
-        }
-
-        private static Texture2D _panelTexture;
-        private static Texture2D _rowTexture;
-
-        /// <summary>A softer, borderless fill for the selected row inside a list.</summary>
-        public static Texture2D RowTexture
-        {
-            get
-            {
-                if (_rowTexture != null) return _rowTexture;
-                _rowTexture = BuildPanelTexture(128, 0.34f, 0f);
-                return _rowTexture;
+                if (_surfaceAtlas != null) return _surfaceAtlas;
+                _surfaceAtlas = BuildAtlas(128);
+                return _surfaceAtlas;
             }
         }
 
         /// <summary>
-        /// Draw a rounded rectangle into a square texture.
+        /// The material every surface's chrome is drawn with.
+        ///
+        /// <c>CosmoSynth/Panel</c> is premultiplied-over and <b>writes coverage</b>: a panel is
+        /// meant to be readable against a bright room, so it occludes passthrough in proportion to
+        /// its own opacity. Colour arrives per vertex, which is what lets one mesh hold a dark
+        /// backing, a hovered row and an Accent chip at once.
         /// </summary>
-        /// <param name="resolution">Texture edge, pixels.</param>
-        /// <param name="cornerFraction">Corner radius as a fraction of half the edge.</param>
-        /// <param name="strokeFraction">Stroke width as a fraction of the edge. 0 for no stroke.</param>
-        private static Texture2D BuildPanelTexture(int resolution, float cornerFraction, float strokeFraction)
+        public static Material SurfaceMaterial()
         {
-            var texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, mipChain: true, linear: false)
+            Material material = CosmoShaders.Material(CosmoShaders.Panel);
+            material.SetTexture("_BaseMap", SurfaceAtlas);
+            material.renderQueue = 3200;
+            return material;
+        }
+
+        /// <summary>
+        /// Draw the two tiles into one texture: a rounded rectangle each, differing only in corner
+        /// radius, with the shape carried entirely in <b>alpha</b>.
+        ///
+        /// Alpha only, because <c>CosmoSynth/Panel</c> takes its colour from the vertex and samples
+        /// only the mask's alpha — an RGB detail baked into the texture would never be drawn. A
+        /// border is therefore two rectangles (<c>CosmoSurface.Rect</c> draws them), not a bright
+        /// ring in the texture.
+        ///
+        /// Both tiles are signed-distance rounded rectangles. The previous panels smoothstepped the
+        /// distance to the nearest <i>edge</i>, which is not a corner radius: it makes a rectangle
+        /// with a soft haze all round, and stretched across 13 cm the haze became a centimetre of
+        /// mush with no discernible edge.
+        /// </summary>
+        private static Texture2D BuildAtlas(int tile)
+        {
+            var texture = new Texture2D(tile * 2, tile, TextureFormat.RGBA32, mipChain: true, linear: false)
             {
-                name = "CosmoPanel",
+                name = "CosmoSurfaceAtlas",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear
             };
 
-            var pixels = new Color32[resolution * resolution];
-            float radius = cornerFraction;
-            // One pixel, in the normalised space the distance field is measured in. The edge is
-            // faded across roughly this much, which is what antialiases it.
-            float feather = 1.5f / resolution;
-
-            for (int y = 0; y < resolution; y++)
+            var pixels = new Color32[tile * 2 * tile];
+            for (int t = 0; t < 2; t++)
             {
-                for (int x = 0; x < resolution; x++)
+                float corner = t == 0 ? 0.16f : 0.34f;
+                float feather = 1.5f / tile;
+
+                for (int y = 0; y < tile; y++)
                 {
-                    // Position in [-0.5, 0.5], so the rectangle is the unit square centred on 0.
-                    float px = (x + 0.5f) / resolution - 0.5f;
-                    float py = (y + 0.5f) / resolution - 0.5f;
+                    for (int x = 0; x < tile; x++)
+                    {
+                        float px = (x + 0.5f) / tile - 0.5f;
+                        float py = (y + 0.5f) / tile - 0.5f;
 
-                    // Signed distance to a rounded rectangle: negative inside, positive outside.
-                    float qx = Mathf.Abs(px) - (0.5f - radius);
-                    float qy = Mathf.Abs(py) - (0.5f - radius);
-                    float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) +
-                                               Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
-                    float distance = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - radius;
+                        float qx = Mathf.Abs(px) - (0.5f - corner);
+                        float qy = Mathf.Abs(py) - (0.5f - corner);
+                        float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) +
+                                                   Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
+                        float distance = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - corner;
 
-                    // Coverage of the shape, and coverage of the stroke band just inside its edge.
-                    float fill = 1f - Mathf.SmoothStep(-feather, feather, distance);
-                    float stroke = strokeFraction <= 0f
-                        ? 0f
-                        : (1f - Mathf.SmoothStep(-feather, feather, distance)) *
-                          Mathf.SmoothStep(-strokeFraction - feather, -strokeFraction + feather, distance);
-
-                    // Fill and stroke are composited into the texture rather than left to two
-                    // quads. One draw call, and no chance of the two drifting apart in size.
-                    Color colour = Color.Lerp(Surface, Stroke, Mathf.Clamp01(stroke));
-                    float alpha = Mathf.Clamp01(fill) * Mathf.Lerp(Surface.a, Stroke.a, Mathf.Clamp01(stroke));
-
-                    pixels[y * resolution + x] = new Color(colour.r, colour.g, colour.b, alpha);
+                        float fill = Mathf.Clamp01(1f - Mathf.SmoothStep(-feather, feather, distance));
+                        pixels[y * tile * 2 + t * tile + x] = new Color(1f, 1f, 1f, fill);
+                    }
                 }
             }
 
@@ -272,47 +257,15 @@ namespace CosmoSynth.Runtime
             return texture;
         }
 
-        /// <summary>
-        /// A material for panel art that fades as a whole.
-        ///
-        /// <c>Unlit/Transparent</c> ignores vertex and material colour entirely, which is why the
-        /// old panels could not fade: the wrist dashboard faded its text and left the backing at
-        /// full opacity, so the panel snapped into existence and then its contents drifted in
-        /// after it. <c>Sprites/Default</c> multiplies by the material tint, so one alpha drives
-        /// the whole surface.
-        /// </summary>
-        public static Material PanelMaterial()
-        {
-            Material material = CosmoShaders.Material(CosmoShaders.SpritesDefault);
-            material.mainTexture = PanelTexture;
-            // Above transparent geometry — the atmosphere shells — so a panel in front of a
-            // planet is not sorted behind its own limb.
-            material.renderQueue = 3200;
-            return material;
-        }
-
-        /// <summary>As <see cref="PanelMaterial"/>, for the borderless row highlight.</summary>
-        public static Material RowMaterial()
-        {
-            Material material = CosmoShaders.Material(CosmoShaders.SpritesDefault);
-            material.mainTexture = RowTexture;
-            material.renderQueue = 3201;
-            return material;
-        }
-
         // ---- Orbit colour ----------------------------------------------------
 
         /// <summary>
         /// The colour one body's orbit is drawn in.
         ///
-        /// Taking the planet's own colour and using it directly does not work: Mercury and the
-        /// Moon are near-black, Pluto is brown, and their paths vanish. Taking a single blue for
-        /// everything — which is what the app used to do — gives the wireframe-diagram look, a
-        /// dozen identical hairlines with nothing to say which belongs to which world.
-        ///
-        /// So the hue comes from the body and the lightness is normalised: enough saturation to
-        /// associate the path with its planet at a glance, and a floor on luminance so no orbit
-        /// is ever drawn in a colour the display cannot separate from black.
+        /// The body's own colour used directly does not work — Mercury and the Moon are
+        /// near-black, Pluto is brown, and their paths vanish. A single blue for everything gives
+        /// the wireframe-diagram look the user rejected in 1.4.0. So the hue comes from the body
+        /// and the lightness is normalised.
         /// </summary>
         public static Color OrbitColour(Double3 displayColor)
         {
@@ -320,8 +273,6 @@ namespace CosmoSynth.Runtime
 
             Color.RGBToHSV(body, out float hue, out float saturation, out float value);
 
-            // A body with no useful hue (grey rock, ice) borrows the interface accent rather than
-            // being drawn in grey, which at one pixel wide is indistinguishable from an artefact.
             if (saturation < 0.12f)
             {
                 Color.RGBToHSV(Accent, out hue, out _, out _);

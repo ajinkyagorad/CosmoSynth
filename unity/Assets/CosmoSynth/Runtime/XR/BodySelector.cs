@@ -29,7 +29,8 @@ namespace CosmoSynth.Runtime
         private XrRig _rig;
         private XrHandInput _hands;
         private XrInput _input;
-        private SpatialPanel _panel;
+        private InspectorCard _panel;
+        private MeasureTool _measure;
         private LineRenderer _ray;
         private Material _rayMaterial;
         private Transform _highlight;
@@ -40,6 +41,10 @@ namespace CosmoSynth.Runtime
         /// <summary>The currently selected body, or null.</summary>
         public CelestialBodyView Selected { get; private set; }
 
+        /// <summary>The card this selector shows beside the selection. Built here, wired by the
+        /// bootstrap: a component that finds its own collaborators finds the wrong one silently.</summary>
+        public InspectorCard Card => _panel;
+
         private void Awake()
         {
             _simulation = FindAnyObjectByType<UniverseSimulation>();
@@ -47,8 +52,10 @@ namespace CosmoSynth.Runtime
             _hands = FindAnyObjectByType<XrHandInput>();
             _input = FindAnyObjectByType<XrInput>();
 
-            var panelObject = new GameObject("Spatial Panel");
-            _panel = panelObject.AddComponent<SpatialPanel>();
+            _measure = FindAnyObjectByType<MeasureTool>();
+
+            var panelObject = new GameObject("Inspector Card");
+            _panel = panelObject.AddComponent<InspectorCard>();
 
             BuildRay();
             BuildHighlight();
@@ -259,11 +266,22 @@ namespace CosmoSynth.Runtime
                            (_hands != null && _hands.Active == XrHandInput.Modality.Hands && _hands.SelectTap);
             if (!pressed) return;
 
-            // Clicking empty space deselects, which is the only way to dismiss the panel.
+            // Measure mode takes the press instead: while it is on, the dominant trigger and a
+            // tap-pinch pick points rather than selecting, and the other hand still grabs.
+            if (_measure != null && _measure.Active)
+            {
+                if (_hovered != null) _measure.PickBody(_hovered);
+                else _measure.Pick(MeasurePoint.Viewer());
+                _input?.Pulse(_input.Dominant, 0.5f, 0.05f);
+                return;
+            }
+
+            // Clicking empty space deselects, which is the only way to dismiss the card.
             Selected = _hovered;
             _panel.Show(Selected);
 
-            _input?.Pulse(Hand.Right, Selected != null ? 0.5f : 0.15f, 0.05f);
+            _input?.Pulse(_input != null ? _input.Dominant : Hand.Right,
+                Selected != null ? 0.5f : 0.15f, 0.05f);
 
             if (Selected != null)
             {

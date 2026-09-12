@@ -75,7 +75,13 @@ namespace CosmoSynth.Runtime
                 if (_textMaterial != null) return _textMaterial;
                 if (Font == null || Font.material == null) return null;
 
-                _textMaterial = new Material(Font.material) { name = "CosmoText", renderQueue = 3210 };
+                // CosmoSynth/Text, not a clone of the built-in font material: every shader the
+                // app ships must be in CosmoShaders.All or it is stripped from the build and
+                // renders magenta. The atlas goes in _MainTex because that is what Unity's own
+                // font material calls it.
+                _textMaterial = CosmoShaders.Material(CosmoShaders.Text);
+                _textMaterial.name = "CosmoText";
+                _textMaterial.SetTexture("_MainTex", Font.material.mainTexture);
 
                 // Static event, named explicitly so it is not mistaken for one on the instance
                 // the property above returns.
@@ -87,7 +93,8 @@ namespace CosmoSynth.Runtime
 
         private static void OnFontTextureRebuilt(Font font)
         {
-            if (_textMaterial != null && font == _font) _textMaterial.mainTexture = font.material.mainTexture;
+            if (_textMaterial != null && font == _font)
+                _textMaterial.SetTexture("_MainTex", font.material.mainTexture);
         }
 
         /// <summary>Height of one line, in world units, at a given character size.</summary>
