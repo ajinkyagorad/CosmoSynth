@@ -269,3 +269,9 @@ merges the other's.
   is taking these.
 - **Main is committed and clean** at each step: docs first, then the toolchain merge. Branch from
   `main`, never commit to it.
+
+---
+
+## 11. Second brief: make it look like something
+
+The owner saw the first render of the revived app on 2026-09-12 and said: "it just looks lame , empty dark space, I will have it run through astra to improve its overall engineering". That brief is **HANDOVER-ASTRA-VISUAL.md**, beside this file. Read it after this one. It carries the evidence for why the frame is dead, the bar to clear (the owner own Milky Way Atlas, copied to refs/webxr), the ordered list of what to fix, and the engineering defects the gates already name.
