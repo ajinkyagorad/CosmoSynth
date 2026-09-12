@@ -148,11 +148,23 @@ Both are recorded here so nobody re-tries them:
    then proved **no valid alignment exists at all**: the Atlas was built against a different
    Stellarium revision than the one staged. Dead, twice over, and the cross-check is what
    caught it.
-2. **Wikidata SPARQL (CC0).** Implemented as `tools/cosmodata/fetch_hip_bridge.py`. Run this
-   session: WDQS is in an active outage and answers
-   `429 Aggressively rate-limiting to 1 req / min — this rule was created during active wdqs
-   outage`. Zero pairs returned. The script now honours `Retry-After`; it is the
-   one action that would take the figures from 20% to (probably) near-complete.
+2. **Wikidata SPARQL (CC0) — implemented, executed, returned nothing, cause undetermined.**
+   `tools/cosmodata/fetch_hip_bridge.py` ran to completion this session: all 15 batches
+   covering the 710 figure HIP ids, one request a minute, HTTP 200 each time, **0 pairs**.
+   It wrote no cache, because an empty cache is worse than none.
+
+   I then could not diagnose it. A three-query probe — the same query, the same query
+   without the `pq:P972` qualifier, and a trivial `SELECT ?x WHERE { BIND(1 AS ?x) }` —
+   got `429 Aggressively rate-limiting to 1 req / min - this rule was created during active
+   wdqs outage (797a132)` on **all three, including the trivial one**. So the endpoint is now
+   refusing this host outright, and I cannot distinguish "the SPARQL is wrong" from "WDQS
+   returned empty results during its outage".
+
+   **UNVERIFIED.** Before trusting this route, re-run the probe when WDQS is healthy; if the
+   trivial query answers and the qualified one still returns nothing, the `P528`/`P972`
+   qualifier pattern in `QUERY` is the thing to fix, not the service. Deferral #2 in §11 —
+   fetching the HYG CSVs — reaches 100% on the development path without Wikidata at all, and
+   is not blocked on anybody else's outage.
 
 ### 3.3 What did work, and the cross-check that makes it trustworthy
 
@@ -265,7 +277,7 @@ prove the 138 shipped segments are sound — they say nothing about the 557 that
 | 2 | **No AT-HYG join, no `--census` step.** | Same cause: no CSVs. Both code paths exist in `load_from_hyg`; neither has run. |
 | 3 | **UCAC4 is not used.** | Only **one 0.2° declination zone** is staged (`z500`, 11.7 MB, a format probe). The full catalogue is 900 zones, about 10 GB — impossible under the disk floor. So the clean path stops at BSC5's V ≈ 7, not the ~260k stars to V 9.5 the licence report sketched. |
 | 4 | **B−V is quantised to u8** (B §2.1 implies f32). | 0.0157 mag of resolution moves Ballesteros' temperature by well under 1%, `teff` ships at full f32 anyway, and it saves 359 KB. Encoding declared in the column meta. |
-| 5 | **Figures ship at 19.9% of segments.** | §3. Everything resolvable from staged CC-clean data is resolved; the remainder needs the Wikidata fetch. The file records `resolvedFraction`, `Constellations.ResolvedFraction` exposes it, and `--require-figure-fraction` exists so nobody later ships a broken set believing it is complete. |
+| 5 | **Figures ship at 19.9% of segments.** | §3. Everything resolvable from staged data is resolved. The remaining 80% needs either the HYG CSVs (development path, §11 item 1) or a working Wikidata query (commercial path, §11 item 2, currently UNVERIFIED). The file records `resolvedFraction`, `Constellations.ResolvedFraction` exposes it, and `--require-figure-fraction` exists so nobody later ships a broken set believing it is complete. |
 | 6 | On the clean path the `catalog-hip` stage is tagged `by-sa` although its HIP values come from IAU-CSN (`by`). | Conservative, not permissive — `by` ships wherever `by-sa` does. Not worth a dynamic tag. |
 
 ---
@@ -340,12 +352,15 @@ COSMODATA_LICENCE=commercial python3 tools/cosmodata/build_starfield.py --out /t
 
 The one action that improves this lane most, in order:
 
-1. **`python3 tools/cosmodata/fetch_hip_bridge.py`** once WDQS is out of its outage — CC0,
-   about 40 KB, takes the figures from 19.9% toward complete. Re-run `build_starfield.py`
-   after it; nothing else changes.
-2. **Fetch `hyg_v44.csv.gz` and `hyglike_from_athyg_v40.csv.gz`** (28 MB, disk is now 11 GB
-   free) and run `build_starfield.py --hyg ... --athyg ...`. That fills velocity, B−V,
-   spectral class and HIP on the development path — and HIP alone would take the figures to
-   100% there without Wikidata.
+1. **Fetch `hyg_v44.csv.gz` and `hyglike_from_athyg_v40.csv.gz`** (28 MB; disk is now 11 GB
+   free, above the 6 GB floor) and run
+   `build_starfield.py --hyg <path> --athyg <path>`. This is the highest-value action and it
+   depends on nobody: it fills velocity, B−V, spectral class and HIP on the development path,
+   and **HIP alone takes the figures from 19.9% to ~100% there**, because HYG carries the HIP
+   column the CSS1 migration could not. It also turns on the AT-HYG astrometry join and the
+   `--census` step, both implemented and both never executed.
+2. **`python3 tools/cosmodata/fetch_hip_bridge.py`** once WDQS is out of its outage — CC0,
+   about 40 KB. This is what fixes the figures on the **commercial** path, which item 1 does
+   not. Verify the query first (§3.2): it has returned zero pairs once already.
 3. **Email `data.licences@esa.int`** (`docs/licence/stars.md` §4 Option A). One grant makes
    the development build shippable and §1.3 becomes history.
