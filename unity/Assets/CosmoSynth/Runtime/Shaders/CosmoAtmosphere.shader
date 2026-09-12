@@ -1,9 +1,19 @@
 // Analytic single-scattering atmosphere for CosmoSynth.
 //
+// PORTED IN PLACE from Built-in CG to URP HLSL (contract 7.2). The maths is unchanged, line for
+// line; what changed is the pipeline skeleton, the camera accessor, and one added uniform:
+//   - CGPROGRAM -> HLSLPROGRAM, UnityCG.cginc -> CosmoCore.hlsl;
+//   - "RenderPipeline"="UniversalPipeline" and "LightMode"="UniversalForward" tags, without which
+//     URP does not draw the pass at all and the shader is silently absent rather than wrong;
+//   - _WorldSpaceCameraPos -> GetCameraPositionWS(), read AFTER the eye macro;
+//   - material properties moved into CBUFFER_START(UnityPerMaterial) so the SRP Batcher works;
+//   - VFACE -> URP's FRONT_FACE_SEMANTIC macros, which are correct on every backend;
+//   - _PerVertexCompress, the Envelope-mode switch (contract 2.6, 7.2).
+//
 // Rendered on a sphere a few scale heights larger than the planet. The shell is only a way to
-// get the fragment shader running over the right pixels: the actual work is a ray march in
-// world space, so the result does not depend on the shell's tessellation and stays smooth when
-// a planet is scaled up to fill the room.
+// get the fragment shader running over the right pixels: the actual work is a ray march, so the
+// result does not depend on the shell's tessellation and stays smooth when a planet is scaled up
+// to fill the room.
 //
 // The model is single-scattering ray marching: step along the view ray through the shell,
 // accumulate Rayleigh and Mie density weighted by how much light reaches each sample, and
@@ -11,6 +21,14 @@
 // precomputed transmittance tables and is not affordable per-frame on a mobile GPU — but it
 // reproduces the effects that actually read: a blue limb, a red sunset at the terminator,
 // forward-scattered haze around the star, and the sky thinning with altitude.
+//
+// ENVELOPE MODE (_PerVertexCompress = 1). When the eye is near a big body the body renders
+// per-vertex-compressed, so its drawn shell is no longer a sphere in world space and a
+// world-space integral against it is wrong. In that mode the integral runs in TRUE eye-relative
+// space in units of the planet radius: the CPU supplies _PlanetCenter, _PlanetRadius,
+// _AtmosphereRadius and the rescaled coefficients in that normalisation, and the ray origin
+// becomes the origin. The view DIRECTION is unchanged either way, because compression is radial
+// about the centre eye and preserves direction exactly.
 //
 // MIXED-REALITY RULE, and the reason for the odd blend mode below:
 // on Quest the compositor treats framebuffer ALPHA as coverage. A normal additive pass
@@ -23,9 +41,9 @@ Shader "CosmoSynth/Atmosphere"
 {
     Properties
     {
-        _PlanetRadius     ("Planet radius (world units)", Float) = 1.0
-        _AtmosphereRadius ("Atmosphere radius (world units)", Float) = 1.05
-        _PlanetCenter     ("Planet centre (world)", Vector) = (0,0,0,0)
+        _PlanetRadius     ("Planet radius (world units, or 1 in Envelope mode)", Float) = 1.0
+        _AtmosphereRadius ("Atmosphere radius (same units as _PlanetRadius)", Float) = 1.05
+        _PlanetCenter     ("Planet centre (world, or true eye-relative in planet radii)", Vector) = (0,0,0,0)
         _SunDirection     ("Direction to star (world)", Vector) = (0,0,1,0)
 
         // Per-kilometre Rayleigh coefficients from the catalogue, rescaled into shell units by
@@ -38,14 +56,18 @@ Shader "CosmoSynth/Atmosphere"
         _Intensity      ("Star intensity", Float) = 18.0
         _Samples        ("View ray samples", Range(4, 24)) = 10
         _LightSamples   ("Light ray samples", Range(2, 8)) = 4
+        _PerVertexCompress ("Envelope mode (contract 2.6)", Float) = 0
     }
 
     SubShader
     {
-        Tags { "Queue" = "Transparent+100" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+        Tags { "Queue" = "Transparent+100" "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
 
         Pass
         {
+            Name "Atmosphere"
+            Tags { "LightMode" = "UniversalForward" }
+
             // Additive colour, destination alpha preserved — see the note above.
             Blend One One, Zero One
             ZWrite Off
@@ -62,7 +84,7 @@ Shader "CosmoSynth/Atmosphere"
             // Still depth-test, so nearer geometry occludes the glow.
             ZTest LEqual
 
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.5
@@ -70,58 +92,62 @@ Shader "CosmoSynth/Atmosphere"
             // position and matrices: the limb lands in the wrong place in one eye, and the
             // result is a headache rather than a planet.
             #pragma multi_compile_instancing
-            #include "UnityCG.cginc"
+            #include "CosmoCore.hlsl"
 
-            float  _PlanetRadius;
-            float  _AtmosphereRadius;
-            float4 _PlanetCenter;
-            float4 _SunDirection;
-            float4 _RayleighCoeff;
-            float  _MieCoeff;
-            float  _MieG;
-            float  _ScaleHeight;
-            float  _Intensity;
-            float  _Samples;
-            float  _LightSamples;
+            CBUFFER_START(UnityPerMaterial)
+                float  _PlanetRadius;
+                float  _AtmosphereRadius;
+                float4 _PlanetCenter;
+                float4 _SunDirection;
+                float4 _RayleighCoeff;
+                float  _MieCoeff;
+                float  _MieG;
+                float  _ScaleHeight;
+                float  _Intensity;
+                float  _Samples;
+                float  _LightSamples;
+                float  _PerVertexCompress;
+            CBUFFER_END
 
-            struct appdata
+            struct Attributes
             {
                 float4 vertex : POSITION;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            struct v2f
+            struct Varyings
             {
                 float4 pos     : SV_POSITION;
                 float3 worldPos: TEXCOORD0;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            v2f vert(appdata v)
+            Varyings vert(Attributes v)
             {
-                v2f o;
+                Varyings o = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_INITIALIZE_OUTPUT(v2f, o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                o.pos = UnityObjectToClipPos(v.vertex);
-                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+                float3 positionWS = TransformObjectToWorld(v.vertex.xyz);
+                if (_PerVertexCompress > 0.5) positionWS = CS_CompressWS(positionWS);
+                o.pos = TransformWorldToHClip(positionWS);
+                o.worldPos = positionWS;
                 return o;
             }
 
             // Ray/sphere intersection. Returns false when the ray misses; otherwise the two
             // parametric distances along the (normalised) direction.
             bool RaySphere(float3 origin, float3 dir, float3 centre, float radius,
-                           out float near, out float far)
+                           out float nearT, out float farT)
             {
                 float3 oc = origin - centre;
                 float b = dot(oc, dir);
                 float c = dot(oc, oc) - radius * radius;
                 float disc = b * b - c;
-                if (disc < 0.0) { near = 0.0; far = 0.0; return false; }
+                if (disc < 0.0) { nearT = 0.0; farT = 0.0; return false; }
                 float s = sqrt(disc);
-                near = -b - s;
-                far  = -b + s;
-                return far > 0.0;
+                nearT = -b - s;
+                farT  = -b + s;
+                return farT > 0.0;
             }
 
             // Atmospheric density at a point: exponential falloff with altitude, which is what
@@ -133,20 +159,23 @@ Shader "CosmoSynth/Atmosphere"
                 return exp(-saturate(altitude) / scaleHeight);
             }
 
-            float4 frag(v2f i, float facing : VFACE) : SV_Target
+            half4 frag(Varyings i, FRONT_FACE_TYPE frontFace : FRONT_FACE_SEMANTIC) : SV_Target
             {
                 // Selects the correct eye's camera position and matrices under single-pass
-                // instanced rendering. _WorldSpaceCameraPos below is per-eye only after this.
+                // instanced rendering. GetCameraPositionWS() below is per-eye only after this.
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
+                float3 eyeWS = GetCameraPositionWS();
+                // Rigid: world space. Envelope: true eye-relative space in units of the planet
+                // radius, so the ray starts at the origin. Direction is the same either way.
+                float3 camera = (_PerVertexCompress > 0.5) ? float3(0, 0, 0) : eyeWS;
                 float3 centre = _PlanetCenter.xyz;
-                float3 camera = _WorldSpaceCameraPos;
-                float3 dir = normalize(i.worldPos - camera);
+                float3 dir = normalize(i.worldPos - eyeWS);
                 float3 sunDir = normalize(_SunDirection.xyz);
 
                 float atmosNear, atmosFar;
                 if (!RaySphere(camera, dir, centre, _AtmosphereRadius, atmosNear, atmosFar))
-                    return float4(0, 0, 0, 0);
+                    return half4(0, 0, 0, 0);
 
                 // Reject the duplicate.
                 //
@@ -156,7 +185,8 @@ Shader "CosmoSynth/Atmosphere"
                 // around the limb, exactly where the effect is most visible. When the camera is
                 // outside the shell (atmosNear > 0) the near face is the one that counts; when it
                 // is inside, there is no near face to rasterise and the far one must do the work.
-                if (facing < 0.0 && atmosNear > 0.0) return float4(0, 0, 0, 0);
+                bool isFront = IS_FRONT_VFACE(frontFace, true, false);
+                if (!isFront && atmosNear > 0.0) return half4(0, 0, 0, 0);
 
                 // Start at the camera when it is already inside the shell.
                 float start = max(atmosNear, 0.0);
@@ -167,7 +197,7 @@ Shader "CosmoSynth/Atmosphere"
                 if (RaySphere(camera, dir, centre, _PlanetRadius, planetNear, planetFar) && planetNear > 0.0)
                     end = min(end, planetNear);
 
-                if (end <= start) return float4(0, 0, 0, 0);
+                if (end <= start) return half4(0, 0, 0, 0);
 
                 int samples = (int)_Samples;
                 float segment = (end - start) / samples;
@@ -234,9 +264,9 @@ Shader "CosmoSynth/Atmosphere"
 
                 // Alpha stays 0: this pass only ADDS light. Writing coverage here is what would
                 // black out passthrough behind the glow.
-                return float4(max(colour, 0.0), 0.0);
+                return half4(max(colour, 0.0), 0.0);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 
