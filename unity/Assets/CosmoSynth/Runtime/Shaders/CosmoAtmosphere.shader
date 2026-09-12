@@ -5,7 +5,7 @@
 //   - CGPROGRAM -> HLSLPROGRAM, UnityCG.cginc -> CosmoCore.hlsl;
 //   - "RenderPipeline"="UniversalPipeline" and "LightMode"="UniversalForward" tags, without which
 //     URP does not draw the pass at all and the shader is silently absent rather than wrong;
-//   - _WorldSpaceCameraPos -> GetCameraPositionWS(), read AFTER the eye macro;
+//   - the camera position -> CS_EyePositionWS(), read AFTER the eye macro (R1);
 //   - material properties moved into CBUFFER_START(UnityPerMaterial) so the SRP Batcher works;
 //   - VFACE -> URP's FRONT_FACE_SEMANTIC macros, which are correct on every backend;
 //   - _PerVertexCompress, the Envelope-mode switch (contract 2.6, 7.2).
@@ -57,6 +57,7 @@ Shader "CosmoSynth/Atmosphere"
         _Samples        ("View ray samples", Range(4, 24)) = 10
         _LightSamples   ("Light ray samples", Range(2, 8)) = 4
         _PerVertexCompress ("Envelope mode (contract 2.6)", Float) = 0
+        _Fade ("Layer fade", Float) = 1
     }
 
     SubShader
@@ -107,6 +108,7 @@ Shader "CosmoSynth/Atmosphere"
                 float  _Samples;
                 float  _LightSamples;
                 float  _PerVertexCompress;
+                float  _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -118,7 +120,8 @@ Shader "CosmoSynth/Atmosphere"
             struct Varyings
             {
                 float4 pos     : SV_POSITION;
-                float3 worldPos: TEXCOORD0;
+                float3 worldPos: TEXCOORD0;   // as drawn (compressed in Envelope mode)
+                float3 truePos : TEXCOORD1;   // uncompressed: the ray direction comes from this
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -127,10 +130,12 @@ Shader "CosmoSynth/Atmosphere"
                 Varyings o = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                float3 positionWS = TransformObjectToWorld(v.vertex.xyz);
-                if (_PerVertexCompress > 0.5) positionWS = CS_CompressWS(positionWS);
+                float3 truePositionWS = TransformObjectToWorld(v.vertex.xyz);
+                float3 positionWS = _PerVertexCompress > 0.5 ? CS_CompressWS(truePositionWS)
+                                                             : truePositionWS;
                 o.pos = TransformWorldToHClip(positionWS);
                 o.worldPos = positionWS;
+                o.truePos = truePositionWS;
                 return o;
             }
 
@@ -162,15 +167,23 @@ Shader "CosmoSynth/Atmosphere"
             half4 frag(Varyings i, FRONT_FACE_TYPE frontFace : FRONT_FACE_SEMANTIC) : SV_Target
             {
                 // Selects the correct eye's camera position and matrices under single-pass
-                // instanced rendering. GetCameraPositionWS() below is per-eye only after this.
+                // instanced rendering. CS_EyePositionWS() below is per-eye only after this.
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
-                float3 eyeWS = GetCameraPositionWS();
-                // Rigid: world space. Envelope: true eye-relative space in units of the planet
-                // radius, so the ray starts at the origin. Direction is the same either way.
+                float3 eyeWS = CS_EyePositionWS();
+                // ONE space for the whole integral. Rigid: world. Envelope: true eye-relative
+                // space in units of the planet radius -- the CPU writes _PlanetCenter,
+                // _PlanetRadius, _AtmosphereRadius and the rescaled coefficients in THAT
+                // normalisation, and the ray starts at the origin.
+                //
+                // The direction is taken from the UNCOMPRESSED vertex position, not from the
+                // drawn one. A direction is invariant under the eye-relative rescaling, so this
+                // is the same vector in both spaces -- but only about the point the compression
+                // is centred on. Measuring it from this eye to a centre-eye-compressed point
+                // instead bends the limb exactly where the atmosphere is most visible.
                 float3 camera = (_PerVertexCompress > 0.5) ? float3(0, 0, 0) : eyeWS;
                 float3 centre = _PlanetCenter.xyz;
-                float3 dir = normalize(i.worldPos - eyeWS);
+                float3 dir = normalize(i.truePos - eyeWS);
                 float3 sunDir = normalize(_SunDirection.xyz);
 
                 float atmosNear, atmosFar;
@@ -264,7 +277,7 @@ Shader "CosmoSynth/Atmosphere"
 
                 // Alpha stays 0: this pass only ADDS light. Writing coverage here is what would
                 // black out passthrough behind the glow.
-                return half4(max(colour, 0.0), 0.0);
+                return half4(max(colour, 0.0) * _Fade, 0.0);
             }
             ENDHLSL
         }

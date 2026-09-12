@@ -21,7 +21,9 @@ Shader "CosmoSynth/Ribbon"
     }
     SubShader
     {
-        Tags { "RenderType"="Transparent" "Queue"="Transparent+60" "RenderPipeline"="UniversalPipeline" "IgnoreProjector"="True" }
+        // DisableBatching: otherOS is an object-space endpoint, and static batching bakes
+        // vertices into world space (R12).
+        Tags { "RenderType"="Transparent" "Queue"="Transparent+60" "RenderPipeline"="UniversalPipeline" "IgnoreProjector"="True" "DisableBatching"="True" }
         Pass
         {
             Name "Ribbon"
@@ -65,7 +67,7 @@ Shader "CosmoSynth/Ribbon"
             float3 PlaceWS(float3 positionOS)
             {
                 if (_Placement > 1.5)   // sky: positionOS is an ICRF direction; this eye, at infinity
-                    return GetCameraPositionWS() + normalize(CS_IcrfDirToWorld(positionOS)) * _CS_Compress.z;
+                    return CS_EyePositionWS() + normalize(CS_IcrfDirToWorld(positionOS)) * _CS_Compress.z;
                 float3 p = TransformObjectToWorld(positionOS);
                 return _Placement > 0.5 ? CS_CompressWS(p) : p;
             }

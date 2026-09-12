@@ -9,6 +9,14 @@
 // no ceiling is unbounded in the worst direction: the same rule applied to a 3 m lander
 // inflated it past the size of Mars and put the camera inside it, giving a black screen with
 // passthrough working and nothing in it.
+//
+// There is NO per-material rotation matrix (R4). ShaderLab has no matrix property type, so a
+// matrix in UnityPerMaterial can never appear in Properties -- which is the documented condition
+// for SRP Batcher compatibility -- and, having no Properties entry, it has no default either: an
+// unconfigured material carried the ZERO matrix, every direction normalised to NaN and the whole
+// layer collapsed to undefined clip positions. Layer and sky modes both rotate through the global
+// _CS_IcrfToWorld (contract 3.4, 8.2 item 13); a layer that ever genuinely needs its own rotation
+// declares three Vector properties.
 
 Shader "CosmoSynth/Point"
 {
@@ -23,7 +31,10 @@ Shader "CosmoSynth/Point"
         _ShapeGain  ("x: halo gain, y: spike gain (bright end only)", Vector) = (0.35,0.25,0,0)
         _Look       ("x: faintest brightness 0.40, y: exposure, z/w: near-fade start/end (layer units)", Vector) = (0.4,1,0,0)
         _Fade       ("Layer fade", Float) = 1
-        _Space      ("0 layer (per-point compression), 1 object (CPU-placed), 2 sky (direction, per eye)", Float) = 0
+        // Default 1 (object space, CPU-placed), not 0. An unconfigured material must degrade to
+        // the branch that needs nothing but its own transform; the layer branch needs _EyeInChunk
+        // and _Units, which only a layer sets.
+        _Space      ("0 layer (per-point compression), 1 object (CPU-placed), 2 sky (direction, per eye)", Float) = 1
     }
     SubShader
     {
@@ -55,7 +66,6 @@ Shader "CosmoSynth/Point"
                 float4 _Look;
                 float  _Fade;
                 float  _Space;
-                float4x4 _LayerToWorld;   // layer frame -> world rotation (may be improper); set by the layer
             CBUFFER_END
 
             struct Attributes
@@ -75,6 +85,16 @@ Shader "CosmoSynth/Point"
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
+            // Rotate into world through the global ICRF mapping, refusing to normalise a vector
+            // the rotation collapsed. A zero global (the first frames, before Placement has
+            // published) would otherwise give NaN clip positions, which on a tile GPU is
+            // undefined rasterisation rather than nothing drawn.
+            float3 SafeIcrfDir(float3 v)
+            {
+                float3 r = CS_IcrfDirToWorld(v);
+                return dot(r, r) > 1e-20 ? normalize(r) : float3(0, 0, 1);
+            }
+
             Varyings vert(Attributes v)
             {
                 Varyings o = (Varyings)0;
@@ -91,7 +111,7 @@ Shader "CosmoSynth/Point"
                     // Chunk-relative, eye-relative, precise near the chunk (contract 3.4), then f(d).
                     float3 rel = v.offset - _EyeInChunk.xyz;
                     float  du  = max(CS_Length(rel), 1e-30);
-                    float3 dirWS = normalize(mul((float3x3)_LayerToWorld, rel / du));
+                    float3 dirWS = SafeIcrfDir(rel / du);
                     centreWS  = _CS_CentreEyeWS.xyz + dirWS * CS_CompressDistance(du * _Units.x);
                     magnitude = v.data.x + 5.0 * log10(max(du * _Units.y, 1e-12)) - 5.0;   // M -> m
                     nearFade  = smoothstep(_Look.z, _Look.w, du);
@@ -102,8 +122,8 @@ Shader "CosmoSynth/Point"
                 }
                 else
                 {
-                    float3 dirWS = normalize(mul((float3x3)_LayerToWorld, v.offset));
-                    centreWS = GetCameraPositionWS() + dirWS * _CS_Compress.z;   // this eye: infinity
+                    float3 dirWS = SafeIcrfDir(v.offset);
+                    centreWS = CS_EyePositionWS() + dirWS * _CS_Compress.z;   // this eye: infinity
                 }
 
                 // Magnitude -> brightness and size, in one law (StarLook): brighter is bigger AND

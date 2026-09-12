@@ -4,7 +4,7 @@
 // changed is the pipeline skeleton, the camera accessor, the CBUFFER, and one added uniform:
 //   - CGPROGRAM -> HLSLPROGRAM, UnityCG.cginc -> CosmoCore.hlsl;
 //   - "RenderPipeline"="UniversalPipeline" and "LightMode"="UniversalForward" tags;
-//   - _WorldSpaceCameraPos -> GetCameraPositionWS(), read AFTER the eye macro;
+//   - the camera position -> CS_EyePositionWS(), read AFTER the eye macro (R1);
 //   - _Color moved into CBUFFER_START(UnityPerMaterial) for the SRP Batcher;
 //   - _PerVertexCompress, so the rim still hugs the silhouette of an Envelope-mode body.
 //
@@ -30,6 +30,7 @@ Shader "CosmoSynth/Rim"
         _Color    ("Colour (alpha scales brightness)", Color) = (0.35, 0.75, 1.0, 0.6)
         _Power    ("Edge falloff", Range(0.5, 8.0)) = 2.5
         _PerVertexCompress ("Envelope mode (contract 2.6)", Float) = 0
+        _Fade ("Layer fade", Float) = 1
     }
 
     SubShader
@@ -57,6 +58,7 @@ Shader "CosmoSynth/Rim"
                 half4 _Color;
                 float _Power;
                 float _PerVertexCompress;
+                float _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -91,7 +93,7 @@ Shader "CosmoSynth/Rim"
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
-                float3 view = normalize(GetCameraPositionWS() - i.worldPos);
+                float3 view = normalize(CS_EyePositionWS() - i.worldPos);
                 // abs, because these are back faces: the normal points away from the camera.
                 float facing = saturate(abs(dot(normalize(i.worldNrm), view)));
 
@@ -103,7 +105,7 @@ Shader "CosmoSynth/Rim"
                 // No CS_DisplayToLinear here. _Color is a material Color set through SetColor,
                 // which Unity linearises itself (contract 7.4); decoding again would darken the
                 // rim by a second sRGB curve. Only VERTEX colours are decoded in the shader.
-                return half4(_Color.rgb * (half)(_Color.a * rim), 0.0h);
+                return half4(_Color.rgb * (half)(_Color.a * rim * _Fade), 0.0h);
             }
             ENDHLSL
         }

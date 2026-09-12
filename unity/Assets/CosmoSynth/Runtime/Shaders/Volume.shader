@@ -3,9 +3,10 @@
 // The Milky Way dust cube. The mesh is a unit cube [-0.5, 0.5]^3; the transform is the group
 // placement (Rigid or Enclosing) with the layer frame's rotation.
 //
-// The march runs in OBJECT space from THIS eye, and the eye position is read only after
-// UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX. Read before it, both eyes march from the left eye's
-// origin and the volume has no stereo depth at all. A similarity about the centre eye leaves
+// The march runs in OBJECT space from THIS eye. The eye position is read in the VERTEX stage,
+// after UNITY_SETUP_INSTANCE_ID, and passed down as a varying: it is constant across the
+// primitive for a given eye, so perspective-correct interpolation returns it exactly, and the
+// fragment never touches unity_WorldToObject (R5). A similarity about the centre eye leaves
 // every eye at the same object-space point, so compression never touches the integral.
 //
 // The step count comes from the CPU through the step-coverage governor:
@@ -19,11 +20,13 @@ Shader "CosmoSynth/Volume"
         _Ramp ("Colour ramp 256x1 (sRGB)", 2D) = "white" {}
         _Decode ("x: vmin, y: ln(vmax/vmin), z: extinction per (density x object unit), w: ramp scale", Vector) = (0.02,8.3,1,1)
         _Steps ("x: steps (CPU governor), y: empty cut (encoded value)", Vector) = (32,0.22,0,0)
-        _Fade ("Fade", Float) = 1
+        _Fade ("Layer fade", Float) = 1
     }
     SubShader
     {
-        Tags { "RenderType"="Transparent" "Queue"="Transparent+10" "RenderPipeline"="UniversalPipeline" "IgnoreProjector"="True" }
+        // DisableBatching: positionOS is the march's object-space entry point, and static
+        // batching bakes vertices into world space (R12).
+        Tags { "RenderType"="Transparent" "Queue"="Transparent+10" "RenderPipeline"="UniversalPipeline" "IgnoreProjector"="True" "DisableBatching"="True" }
         Pass
         {
             Name "Volume"
@@ -59,6 +62,10 @@ Shader "CosmoSynth/Volume"
             {
                 float4 positionCS : SV_POSITION;
                 float3 positionOS : TEXCOORD0;
+                float3 eyeOS      : TEXCOORD1;   // constant across the primitive for a given eye,
+                                                 // so perspective-correct interpolation returns it
+                                                 // exactly. Computed in vert, where the instance
+                                                 // and eye ids are set up (R5).
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -69,13 +76,18 @@ Shader "CosmoSynth/Volume"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.positionCS = TransformObjectToHClip(v.positionOS);
                 o.positionOS = v.positionOS;
+                o.eyeOS = TransformWorldToObject(CS_EyePositionWS());   // R1 + R5
                 return o;
             }
 
             half4 frag(Varyings i) : SV_Target
             {
-                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);   // per-eye camera position
-                float3 eyeOS = TransformWorldToObject(GetCameraPositionWS());
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+                // NOT TransformWorldToObject here: under INSTANCING_ON unity_WorldToObject is an
+                // array indexed by unity_InstanceID, which no fragment sets up, so a fragment reads
+                // matrix 0 -- the wrong one the moment this layer is ever GPU-instanced. It is also
+                // a per-pixel 4x4 multiply for a value constant across the primitive (R5).
+                float3 eyeOS = i.eyeOS;
                 float3 dir = normalize(i.positionOS - eyeOS);
                 float3 inv = 1.0 / dir;                           // IEEE inf on an axis is handled by min/max
                 float3 tA = (-0.5 - eyeOS) * inv;
@@ -87,7 +99,10 @@ Shader "CosmoSynth/Volume"
 
                 int   steps = max((int)_Steps.x, 1);
                 float dt = (tFar - tNear) / steps;
-                float t  = tNear + dt * CS_IGN(i.positionCS.xy);    // jitter turns banding into fine noise
+                float t  = tNear + dt * CS_JitterDir(dir);   // ray-space jitter: banding becomes fine
+                                                            // noise, and the SAME noise in both
+                                                            // eyes -- a pixel-space jitter is
+                                                            // binocular rivalry here (R7)
                 half3 colour = 0;
                 half  alpha  = 0;
                 [loop] for (int s = 0; s < steps; s++, t += dt)

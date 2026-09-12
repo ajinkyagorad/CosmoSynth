@@ -140,7 +140,17 @@ namespace CosmoSynth.Runtime
             return shader;
         }
 
-        /// <summary>Create a material from a named shader, with the same loud failure.</summary>
+        /// <summary>
+        /// Create a material from a named shader, with the same loud failure.
+        ///
+        /// <b>Returns null when even the fallback is missing.</b> Callers must handle that — skip
+        /// the renderer, leave the component inert — rather than being handed a Material wrapping
+        /// a null shader. <c>new Material(null)</c> throws from inside Unity, and it throws inside
+        /// whichever <c>Awake</c> was building its material, taking that component down with it.
+        /// That is not degrading; it is the same total, unexplained failure this class exists to
+        /// replace, with two error lines in front of it. A null return degrades: the object does
+        /// not draw, the log says which shader is missing, and the rest of the scene still runs.
+        /// </summary>
         public static Material Material(string name)
         {
             Shader shader = Load(name);
@@ -149,8 +159,15 @@ namespace CosmoSynth.Runtime
             // which under URP is itself missing — the fallback had the same failure as the thing
             // it was catching.
             if (shader == null && name != Unlit) shader = Load(Unlit);
-            // If Unlit is missing too, the shader set is not in the build at all. Throwing here,
-            // after two error lines that name both shaders, is better than a scene of magenta.
+            if (shader == null)
+            {
+                Debug.LogError(
+                    "[CosmoSynth] No material for '" + name + "' and none for the " + Unlit +
+                    " fallback either — the CosmoSynth shader set is not in this build at all. " +
+                    "Nothing that asked for a material will draw. Run " +
+                    "CosmoSynth.EditorTools.XrSetup and rebuild.");
+                return null;
+            }
             return new Material(shader);
         }
     }

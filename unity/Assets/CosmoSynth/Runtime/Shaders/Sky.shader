@@ -17,10 +17,13 @@ Shader "CosmoSynth/Sky"
         _Lut ("Colour LUT 256x1 (sRGB)", 2D) = "white" {}
         _Contrast ("Contrast about 0 uK (1 = +-500 uK full LUT)", Float) = 2
         _Immersion ("0 = passthrough untouched, 1 = replaces the room (VR / full-space)", Range(0,1)) = 0
+        _Fade ("Layer fade", Float) = 1
     }
     SubShader
     {
-        Tags { "RenderType"="Background" "Queue"="Background" "RenderPipeline"="UniversalPipeline" "PreviewType"="Skybox" }
+        // DisableBatching: the object-space vertices ARE ICRF directions, and static batching
+        // bakes vertices into world space (R12).
+        Tags { "RenderType"="Background" "Queue"="Background" "RenderPipeline"="UniversalPipeline" "PreviewType"="Skybox" "DisableBatching"="True" }
         Pass
         {
             Name "Sky"
@@ -43,6 +46,7 @@ Shader "CosmoSynth/Sky"
             CBUFFER_START(UnityPerMaterial)
                 float _Contrast;
                 float _Immersion;
+                float _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -67,7 +71,7 @@ Shader "CosmoSynth/Sky"
                 float3 dirWS = normalize(CS_IcrfDirToWorld(dirIcrf));
                 // Anchored to THIS eye (per eye in the vertex stage under multiview): zero disparity
                 // and zero head-motion parallax, which is what infinity looks like.
-                o.positionCS = TransformWorldToHClip(GetCameraPositionWS() + dirWS * _CS_Compress.z);
+                o.positionCS = TransformWorldToHClip(CS_EyePositionWS() + dirWS * _CS_Compress.z);
                 o.dirIcrf = dirIcrf;
                 return o;
             }
@@ -82,7 +86,10 @@ Shader "CosmoSynth/Sky"
                 half3 c  = SAMPLE_TEXTURE2D(_Lut, sampler_Lut, float2(t, 0.5)).rgb;
                 // Premultiplied. This is the ONE pass that writes coverage on purpose: immersion is
                 // the opt-in full-space mode. In MR, _Immersion = 0 and the layer skips the draw.
-                return half4(c * (half)_Immersion, (half)_Immersion);
+                // _Immersion is the mode switch (is there a sky at all); _Fade is the layer
+                // framework's visibility ramp (R30). Both, and they are not the same thing.
+                half cover = (half)(_Immersion * _Fade);
+                return half4(c * cover, cover);
             }
             ENDHLSL
         }

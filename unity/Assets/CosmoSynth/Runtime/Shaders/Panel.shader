@@ -11,7 +11,12 @@ Shader "CosmoSynth/Panel"
 {
     Properties
     {
-        _BaseMap ("Panel mask (alpha used; rounded corners, borders)", 2D) = "white" {}
+        // The panel meshes are Unity Quads, which carry no COLOR channel, and CosmoPanel sets
+        // its colour and opacity through Material.color. Without [MainColor] that write is
+        // dropped and the fragment multiplies by an undefined vertex alpha: invisible panels.
+        [MainTexture] _BaseMap ("Panel mask (alpha used; rounded corners, borders)", 2D) = "white" {}
+        [MainColor] _BaseColor ("Panel colour", Color) = (1,1,1,1)
+        _Fade ("Layer fade", Float) = 1
     }
     SubShader
     {
@@ -36,6 +41,8 @@ Shader "CosmoSynth/Panel"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
+                half4  _BaseColor;
+                float  _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -68,8 +75,12 @@ Shader "CosmoSynth/Panel"
             half4 frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                half alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).a * i.color.a;
-                return half4(CS_DisplayToLinear(i.color.rgb) * alpha, alpha);   // premultiplied
+                // Vertex colour is display-referred and decoded here; _BaseColor arrives
+                // through SetColor and is already linear (contract 7.4).
+                half alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).a
+                           * i.color.a * _BaseColor.a * (half)_Fade;
+                half3 rgb = CS_DisplayToLinear(i.color.rgb) * _BaseColor.rgb;
+                return half4(rgb * alpha, alpha);   // premultiplied
             }
             ENDHLSL
         }

@@ -7,7 +7,10 @@ Shader "CosmoSynth/Unlit"
 {
     Properties
     {
-        _BaseColor ("Base colour (display-referred sRGB)", Color) = (1,1,1,1)
+        // [MainColor]: AnchorBeacon and BodySelector assign through Material.color, which
+        // binds to _Color or to the tagged property and is silently dropped without one.
+        [MainColor] _BaseColor ("Base colour", Color) = (1,1,1,1)
+        _Fade ("Layer fade", Float) = 1
     }
     SubShader
     {
@@ -29,6 +32,7 @@ Shader "CosmoSynth/Unlit"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor;
+                float _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -55,12 +59,12 @@ Shader "CosmoSynth/Unlit"
             half4 frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                // Verbatim from contract A.8. NOTE the tension with contract 7.4, which says
-                // material Colors set through SetColor are linearised by Unity itself (marked
-                // INFERRED there). If that is true, this decodes a second time and beacons and
-                // the pointer ray come out too dark. It is one of the two colour questions the
-                // first capture must settle; see docs/reports/foundation-shaders.md.
-                return half4(CS_DisplayToLinear(_BaseColor.rgb), 1.0h);
+                // No CS_DisplayToLinear on _BaseColor. Contract 7.4 rules that material Colors
+                // set through SetColor are linearised by Unity itself; decoding again would be
+                // a second sRGB curve. Rim and Ring now follow the same rule, so the three no
+                // longer hold three opinions -- and the G1c grey capture settles the rule in
+                // one place. Only VERTEX colours are decoded in a shader.
+                return half4(_BaseColor.rgb, 1.0h) * (half)_Fade;
             }
             ENDHLSL
         }

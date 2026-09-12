@@ -28,6 +28,56 @@ UNITY_SETUP_INSTANCE_ID
 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO
 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX"
 
+# R1 (contract 7.1 rule 2). URP's camera-position helper resolves to _WorldSpaceCameraPos,
+# whose per-eye redefinition under XR is a package-version detail this project does not
+# control; five render paths are wrong in BOTH eyes at once if it is the centre eye. The
+# monoscopic play-mode harness cannot tell the two apart, which is exactly why the ban is
+# static. The name is assembled rather than written so this script does not flag itself when
+# it is ever moved under Runtime/Shaders.
+BANNED_EYE="GetCamera""PositionWS"
+
+# R12 (contract 7.1 rule 1). Object space is these three shaders' input; static batching bakes
+# vertices into world space and would silently destroy all three.
+NEEDS_NOBATCH="CosmoSynth/Volume
+CosmoSynth/Sky
+CosmoSynth/Ribbon"
+
+# Body of ONE function, by brace depth from its definition. Used for the fragment-stage rule,
+# which is about where a thing is read, not whether the file mentions it.
+func_body() {
+  awk -v fn="$2" '
+    index($0, "#pragma") { next }
+    !inb && $0 ~ ("(^|[^A-Za-z0-9_])" fn "[[:space:]]*\\(") { inb = 1 }
+    inb {
+      print
+      d += gsub(/\{/, "{")
+      d -= gsub(/\}/, "}")
+      if (!started && d > 0) started = 1
+      else if (started && d <= 0) { inb = 0; started = 0 }
+    }
+  ' "$1"
+}
+
+# The CBUFFER_START(UnityPerMaterial) ... CBUFFER_END block(s).
+cbuffer_body() {
+  awk '/CBUFFER_START\(UnityPerMaterial\)/ { inb = 1; next } /CBUFFER_END/ { inb = 0 } inb { print }' "$1"
+}
+
+# The Properties { ... } block, by brace depth.
+properties_body() {
+  awk '
+    !inb && /^[[:space:]]*Properties[[:space:]]*$/ { inb = 1; next }
+    !inb && /^[[:space:]]*Properties[[:space:]]*\{/ { inb = 1; d = 1; started = 1; next }
+    inb {
+      d += gsub(/\{/, "{")
+      d -= gsub(/\}/, "}")
+      if (!started && d > 0) { started = 1; next }
+      if (started && d <= 0) { inb = 0; started = 0; next }
+      print
+    }
+  ' "$1"
+}
+
 check_file() {
   local f="$1" ours="$2" rel n
   rel=${f#"$ROOT"/}
@@ -94,6 +144,66 @@ EOF
       bad "$rel has additive 'Blend One One' without ', Zero One' or ColorMask RGB"
     fi
   fi
+
+  # ---- R1: never the URP camera-position helper, anywhere, comments included ---------------
+  # A rule enforced by grep has to be grep-clean in the documentation that explains it, or the
+  # first thing it flags is its own comment. CosmoCore.hlsl describes the helper in prose.
+  n=$(cnt "$BANNED_EYE" "$f")
+  if [ "${n:-0}" -eq 0 ]; then
+    pass "$rel reads the eye through CS_EyePositionWS (R1)"
+  else
+    bad "$rel names the URP camera-position helper $n time(s) - use CS_EyePositionWS (R1, contract 7.1 rule 2)"
+  fi
+
+  # ---- R30: _Fade in both Properties and UnityPerMaterial ---------------------------------
+  # The layer framework writes LayerState.Weight into _Fade on every owned material. Without
+  # it a layer cannot fade out: it pops.
+  local fp fc
+  fp=$(properties_body "$f" | grep -cE '^[[:space:]]*(\[[A-Za-z]+\][[:space:]]*)*_Fade[[:space:]]*\(' | tr -dc '0-9')
+  fc=$(cbuffer_body "$f" | grep -cE '^[[:space:]]*(float|half)[0-9]?[[:space:]]+_Fade[[:space:]]*;' | tr -dc '0-9')
+  if [ "${fp:-0}" -gt 0 ] && [ "${fc:-0}" -gt 0 ]; then
+    pass "$rel declares _Fade in Properties and UnityPerMaterial (R30)"
+  else
+    bad "$rel _Fade missing (Properties=${fp:-0}, UnityPerMaterial=${fc:-0}) (R30, contract 7.1 rule 11)"
+  fi
+
+  # ---- R5: no fragment function reads the object/world matrices ---------------------------
+  # Under INSTANCING_ON they are arrays indexed by unity_InstanceID, which no fragment stage
+  # sets up, so a fragment reads matrix 0 -- the wrong one the moment a layer is instanced.
+  local fn hits="" body
+  while IFS= read -r fn; do
+    [ -n "$fn" ] || continue
+    # Comments stripped first. The contract's own verbatim Volume.shader carries a comment
+    # inside frag saying NOT to call TransformWorldToObject there; a rule that flagged the note
+    # explaining it would be this project's named verification-gap pattern in miniature.
+    body=$(func_body "$f" "$fn" | sed 's://.*::')
+    n=$(printf '%s\n' "$body" \
+        | grep -cE 'unity_ObjectToWorld|unity_WorldToObject|TransformWorldToObject|TransformObjectToWorld' \
+        | tr -dc '0-9')
+    [ "${n:-0}" -eq 0 ] || hits="$hits $fn($n)"
+  done < <(grep -hE '^[[:space:]]*#pragma[[:space:]]+fragment' "$f" 2>/dev/null \
+           | awk '{ print $3 }' | sort -u)
+  if [ -z "$hits" ]; then
+    pass "$rel no fragment reads unity_ObjectToWorld/WorldToObject (R5)"
+  else
+    bad "$rel fragment stage reads an object-space matrix:$hits (R5, contract 7.1 rule 9)"
+  fi
+
+  # ---- R12: the three object-space shaders opt out of batching ----------------------------
+  local want
+  while IFS= read -r want; do
+    [ -n "$want" ] || continue
+    n=$(cntE "^[[:space:]]*Shader[[:space:]]+\"$want\"" "$f")
+    [ "${n:-0}" -gt 0 ] || continue
+    n=$(cnt '"DisableBatching"="True"' "$f")
+    if [ "${n:-0}" -gt 0 ]; then
+      pass "$rel carries \"DisableBatching\"=\"True\" (R12)"
+    else
+      bad "$rel is $want and must carry \"DisableBatching\"=\"True\" (R12, contract 7.1 rule 1)"
+    fi
+  done <<EOF
+$NEEDS_NOBATCH
+EOF
 }
 
 run_tree() {
@@ -121,6 +231,10 @@ self_test() {
   cat > "$S" <<'SHADER'
 Shader "CosmoSynth/Good"
 {
+  Properties
+  {
+    _Fade ("Layer fade", Float) = 1
+  }
   SubShader
   {
     Tags { "RenderPipeline"="UniversalPipeline" }
@@ -131,10 +245,15 @@ Shader "CosmoSynth/Good"
       #pragma vertex vert
       #pragma fragment frag
       #pragma multi_compile_instancing
+      CBUFFER_START(UnityPerMaterial)
+        float _Fade;
+      CBUFFER_END
       struct A { float4 p : POSITION; UNITY_VERTEX_INPUT_INSTANCE_ID };
       struct V { float4 p : SV_POSITION; UNITY_VERTEX_OUTPUT_STEREO };
-      V vert(A i){ V o; UNITY_SETUP_INSTANCE_ID(i); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o); return o; }
-      float4 frag(V i):SV_Target{ UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return 1; }
+      V vert(A i){ V o; UNITY_SETUP_INSTANCE_ID(i); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o); o.p = TransformObjectToWorld(i.p.xyz).xyzz; return o; }
+      // NOT TransformWorldToObject here: a comment naming it must not trip R5, because the
+      // contract's own verbatim Volume.shader carries exactly this note inside frag.
+      float4 frag(V i):SV_Target{ UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return _Fade; }
       ENDHLSL
     }
     Pass
@@ -154,6 +273,37 @@ Shader "CosmoSynth/Good"
 }
 SHADER
 
+  # A second fixture for the R12 rule, which only applies to three named shaders.
+  local B="$d/unity/Assets/CosmoSynth/Runtime/Shaders/Vol.shader"
+  cat > "$B" <<'SHADER'
+Shader "CosmoSynth/Volume"
+{
+  Properties
+  {
+    _Fade ("Layer fade", Float) = 1
+  }
+  SubShader
+  {
+    Tags { "RenderPipeline"="UniversalPipeline" "DisableBatching"="True" }
+    Pass
+    {
+      HLSLPROGRAM
+      #pragma vertex vert
+      #pragma fragment frag
+      #pragma multi_compile_instancing
+      CBUFFER_START(UnityPerMaterial)
+        float _Fade;
+      CBUFFER_END
+      struct A { float4 p : POSITION; UNITY_VERTEX_INPUT_INSTANCE_ID };
+      struct V { float4 p : SV_POSITION; UNITY_VERTEX_OUTPUT_STEREO };
+      V vert(A i){ V o; UNITY_SETUP_INSTANCE_ID(i); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o); return o; }
+      float4 frag(V i):SV_Target{ UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return _Fade; }
+      ENDHLSL
+    }
+  }
+}
+SHADER
+
   out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
   if [ "$rc" -ne 0 ]; then
     echo "SELF-TEST FAIL: the good fixture did not pass"; printf '%s\n' "$out"; rm -rf "$d"; return 1
@@ -162,9 +312,9 @@ SHADER
 
   # One mutant per rule. Each MUST fail, or the rule is decoration.
   local ok=1
-  mutate() {   # $1 = label, $2 = sed script
-    local m="$d/unity/Assets/CosmoSynth/Runtime/Shaders/Good.shader"
-    cp "$S" "$m.bak"; sed -i "$2" "$m"
+  mutate() {   # $1 = label, $2 = sed script, $3 = file (default Good.shader)
+    local m="$d/unity/Assets/CosmoSynth/Runtime/Shaders/${3:-Good.shader}"
+    cp "$m" "$m.bak"; sed -i "$2" "$m"
     out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
     mv "$m.bak" "$m"
     if [ "$rc" -eq 0 ]; then echo "  SELF-TEST FAIL: mutant '$1' PASSED - the rule cannot fail"; ok=0
@@ -183,6 +333,25 @@ SHADER
   # And prove the premultiplied pass is judged on its own merits, not waved through: turning its
   # destination factor into One makes it a genuine alpha-writing additive.
   mutate "premultiplied turned additive"  's/Blend One OneMinusSrcAlpha, One OneMinusSrcAlpha/Blend One One/'
+
+  # ---- the four rules this revision adds ---------------------------------------------------
+  # R1, in code and in a comment: both must fail, because the ban is on the string.
+  mutate "R1 camera helper in code" \
+    's#return _Fade; }#return GetCamera'"PositionWS"'().x; }#'
+  mutate "R1 camera helper in a comment" \
+    's#// a trailing comment on this line is allowed#// see GetCamera'"PositionWS"'#'
+  # R30, each half separately: a shader with the property but not the uniform still cannot be
+  # driven by the layer framework.
+  mutate "R30 _Fade not in Properties"       's/    _Fade ("Layer fade", Float) = 1//'
+  mutate "R30 _Fade not in UnityPerMaterial" 's/^        float _Fade;$//'
+  # R5: the vertex stage may call TransformObjectToWorld (the good fixture does); the fragment
+  # stage may not. The mutant moves the same call into frag, so the rule is proved to be about
+  # WHERE the matrix is read, not whether the file mentions it.
+  mutate "R5 fragment reads the object matrix" \
+    's#UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return _Fade; }#UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i); return TransformWorldToObject(i.p.xyz).x; }#'
+  # R12, on the fixture that is one of the three named shaders.
+  mutate "R12 Volume without DisableBatching" 's/ "DisableBatching"="True"//' Vol.shader
+
   rm -rf "$d"
   [ "$ok" -eq 1 ] || return 1
   echo "SELF-TEST PASS"

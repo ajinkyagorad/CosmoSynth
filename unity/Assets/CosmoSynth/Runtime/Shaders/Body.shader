@@ -8,8 +8,11 @@ Shader "CosmoSynth/Body"
 {
     Properties
     {
-        _BaseColor ("Base colour", Color) = (1,1,1,1)
-        _BaseMap ("Albedo (sRGB)", 2D) = "white" {}
+        // [MainColor] / [MainTexture]: the runtime assigns through Material.color and
+        // Material.mainTexture, which bind to _Color/_MainTex or to a tagged property and
+        // silently do nothing without one -- a white, untextured planet with no error.
+        [MainColor] _BaseColor ("Base colour", Color) = (1,1,1,1)
+        [MainTexture] _BaseMap ("Albedo (sRGB)", 2D) = "white" {}
         _NormalMap ("Normal (linear RGB, created with linear:true)", 2D) = "bump" {}
         _SurfaceMap ("Surface (linear; a = smoothness)", 2D) = "black" {}
         _LightDirWS ("Direction to host star, world", Vector) = (0,1,0,0)
@@ -20,6 +23,7 @@ Shader "CosmoSynth/Body"
         _SpecGain ("Specular gain", Range(0,2)) = 0.6
         _Terminator ("Terminator softness", Range(0,0.3)) = 0.05
         _PerVertexCompress ("Envelope mode (contract 2.6)", Float) = 0
+        _Fade ("Layer fade", Float) = 1
     }
     SubShader
     {
@@ -53,6 +57,7 @@ Shader "CosmoSynth/Body"
                 half   _SpecGain;
                 half   _Terminator;
                 float  _PerVertexCompress;
+                float  _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -83,6 +88,16 @@ Shader "CosmoSynth/Body"
                 float3 positionWS = TransformObjectToWorld(v.positionOS);
                 // Rigid mode: the transform already holds the group similarity. Envelope mode:
                 // the eye is near a large body, so compress each vertex about the centre eye.
+                //
+                // APPROXIMATION, stated so a future reader does not take it for a lighting bug:
+                // in Envelope mode the normal is NOT recomputed and positionWS is written after
+                // compression, so the shading normal belongs to the uncompressed surface and V
+                // is measured from this eye to a centre-eye-compressed point. Inside d0 = 10 m
+                // f is the identity and both are exact -- which is where the user actually
+                // stands in this mode -- and the error grows logarithmically toward the horizon,
+                // where the terminator is most visible. Recomputing the normal means the
+                // Jacobian of f, which is not worth a per-vertex 3x3 for a term that is zero
+                // over the whole near field.
                 if (_PerVertexCompress > 0.5) positionWS = CS_CompressWS(positionWS);
 
                 o.positionWS = positionWS;
@@ -111,7 +126,7 @@ Shader "CosmoSynth/Body"
                 half  ndl = dot(N, L);
                 half  diffuse = saturate((ndl + _Terminator) / (1.0h + _Terminator));
 
-                half3 V = normalize(GetCameraPositionWS() - i.positionWS);   // this eye
+                half3 V = normalize(CS_EyePositionWS() - i.positionWS);   // this eye
                 half3 H = normalize(L + V);
                 half  smoothness = SAMPLE_TEXTURE2D(_SurfaceMap, sampler_SurfaceMap, i.uv).a * _Smoothness;
                 half  spec = pow(saturate(dot(N, H)), exp2(1.0h + 10.0h * smoothness))
@@ -120,7 +135,9 @@ Shader "CosmoSynth/Body"
                 half3 colour = albedo * (_LightColor.rgb * diffuse + _Ambient.rgb)
                              + _LightColor.rgb * spec
                              + albedo * _Emission.rgb;
-                return half4(colour, 1.0h);   // alpha 1: an opaque body covers passthrough, correctly
+                // _Fade is the layer framework's one visibility mechanism (R30): an opaque pass
+                // fades its coverage with its colour, or a layer cannot fade out and pops.
+                return half4(colour, 1.0h) * (half)_Fade;
             }
             ENDHLSL
         }

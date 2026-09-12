@@ -17,6 +17,7 @@ Shader "CosmoSynth/Text"
     Properties
     {
         _MainTex ("Font atlas (alpha)", 2D) = "white" {}
+        _Fade ("Layer fade", Float) = 1
     }
     SubShader
     {
@@ -41,6 +42,7 @@ Shader "CosmoSynth/Text"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
+                float _Fade;
             CBUFFER_END
 
             struct Attributes
@@ -73,7 +75,8 @@ Shader "CosmoSynth/Text"
             half4 frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                half alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).a * i.color.a;
+                half alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).a
+                           * i.color.a * (half)_Fade;
                 return half4(CS_DisplayToLinear(i.color.rgb) * alpha, alpha);   // premultiplied
             }
             ENDHLSL
