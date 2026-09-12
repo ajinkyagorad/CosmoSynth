@@ -261,10 +261,44 @@ namespace CosmoSynth.Runtime
 
             if (_camera == null) _camera = Camera.main;
 
-            // Distance to the CLOSEST part of the orbit, sampled coarsely, plus the orbit's own
-            // size and centre — everything the legibility test needs, in one pass. The width no
-            // longer needs any of it: it is angular, set once on the material.
             Vector3 centreLocal = origin.ToRender(parentAbsolute);
+
+            // Place the path the same way the body ON it is placed.
+            //
+            // Everything above is in TRUE universe-local metres, and the body is not: it is
+            // compressed about the centre eye by its group's similarity. Drawing the two in
+            // different spaces is wrong twice over. The body leaves its own orbit, and the path
+            // keeps the true distance, which the far plane cannot hold: at the Earth-hologram
+            // scale Mercury's orbit reached 11,309 m against a far plane of 2,000 m, and at true
+            // scale 2.6e11 m (G1c `far`, 2026-09-12). It was invisible in a screenshot because
+            // clipped geometry looks exactly like geometry that was never drawn.
+            //
+            // The orbiting body is Collapsed into its parent's group, so its GroupScale IS the
+            // owner group's similarity and using it puts the path exactly through the body at
+            // every scale. When the owner contains the eye there is no similarity (Envelope,
+            // s = 1) and the path is compressed per vertex instead — section 1.2's per-vertex
+            // mode, done on the CPU because this component rebuilds its whole vertex stream
+            // every frame anyway.
+            if (_camera != null && _view != null)
+            {
+                Vector3 eye = _simulation.transform.InverseTransformPoint(_camera.transform.position);
+                if (_view.PerVertexCompressed)
+                {
+                    for (int i = 0; i < count; i++) _points[i] = CompressAboutEye(_points[i], eye);
+                    centreLocal = CompressAboutEye(centreLocal, eye);
+                }
+                else
+                {
+                    float s = (float)_view.GroupScale;
+                    for (int i = 0; i < count; i++) _points[i] = eye + s * (_points[i] - eye);
+                    centreLocal = eye + s * (centreLocal - eye);
+                }
+            }
+
+            // Distance to the CLOSEST part of the orbit, sampled coarsely, plus the orbit's own
+            // size and centre — everything the legibility test needs, in one pass, and now in
+            // rendered space, which is where legibility is decided. The width no longer needs
+            // any of it: it is angular, set once on the material.
             Vector3 cameraLocal = _camera != null
                 ? transform.InverseTransformPoint(_camera.transform.position)
                 : centreLocal;
@@ -297,6 +331,18 @@ namespace CosmoSynth.Runtime
             if (!IsLegible(Vector3.Distance(cameraLocal, centreLocal), meanRadius, apparentPixels)) return;
 
             WriteVertices(count);
+        }
+
+        /// <summary>
+        /// The per-vertex radial compression of section 1.2, in Universe-host local metres.
+        /// Direction from the eye is exact; only the distance is mapped, by the same f the
+        /// bodies use, so a ribbon and a body agree wherever they meet.
+        /// </summary>
+        private static Vector3 CompressAboutEye(Vector3 point, Vector3 eye)
+        {
+            Vector3 rel = point - eye;
+            Double3 mapped = ScaledSpace.CompressRelative(new Double3(rel.x, rel.y, rel.z));
+            return eye + new Vector3((float)mapped.x, (float)mapped.y, (float)mapped.z);
         }
 
         /// <summary>Push this frame's path into the four-vertices-per-segment streams.</summary>

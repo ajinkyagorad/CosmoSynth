@@ -31,11 +31,31 @@ namespace CosmoSynth.Runtime
 
         public void Track(CelestialBodyView body) => _body = body;
 
-        private void Awake() => _renderer = GetComponent<MeshRenderer>();
+        private void Awake() => Resolve();
+
+        /// <summary>
+        /// Find the renderer, late if necessary.
+        ///
+        /// Awake runs the instant AddComponent returns, and SkyAndRings.BuildRings adds this
+        /// component BEFORE the MeshRenderer, so resolving only in Awake left _renderer null
+        /// for the life of the object. Every guard below is written as `_renderer != null`, so
+        /// the effect was silent and threefold: the rings were never switched off when their
+        /// planet stopped being drawn, their transform kept whatever scale it last had, and
+        /// _LightDirWS and _ParentCentreWS were never written, so the analytic planet shadow
+        /// was cast from the material defaults. At the Local Group scale that left four ring
+        /// discs of up to 8.5 m enabled a few picometres from the eye (G1c capture,
+        /// 2026-09-12). Resolving lazily fixes every caller, in any construction order,
+        /// instead of fixing the one caller that happens to be wrong today.
+        /// </summary>
+        private bool Resolve()
+        {
+            if (_renderer == null) _renderer = GetComponent<MeshRenderer>();
+            return _renderer != null;
+        }
 
         private void LateUpdate()
         {
-            if (_body == null) return;
+            if (_body == null || !Resolve()) return;
 
             // Ask whether the planet is DRAWN, every frame, before reading its radius.
             //

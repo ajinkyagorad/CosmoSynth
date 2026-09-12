@@ -357,6 +357,35 @@ namespace CosmoSynth.Runtime
             double distanceKm = Double3.Distance(ctx.EyeKm, AbsolutePositionKm);
             double pixels = ctx.ApparentPixels(displayRadiusKm, distanceKm);
 
+            // A body whose whole rendered extent is inside the near plane is not drawn.
+            //
+            // The 2.5 px floor below cannot remove it, because angular size is invariant under
+            // the group similarity: the Sun subtends 0.53 deg from Earth at every rung of the
+            // ladder, so the floor sees a 9.5 px disc at the Local Group scale exactly as it
+            // does in the room. What changes is rendered DISTANCE. At 1.08e-20 m/km the whole
+            // Solar System collapses to about a picometre at the origin, the Sun renders
+            // 1.6e-12 m from the eye, and the camera cannot see anything nearer than 0.05 m.
+            //
+            // Keeping the sphere enabled there draws nothing and costs a draw call, and it hands
+            // the play-mode `angular` assertion a rendered distance of zero to divide by: it
+            // reported the Sun as subtending 360 deg at four of the seven scales. The body is
+            // invisible either way. This is the app saying so, which is what makes the
+            // assertion meaningful again rather than merely quiet.
+            double renderedRadius = placement.Scale * displayRadiusKm * ctx.UnitsPerKm;
+            double renderedDistance = placement.Mode == GroupMode.Envelope
+                ? ScaledSpace.Compress(distanceKm * ctx.UnitsPerKm)
+                : placement.Scale * distanceKm * ctx.UnitsPerKm;
+
+            // d + r < near, not d < near: a body the eye is INSIDE has its centre closer than
+            // the near plane and most of its surface beyond it, which is Envelope mode and must
+            // still be drawn.
+            bool insideNear = renderedDistance + renderedRadius < ScaledSpace.NearPlaneMetres;
+            if (insideNear != _insideNearPlane)
+            {
+                _insideNearPlane = insideNear;
+                RefreshRendererEnabled();
+            }
+
             // The floor decides REPRESENTATION, not size. Below two and a half pixels there is no
             // shape to draw, so the body hands over to the point path; above it the sphere is
             // drawn at exactly the size the group similarity gives it and at no other size.
@@ -936,9 +965,15 @@ namespace CosmoSynth.Runtime
         /// </summary>
         private void RefreshRendererEnabled()
         {
-            IsGeometryDrawn = IsKnown && !DrawnAsPoint && !_modelSuppressed;
+            IsGeometryDrawn = IsKnown && !DrawnAsPoint && !_modelSuppressed && !_insideNearPlane;
             if (_renderer != null) _renderer.enabled = IsGeometryDrawn;
         }
+
+        /// <summary>
+        /// The whole body renders inside the near plane, so nothing of it can appear. Set by
+        /// <see cref="UpdateVisualScale"/>, applied by <see cref="RefreshRendererEnabled"/>.
+        /// </summary>
+        private bool _insideNearPlane;
 
         /// <summary>
         /// Whether this body's own geometry is being drawn this frame, having applied every
