@@ -1,0 +1,13 @@
+# Accepted MD5 sums of an APK's boot.config xr-* block (`grep -i 'xr-' | md5sum`).
+#
+# The individual greps in verify-apk.sh pass while a VALUE inside the block has silently
+# changed. The block hash does not. Only headset-confirmed blocks belong here: a hash
+# added because "the build produced it" turns the gate into a record of what happened.
+#
+# <md5>  <what it is, and how it was confirmed>
+2e1fc6ccd7f09d6cbe013eb1c74e9e02  CosmoSynth 1.9.0 = Mechanarium 1.0.1 = Microverse 0.1.6 (VERIFIED, headset-confirmed)
+#
+# NOT accepted yet, deliberately:
+#   9dd8284e0dd84f1eb53cd40c80cd145d  Worldfall 0.1.14/0.1.15 - identical except
+#     xr-mvpvv-enabled=2. If the Foundation turns MVPVV on, this build will FAIL here
+#     until someone confirms it in a headset and moves the line above the comment.

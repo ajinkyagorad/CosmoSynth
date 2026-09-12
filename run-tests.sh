@@ -43,23 +43,56 @@ export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
 echo "Using dotnet: $DOTNET ($("$DOTNET" --version))"
 
-# Compile-check the Unity runtime layer against the editor's own assemblies, when one is
-# present. This verifies no behaviour — it cannot, without an engine — but it catches a
-# misremembered API or a changed signature in about a second instead of after a multi-minute
-# editor import. Skipped silently if no Unity install is found.
+# One build at a time per tree. Two concurrent builds in ONE tree share obj/ and bin/,
+# which is a race in principle; separate trees have their own and need no lock, so the
+# lock is keyed on the tree.
+exec 8>"/tmp/cosmosynth-tests-$(printf %s "$REPO_ROOT" | md5sum | cut -c1-8).lock"
+flock 8
+
+# Compile-check the Unity runtime layer against the editor's own assemblies. This verifies
+# no behaviour — it cannot, without an engine — but it catches a misremembered API or a
+# changed signature in about a second instead of after a multi-minute editor import.
+#
+# The package DLLs come from a Library that only the MAIN tree has: a git worktree has no
+# Library at all, and without this fallback the build fails with 16 CS errors about
+# XRHandSubsystem, XROrigin and UnityEngine.InputSystem, so the Core suite never runs.
+# Main's ScriptAssemblies are read-only here and frozen at whatever the editor last
+# imported; a lane that adds a package must wait for main's editor to import it.
 RUNTIME_PROJECT="$REPO_ROOT/tests/CosmoSynth.Runtime.Compile/CosmoSynth.Runtime.Compile.csproj"
 if [ -d "$HOME/Unity/Hub/Editor" ] && [ -f "$RUNTIME_PROJECT" ]; then
-    if "$DOTNET" build "$RUNTIME_PROJECT" -c Release -v quiet --nologo > /tmp/cosmosynth-runtime-build.log 2>&1; then
+    SA="$REPO_ROOT/unity/Library/ScriptAssemblies"
+    [ -d "$SA" ] || SA=/home/triton/projects/CosmoSynth/unity/Library/ScriptAssemblies
+    # A fixed /tmp path is clobbered by every other tree running at the same time, and the
+    # error grep below then prints someone else's compile errors.
+    LOG=$(mktemp /tmp/cosmosynth-runtime-build.XXXXXX.log)
+    echo "Unity package assemblies: $SA ($(date -r "$SA/Unity.XR.Hands.dll" +%F 2>/dev/null || echo MISSING))"
+    if nice -n 10 "$DOTNET" build "$RUNTIME_PROJECT" -c Release -v quiet --nologo \
+            -p:UnityScriptAssemblies="$SA" > "$LOG" 2>&1; then
         echo "Unity runtime layer: compiles"
     else
-        echo "Unity runtime layer: COMPILE ERRORS" >&2
-        grep -E "error" /tmp/cosmosynth-runtime-build.log | head -20 >&2
+        echo "Unity runtime layer: COMPILE ERRORS ($LOG)" >&2
+        grep -E "error" "$LOG" | head -20 >&2
+        exit 1
+    fi
+fi
+
+# The editor-side layer (ServerBuild, XrSetup, PlayModeShot) is compiled by nothing outside
+# Unity today. Built here when the project exists.
+EDITOR_PROJECT="$REPO_ROOT/tests/CosmoSynth.Editor.Compile/CosmoSynth.Editor.Compile.csproj"
+if [ -f "$EDITOR_PROJECT" ]; then
+    ELOG=$(mktemp /tmp/cosmosynth-editor-build.XXXXXX.log)
+    if nice -n 10 "$DOTNET" build "$EDITOR_PROJECT" -c Release -v quiet --nologo \
+            -p:UnityScriptAssemblies="${SA:-}" > "$ELOG" 2>&1; then
+        echo "Unity editor layer: compiles"
+    else
+        echo "Unity editor layer: COMPILE ERRORS ($ELOG)" >&2
+        grep -E "error" "$ELOG" | head -20 >&2
         exit 1
     fi
 fi
 echo
 
-"$DOTNET" run \
+nice -n 10 "$DOTNET" run \
     --project "$REPO_ROOT/tests/CosmoSynth.Core.Tests/CosmoSynth.Core.Tests.csproj" \
     --configuration Release \
     --verbosity quiet \
