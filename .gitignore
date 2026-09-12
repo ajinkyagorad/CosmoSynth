@@ -85,3 +85,8 @@ local.properties
 # Raw fetched source data staged by the licence-clearance pass. Large, re-fetchable, and
 # superseded by the baked files in StreamingAssets. Never commit it.
 data-staging/
+
+# Copies of the owner's WebXR source pages and their data, kept on the box so agents can read
+# them without the laptop. Third-party licences are unsettled (one dust cube came from a GPL-3.0
+# repository), so they are reference material only and are never committed or shipped.
+refs/
