@@ -1,0 +1,37 @@
+{
+  "schema": "cosmosynth.galaxyoverrides/1",
+  "_comment": [
+    "Hand-entered hero-galaxy values, one reference each. These override the photometric",
+    "shape derived from 2MASS, which for a large inclined spiral measures the old stellar",
+    "isophote and not the disc plane: M31's 2MASS axis ratio 0.473 gives 64 degrees where",
+    "H I kinematics give ~77.",
+    "",
+    "PROVENANCE HONESTY. Every value here is class Inferred, not Measured, and the reason is",
+    "the evidence chain, not the physics. The chain is: the cited paper -> the project's",
+    "binding design document docs/design/2026-09-11-B-data.md section 2.11 rule 4, which",
+    "states these values and their citations -> this file. The lane that wrote this file did",
+    "not read the papers. docs/DATA-LICENCE-AMENDMENT.md section 0 is explicit that a claim",
+    "is only as strong as the weakest link in its chain, and B-data itself marks these",
+    "'(Corbelli+2010, INFERRED values)'. A number transcribed from a document is an Inferred",
+    "number however good the underlying measurement is. Anyone who reads the papers may",
+    "promote these to Measured and say so here."
+  ],
+  "overrides": [
+    {
+      "match": "M31",
+      "inclinationDeg": 77.0,
+      "positionAngleDeg": 38.0,
+      "reference": "Corbelli, Lorenzini, Walterbos & Braun 2010, A&A 511, A89 (H I rotation curve of M31); transcribed from docs/design/2026-09-11-B-data.md section 2.11 rule 4, paper not read by lane data-galaxies",
+      "provenance": "Inferred",
+      "note": "The 2MASS J+H+Ks axis ratio 0.473 gives 64.06 deg through the Hubble q0=0.2 formula. The kinematic value is the disc plane; the photometric one is the isophote."
+    },
+    {
+      "match": "M33",
+      "inclinationDeg": 55.0,
+      "positionAngleDeg": 22.5,
+      "reference": "Corbelli et al. 2014, A&A 572, A23 (M33 H I disc); transcribed from docs/design/2026-09-11-B-data.md section 2.11 rule 4, paper not read by lane data-galaxies",
+      "provenance": "Inferred",
+      "note": "M33's 2MASS shape fails the LGA reliability guard (shapeReliable false), so without this override the galaxy is drawn round and faint."
+    }
+  ]
+}

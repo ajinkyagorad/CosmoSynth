@@ -1,0 +1,467 @@
+{
+ "schema": "cosmosynth.places/1",
+ "generator": "tools/cosmodata/build_lss.py",
+ "generatorCommit": "e72d89a+dirty",
+ "generatedUtc": "2026-09-12T18:15:32Z",
+ "frame": "ICRF",
+ "epoch": "J2000.0",
+ "cosmology": {
+  "model": "flat LCDM",
+  "H0": 67.66,
+  "h": 0.6766,
+  "OmegaM": 0.315,
+  "OmegaLambda": 0.685,
+  "reference": "Planck 2018 TT,TE,EE+lowE+lensing+BAO",
+  "comovingDistance": "Simpson, 512 intervals over [0, z], matching Core/Scale/Cosmology.ComovingDistanceMpc"
+ },
+ "note": "Every distance here is comoving, from the redshift, at the cosmology above. Basin attractors are reconstruction products; cluster positions are measured and their distances are not.",
+ "places": [
+  {
+   "id": "laniakea",
+   "name": "Laniakea",
+   "category": "basin",
+   "ra": 263.0,
+   "dec": -39.0,
+   "z": 0.02472,
+   "distanceMpc": 108.9,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 1.9,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position. CosmoSynth ships this point and this published volume, and does NOT ship the basin boundary: the watershed grid that defines it is Cosmicflows-4 data, which carries no commercial licence (docs/DATA-LICENCE-AMENDMENT.md section 3). A boundary drawn without that grid would be invented, so there is none."
+  },
+  {
+   "id": "apus",
+   "name": "Apus",
+   "category": "basin",
+   "ra": 199.0,
+   "dec": -75.0,
+   "z": 0.04368,
+   "distanceMpc": 191.5,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 9.5,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "hercules-basin",
+   "name": "Hercules basin",
+   "category": "basin",
+   "ra": 237.0,
+   "dec": 9.0,
+   "z": 0.0374,
+   "distanceMpc": 164.3,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 3.1,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "lepus",
+   "name": "Lepus",
+   "category": "basin",
+   "ra": 99.0,
+   "dec": -49.0,
+   "z": 0.04399,
+   "distanceMpc": 192.9,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 8.1,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "perseus-pisces",
+   "name": "Perseus-Pisces",
+   "category": "basin",
+   "ra": 56.0,
+   "dec": 21.0,
+   "z": 0.02035,
+   "distanceMpc": 89.8,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 4.8,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "shapley",
+   "name": "Shapley",
+   "category": "basin",
+   "ra": 199.0,
+   "dec": -40.0,
+   "z": 0.0516,
+   "distanceMpc": 225.8,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 7.9,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "sdss-1a",
+   "name": "SDSS-1a",
+   "category": "basin",
+   "ra": 133.0,
+   "dec": 24.0,
+   "z": 0.1138,
+   "distanceMpc": 490.4,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 184.8,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "sdss-2a",
+   "name": "SDSS-2a",
+   "category": "basin",
+   "ra": 209.0,
+   "dec": 12.0,
+   "z": 0.11001,
+   "distanceMpc": 474.5,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 169.8,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "sdss-2b",
+   "name": "SDSS-2b",
+   "category": "basin",
+   "ra": 218.0,
+   "dec": 36.0,
+   "z": 0.1101,
+   "distanceMpc": 474.9,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 130.2,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "sculptor-void",
+   "name": "Sculptor Void",
+   "category": "repeller",
+   "ra": 18.0,
+   "dec": -16.0,
+   "z": 0.03767,
+   "distanceMpc": 165.4,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 1.3,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "near-bootes-void",
+   "name": "near Bootes Void",
+   "category": "repeller",
+   "ra": 194.0,
+   "dec": 13.0,
+   "z": 0.04306,
+   "distanceMpc": 188.8,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 7.8,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "dipole-repeller",
+   "name": "Dipole Repeller",
+   "category": "repeller",
+   "ra": 0.0,
+   "dec": 22.0,
+   "z": 0.06603,
+   "distanceMpc": 287.9,
+   "reference": "Dupuy & Courtois 2023, Cosmicflows-4 basins of attraction, Table A.1; values transcribed from docs/research/2026-09-11-data-beyond-and-cmb.md section 4.3, which read them from the paper PDF",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred",
+    "volume": "Inferred"
+   },
+   "volume1e6Mpch3": 163.0,
+   "description": "The attractor (or repeller) of a gravitational basin in the Cosmicflows-4 velocity reconstruction. It is a property of a reconstructed field, not an object that can be observed at this position."
+  },
+  {
+   "id": "virgo-cluster",
+   "name": "Virgo Cluster",
+   "category": "cluster",
+   "ra": 187.699,
+   "dec": 12.385,
+   "z": 0.0038,
+   "distanceMpc": 16.8,
+   "reference": "NAME Virgo Cluster; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "coma-cluster",
+   "name": "Coma Cluster",
+   "category": "cluster",
+   "ra": 194.935,
+   "dec": 27.912,
+   "z": 0.0234,
+   "distanceMpc": 103.1,
+   "reference": "ACO 1656; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   },
+   "sdssPeak": {
+    "ra": 192.8929,
+    "dec": 27.7658,
+    "z": 0.02262,
+    "distanceMpc": 99.7,
+    "evidence": "1.83 deg = 3.2 Mpc transverse at 100 Mpc",
+    "provenance": "Measured - overdensity peak in data-staging/sdss-dr18, 4 Mpc grid smoothed at 8 Mpc"
+   }
+  },
+  {
+   "id": "norma-cluster",
+   "name": "Norma Cluster",
+   "category": "cluster",
+   "ra": 243.594,
+   "dec": -60.869,
+   "z": 0.01628,
+   "distanceMpc": 71.9,
+   "reference": "ACO 3627; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "perseus-cluster",
+   "name": "Perseus Cluster",
+   "category": "cluster",
+   "ra": 49.948,
+   "dec": 41.515,
+   "z": 0.01836,
+   "distanceMpc": 81.0,
+   "reference": "ACO 426; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "leo-cluster",
+   "name": "Leo Cluster",
+   "category": "cluster",
+   "ra": 176.186,
+   "dec": 19.7,
+   "z": 0.0225,
+   "distanceMpc": 99.2,
+   "reference": "ACO 1367; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   },
+   "sdssPeak": {
+    "ra": 179.8066,
+    "dec": 22.2447,
+    "z": 0.02304,
+    "distanceMpc": 101.5,
+    "evidence": "4.22 deg = 7.5 Mpc transverse at 102 Mpc",
+    "provenance": "Measured - overdensity peak in data-staging/sdss-dr18, 4 Mpc grid smoothed at 8 Mpc"
+   }
+  },
+  {
+   "id": "hercules-cluster",
+   "name": "Hercules Cluster",
+   "category": "cluster",
+   "ra": 241.313,
+   "dec": 17.749,
+   "z": 0.0352,
+   "distanceMpc": 154.7,
+   "reference": "ACO 2151; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   },
+   "sdssPeak": {
+    "ra": 240.6698,
+    "dec": 17.0911,
+    "z": 0.03597,
+    "distanceMpc": 158.0,
+    "evidence": "0.89 deg = 2.5 Mpc transverse at 158 Mpc",
+    "provenance": "Measured - overdensity peak in data-staging/sdss-dr18, 4 Mpc grid smoothed at 8 Mpc"
+   }
+  },
+  {
+   "id": "centaurus-cluster",
+   "name": "Centaurus Cluster",
+   "category": "cluster",
+   "ra": 192.205,
+   "dec": -41.305,
+   "z": 0.0114,
+   "distanceMpc": 50.4,
+   "reference": "ACO 3526; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "fornax-cluster",
+   "name": "Fornax Cluster",
+   "category": "cluster",
+   "ra": 54.623,
+   "dec": -35.452,
+   "z": 0.005,
+   "distanceMpc": 22.1,
+   "reference": "ACO S 373; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "hydra-i-cluster",
+   "name": "Hydra I Cluster",
+   "category": "cluster",
+   "ra": 159.15,
+   "dec": -27.518,
+   "z": 0.0129,
+   "distanceMpc": 57.0,
+   "reference": "ACO 1060; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "shapley-core",
+   "name": "Shapley core",
+   "category": "cluster",
+   "ra": 202.014,
+   "dec": -31.527,
+   "z": 0.0474,
+   "distanceMpc": 207.7,
+   "reference": "ACO 3558; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "abell-2199",
+   "name": "Abell 2199",
+   "category": "cluster",
+   "ra": 247.144,
+   "dec": 39.541,
+   "z": 0.0309,
+   "distanceMpc": 135.9,
+   "reference": "ACO 2199; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   },
+   "sdssPeak": {
+    "ra": 246.3068,
+    "dec": 39.6,
+    "z": 0.03083,
+    "distanceMpc": 135.6,
+    "evidence": "0.66 deg = 1.6 Mpc transverse at 136 Mpc",
+    "provenance": "Measured - overdensity peak in data-staging/sdss-dr18, 4 Mpc grid smoothed at 8 Mpc"
+   }
+  },
+  {
+   "id": "abell-1185",
+   "name": "Abell 1185",
+   "category": "cluster",
+   "ra": 169.0756,
+   "dec": 28.766,
+   "z": 0.0333,
+   "distanceMpc": 146.4,
+   "reference": "measured as an overdensity peak in SDSS DR18 (public domain) by data-staging/_tools/derive_structures.py; label attached by positional match to a CDS Sesame coordinate within one 8 Mpc smoothing length: 1.21 deg = 3.1 Mpc transverse at 146 Mpc",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "abell-2052",
+   "name": "Abell 2052",
+   "category": "cluster",
+   "ra": 229.734,
+   "dec": 6.9356,
+   "z": 0.03476,
+   "distanceMpc": 152.7,
+   "reference": "measured as an overdensity peak in SDSS DR18 (public domain) by data-staging/_tools/derive_structures.py; label attached by positional match to a CDS Sesame coordinate within one 8 Mpc smoothing length: 0.55 deg = 1.5 Mpc transverse at 153 Mpc",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   }
+  },
+  {
+   "id": "bootes-void",
+   "name": "Bootes Void",
+   "category": "void",
+   "ra": 222.946,
+   "dec": 45.796,
+   "z": 0.05,
+   "distanceMpc": 218.9,
+   "reference": "NAME Bootes Void; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's. The redshift is INFERRED",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred"
+   },
+   "description": "No sphere in lss/voids.cspt is labelled with this name. VoidFinder partitions this region into several smaller voids, none of which is the ~60 Mpc object the name usually denotes, so naming a catalogue row after it would be a wrong claim dressed as data."
+  },
+  {
+   "id": "local-void",
+   "name": "Local Void",
+   "category": "void",
+   "ra": 279.5,
+   "dec": 18.0,
+   "z": 0.002,
+   "distanceMpc": 8.9,
+   "reference": "NAME Local Void; position resolved through CDS SIMBAD, 2026-09-12; redshift is SIMBAD's. Both the centre and the redshift are coarse and INFERRED",
+   "provenance": {
+    "position": "Inferred",
+    "distance": "Inferred"
+   }
+  }
+ ]
+}
