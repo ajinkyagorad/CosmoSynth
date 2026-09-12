@@ -466,8 +466,41 @@ namespace CosmoSynth.EditorTools
                         else p.intValue = 1;
                         written++;
                     }
+
+                    // The original Quest off, because symmetric projection is on.
+                    //
+                    // MetaQuestFeature's own project validation refuses m_symmetricProjection
+                    // while any enabled target device is "quest", and it refuses at BuildPlayer
+                    // time as an error: the first 2.0 build passed G0, G1a, G1b and G1c and then
+                    // died in preprocessing with "Symmetric Projection is only available on
+                    // Quest 2 or higher". Symmetric projection is a binding decision; Quest 1 has
+                    // no colour passthrough and cannot run this app, so the device goes.
+                    int dropped = 0;
+                    SerializedProperty devices = so.FindProperty("targetDevices");
+                    if (devices == null || !devices.isArray)
+                    {
+                        Log("  MetaQuestFeature has no 'targetDevices' list");
+                        _failures++;
+                    }
+                    else
+                    {
+                        for (int i = 0; i < devices.arraySize; i++)
+                        {
+                            SerializedProperty device = devices.GetArrayElementAtIndex(i);
+                            SerializedProperty manifest = device.FindPropertyRelative("manifestName");
+                            SerializedProperty on = device.FindPropertyRelative("enabled");
+                            if (manifest == null || on == null || manifest.stringValue != "quest") continue;
+                            bool wasOn = on.propertyType == SerializedPropertyType.Boolean ? on.boolValue : on.intValue != 0;
+                            if (!wasOn) continue;
+                            if (on.propertyType == SerializedPropertyType.Boolean) on.boolValue = false;
+                            else on.intValue = 0;
+                            dropped++;
+                        }
+                    }
+
                     so.ApplyModifiedPropertiesWithoutUndo();
-                    Log($"  MetaQuestFeature at {path}: {written} flag(s) set to 1");
+                    Log($"  MetaQuestFeature at {path}: {written} flag(s) set to 1, " +
+                        $"Quest 1 target {(dropped > 0 ? "disabled" : "already off")}");
                 }
             }
         }

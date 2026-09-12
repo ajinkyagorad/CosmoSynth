@@ -199,6 +199,22 @@ def run_checks():
                  if re.search(r"m_Script:\s*\{fileID:\s*\d+,\s*guid:\s*%s" % METAQUEST_GUID, d)])
         check("metaquest-feature", n == 1, "%d MetaQuestFeature documents (want exactly 1)" % n)
 
+        # Symmetric projection with the original Quest still a target is a BUILD error, raised
+        # by MetaQuestFeature's own validation in BuildPlayer's preprocess step - after G0, G1a,
+        # G1b and G1c have all passed, which is where the first 2.0 build found it. It is a
+        # fact about this YAML, so it is checked here, in seconds. Anchored on "quest" followed
+        # by end of line, because quest2 and quest3s are the devices that must stay on.
+        for d in docs(oxr):
+            if not re.search(r"m_Script:\s*\{fileID:\s*\d+,\s*guid:\s*%s" % METAQUEST_GUID, d):
+                continue
+            sym = field(d, "m_symmetricProjection")
+            q1 = re.search(r"manifestName:\s*quest\s*\n\s*enabled:\s*(\d)", d)
+            q1_on = bool(q1) and q1.group(1) == "1"
+            check("quest1-vs-symmetric", not (sym == "1" and q1_on),
+                  "m_symmetricProjection = %s, Quest 1 target %s%s"
+                  % (sym, "enabled" if q1_on else ("disabled" if q1 else "absent"),
+                     " - MetaQuestFeature refuses to build this" if sym == "1" and q1_on else ""))
+
         # Anchored, not a substring: "openxr.feature.input.handtracking" is also a prefix of
         # "...handtrackingsubsystem", which is Meta's Hand Tracking Subsystem and MUST stay
         # enabled. The loose form asked for hand tracking to be turned off and called it a
@@ -329,6 +345,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f647cc0545697264a9878224faada6d5, type: 3}
   m_Name: MetaQuestFeature Android
   m_enabled: 1
+  targetDevices:
+  - visibleName: Quest
+    manifestName: quest
+    enabled: 0
+  - visibleName: Quest 2
+    manifestName: quest2
+    enabled: 1
+  - visibleName: Quest 3
+    manifestName: eureka
+    enabled: 1
+  - visibleName: Quest 3S
+    manifestName: quest3s
+    enabled: 1
+  m_symmetricProjection: 1
+  m_optimizeBufferDiscards: 1
 --- !u!114 &3
 MonoBehaviour:
   m_Name: MicrosoftHandInteraction Android
@@ -407,6 +438,8 @@ def self_test():
          "guid: 0000000000000000000000000000ffff"),
         ("handtracking-off", OXR, "m_Name: MicrosoftHandInteraction Android\n  m_enabled: 0",
          "m_Name: MicrosoftHandInteraction Android\n  m_enabled: 1"),
+        ("quest1-vs-symmetric", OXR, "manifestName: quest\n    enabled: 0",
+         "manifestName: quest\n    enabled: 1"),
         ("android-providers", XRG, "m_Name: Android Providers",
          "m_Name: Android Providers\n--- !u!114 &2\nMonoBehaviour:\n  m_Name: Android Providers"),
     ]

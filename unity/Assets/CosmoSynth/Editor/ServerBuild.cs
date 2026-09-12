@@ -343,6 +343,29 @@ namespace CosmoSynth.EditorTools
                 Log($"scene: {ScenePath} present={File.Exists(ScenePath)}");
                 Require(File.Exists(ScenePath), $"the committed scene {ScenePath} is missing");
 
+                // ---- OpenXR's own project validation: the exact list BuildPlayer refuses on
+                //
+                // Every setting above can be right and the build still refuse. The first 2.0 build
+                // passed G0, G1a, this method and G1c, and then died in BuildPlayer's preprocess
+                // step on "Symmetric Projection is only available on Quest 2 or higher" - a rule
+                // inside MetaQuestFeature about its target-device list, which nothing here read.
+                // OpenXRProjectValidation.LogBuildValidationIssues throws BuildFailedException on
+                // any rule with error = true, and GetCurrentValidationIssues is the public list it
+                // iterates. Asking for that list here moves the failure from minute twenty of the
+                // build to a line in G1b.
+                var validation = new List<UnityEngine.XR.OpenXR.Features.OpenXRFeature.ValidationRule>();
+                UnityEditor.XR.OpenXR.OpenXRProjectValidation.GetCurrentValidationIssues(
+                    validation, BuildTargetGroup.Android);
+                int validationErrors = 0;
+                foreach (var rule in validation)
+                {
+                    Log($"openxr validation {(rule.error ? "ERROR" : "warning")}: {rule.message}");
+                    if (rule.error) validationErrors++;
+                }
+                Log($"openxr validation: {validation.Count} issue(s), {validationErrors} error(s)");
+                Require(validationErrors == 0,
+                    $"{validationErrors} OpenXR project validation error(s): BuildPlayer will refuse this project");
+
                 Log($"scaled space: d0={ScaledSpace.IdentityRadiusMetres} near={ScaledSpace.NearPlaneMetres} " +
                     $"far={ScaledSpace.FarPlaneMetres} sky={ScaledSpace.SkyRadiusMetres} " +
                     $"scale limits [{ScaleLimits.MinUnitsPerKm:G3}, {ScaleLimits.MaxUnitsPerKm:G3}]");
