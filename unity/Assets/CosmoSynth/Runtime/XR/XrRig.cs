@@ -1,5 +1,7 @@
 using System.Collections;
+using CosmoSynth.Core;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using Unity.XR.CoreUtils;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.XR;
@@ -9,18 +11,25 @@ namespace CosmoSynth.Runtime
     /// <summary>
     /// Builds the immersive XR rig and turns passthrough on.
     ///
-    /// The one line here that decides whether this is mixed reality or a black void is the
-    /// camera's clear colour <b>alpha</b>. Quest composites passthrough *underneath* the app's
-    /// framebuffer, so alpha is coverage: alpha 1 means "this pixel is mine, hide the room".
-    /// A clear colour of (0,0,0,1) is therefore an opaque black wall, not an empty scene —
-    /// and Unity's inspector draws it with exactly the same swatch as (0,0,0,0), while the
-    /// editor Game view has no passthrough behind it to occlude. It looks correct everywhere
-    /// except on the headset, which is the worst possible failure mode.
+    /// <b>Exactly one camera.</b> This used to build two, sharing a pose, to split the frustum
+    /// into depth bands — and that is the strongest candidate for the "100 plus instances of earth
+    /// ... repeated on a grid" a headset reported on 1.7.0. Camera stacking makes the second pass
+    /// <i>load</i> a memoryless MSAA attachment, which on a tiled mobile GPU is undefined tile
+    /// memory, and undefined tile memory looks exactly like the frame repeated. With one camera
+    /// that attachment is never loaded. The range the bands existed to cover is now covered by the
+    /// distance map in <see cref="ScaledSpace"/>, which is arithmetic and has tests. Gate G0d
+    /// counts <c>AddComponent&lt;Camera&gt;</c> and requires exactly one.
     ///
-    /// The same rule catches out additive shaders: a pass with <c>Blend One One</c> blends
-    /// alpha by the same rule as colour, so a fragment returning alpha 1 punches a hole in the
-    /// world wherever the quad is drawn. Additive passes here must use
-    /// <c>Blend One One, Zero One</c>.
+    /// The other line that decides whether this is mixed reality or a black void is the camera's
+    /// clear colour <b>alpha</b>. Quest composites passthrough underneath the app's framebuffer,
+    /// so alpha is coverage: alpha 1 means "this pixel is mine, hide the room". A clear of
+    /// (0,0,0,1) is an opaque black wall, not an empty scene — and Unity's inspector draws it with
+    /// exactly the same swatch as (0,0,0,0), while the editor Game view has no passthrough behind
+    /// it to occlude. It looks correct everywhere except on the headset.
+    ///
+    /// The same rule catches out additive shaders: a pass with <c>Blend One One</c> blends alpha
+    /// by the same rule as colour, so a fragment returning alpha 1 punches a hole in the world.
+    /// Additive passes here must use <c>Blend One One, Zero One</c>; gate G0b enforces it.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("CosmoSynth/XR Rig")]
@@ -36,11 +45,18 @@ namespace CosmoSynth.Runtime
 
         public Camera Camera { get; private set; }
         public XROrigin Origin { get; private set; }
-        public Transform LeftHandAnchor { get; private set; }
-        public Transform RightHandAnchor { get; private set; }
 
         /// <summary>True once an XR display is actually running, as opposed to editor playback.</summary>
         public bool XrActive { get; private set; }
+
+        /// <summary>
+        /// The clear colour passthrough requires. Read by the gates: this is the value that has to
+        /// be on the camera in MR, and its alpha has to be zero.
+        /// </summary>
+        public static Color PassthroughClearColour => CosmoTheme.PassthroughClear;
+
+        /// <summary>The clear colour used when there is no room behind the frame.</summary>
+        public static Color SpaceClearColour => CosmoTheme.SpaceClear;
 
         private void Awake()
         {
@@ -66,16 +82,21 @@ namespace CosmoSynth.Runtime
 
             Camera = cameraObject.AddComponent<Camera>();
             Camera.clearFlags = CameraClearFlags.SolidColor;
-            Camera.backgroundColor = _passthrough ? new Color(0f, 0f, 0f, 0f) : new Color(0.004f, 0.005f, 0.011f, 1f);
-            Camera.nearClipPlane = 0.05f;   // ~5 cm: hands come closer than the usual 0.3 default
-            Camera.farClipPlane = 5000f;
+            Camera.backgroundColor = _passthrough ? PassthroughClearColour : SpaceClearColour;
+
+            // Two constants, set once. They are never re-fitted per frame: the whole point of the
+            // distance map is that nothing is ever drawn outside this range, so a range that
+            // breathes with the content would be a symptom, not a feature. ScaledSpace owns both
+            // numbers, so the shader, the gates and the camera cannot disagree about them.
+            Camera.nearClipPlane = (float)ScaledSpace.NearPlaneMetres;
+            Camera.farClipPlane = (float)ScaledSpace.FarPlaneMetres;
+
             Camera.allowHDR = false;        // mobile GPU; HDR costs bandwidth we need elsewhere
-            Camera.allowMSAA = true;
+            Camera.allowMSAA = true;        // the URP asset supplies 4x
+
+            ConfigureUrpCamera(Camera);
 
             cameraObject.AddComponent<AudioListener>();
-
-            // Two depth bands sharing this pose. See DepthBands for why one is not enough.
-            cameraObject.AddComponent<DepthBands>().Attach(Camera);
 
             AttachPoseDriver(cameraObject);
 
@@ -86,15 +107,28 @@ namespace CosmoSynth.Runtime
             // solar system sits at a believable height instead of at an arbitrary offset.
             Origin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
             Origin.CameraYOffset = _fallbackEyeHeight;
+        }
 
-            LeftHandAnchor = new GameObject("Left Hand Anchor").transform;
-            RightHandAnchor = new GameObject("Right Hand Anchor").transform;
-            LeftHandAnchor.SetParent(cameraOffset.transform, false);
-            RightHandAnchor.SetParent(cameraOffset.transform, false);
+        /// <summary>
+        /// Everything URP would otherwise decide for itself, decided here.
+        ///
+        /// Each of these off-switches removes a full-screen pass or an intermediate texture from a
+        /// mobile tiled renderer. With one camera and no post-processing the frame resolves out of
+        /// tile memory once and is never loaded back, which is the property that makes MSAA free
+        /// and the buffer-discard optimisation safe.
+        /// </summary>
+        private static void ConfigureUrpCamera(Camera camera)
+        {
+            UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
+            if (data == null) return;
 
-            // Ambient light so unlit sides of bodies are not pure black against a lit room.
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.05f, 0.055f, 0.07f);
+            data.renderType = CameraRenderType.Base;
+            data.renderPostProcessing = false;
+            data.antialiasing = AntialiasingMode.None;      // MSAA comes from the URP asset
+            data.requiresDepthTexture = false;
+            data.requiresColorTexture = false;
+            data.renderShadows = false;
+            data.allowXRRendering = true;
         }
 
         /// <summary>
@@ -153,7 +187,7 @@ namespace CosmoSynth.Runtime
                 Debug.LogWarning("[CosmoSynth] No XR display came up — running flat. " +
                                  "On a headset this means the OpenXR loader failed to initialise.");
                 // Without passthrough behind us, a transparent clear shows undefined garbage.
-                if (_passthrough) Camera.backgroundColor = new Color(0.004f, 0.005f, 0.011f, 1f);
+                if (_passthrough) Camera.backgroundColor = SpaceClearColour;
                 yield break;
             }
 
@@ -170,7 +204,7 @@ namespace CosmoSynth.Runtime
             // opaque, and nothing put it back. An opaque clear is a black wall in front of the
             // room, so passthrough would be dead with every feature flag still reporting
             // correct.
-            Camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            Camera.backgroundColor = PassthroughClearColour;
 
             // AR Foundation's session and camera manager are what request passthrough from the
             // Meta runtime. They are added here rather than in Awake so that a build without the
@@ -196,9 +230,7 @@ namespace CosmoSynth.Runtime
         {
             _passthrough = enabled;
             if (Camera == null) return;
-            Camera.backgroundColor = enabled && XrActive
-                ? new Color(0f, 0f, 0f, 0f)
-                : new Color(0.004f, 0.005f, 0.011f, 1f);
+            Camera.backgroundColor = enabled && XrActive ? PassthroughClearColour : SpaceClearColour;
         }
 
         public bool PassthroughEnabled => _passthrough;

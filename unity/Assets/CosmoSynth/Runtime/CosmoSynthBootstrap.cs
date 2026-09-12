@@ -111,11 +111,7 @@ namespace CosmoSynth.Runtime
             host.transform.SetParent(UniverseAnchor, false);
 
             _clock = host.AddComponent<SimulationClock>();
-            var origin = host.AddComponent<FloatingOrigin>();
-            // No rebase focus: travel is applied to the origin itself (XrLocomotion and the grab
-            // gesture both move OriginKm), so render positions are already relative to the
-            // viewer and never accumulate the float error a rebase exists to clear.
-            origin.Focus = null;
+            host.AddComponent<FloatingOrigin>();
 
             Simulation = host.AddComponent<UniverseSimulation>();
             Simulation.SizeCompression = _sizeCompression;
@@ -174,7 +170,7 @@ namespace CosmoSynth.Runtime
 
             if (_proceduralSeed != 0)
             {
-                Simulation.SetCatalog(PlanetGenerator.GenerateSystem(new PlanetGenerator.SystemSettings
+                Adopt(PlanetGenerator.GenerateSystem(new PlanetGenerator.SystemSettings
                 {
                     Seed = _proceduralSeed,
                     Name = $"System {_proceduralSeed}",
@@ -190,34 +186,55 @@ namespace CosmoSynth.Runtime
             StartCoroutine(LoadCatalogRoutine());
         }
 
+        /// <summary>
+        /// Read every catalogue file, merge them in Core, and adopt the result <b>once</b>.
+        ///
+        /// Asynchronous, because on Android StreamingAssets lives inside the compressed APK and
+        /// can only be reached through UnityWebRequest. Using the coroutine path on every platform
+        /// means the headset and the desktop run the same code, rather than the device taking a
+        /// branch that was never exercised in the editor.
+        ///
+        /// Order matters and is not cosmetic: the base file first, because its first root is what
+        /// <c>RootIds[0]</c> means; then the spacecraft, which hang off Solar System bodies, so a
+        /// lander's position is only meaningful once Mars is in the tree.
+        /// </summary>
         private System.Collections.IEnumerator LoadCatalogRoutine()
         {
+            var sources = new System.Collections.Generic.List<CatalogAssembler.Source>();
+
             string json = null;
             yield return Simulation.ReadStreamingAsset(_catalogPath, result => json = result);
+            sources.Add(new CatalogAssembler.Source("solar_system", json));
 
-            bool loaded = !string.IsNullOrEmpty(json) && Simulation.LoadCatalogFromJson(json);
-
-            // The spacecraft merge before the exoplanets, because they hang off Solar System
-            // bodies — a lander's position is only meaningful once Mars is in the tree — and
-            // because 24 things in the room matter more than 470 stars light years away.
-            if (loaded && _loadSpacecraft)
+            if (_loadSpacecraft)
             {
                 string spacecraftJson = null;
                 yield return Simulation.ReadStreamingAsset(_spacecraftPath, result => spacecraftJson = result);
-                if (!string.IsNullOrEmpty(spacecraftJson)) Simulation.MergeCatalogFromJson(spacecraftJson);
+                sources.Add(new CatalogAssembler.Source("spacecraft", spacecraftJson));
             }
 
-            // Exoplanets are a second file, loaded after and merged in. Keeping them separate
-            // means a Solar System build ships 87 kB instead of 2.2 MB, and the headset can skip
-            // them entirely on a device where the extra 470 stars are not worth the memory.
-            if (loaded && _loadExoplanets)
+            // Exoplanets are a separate file so a Solar-System-only build ships 87 kB instead of
+            // 2.2 MB. CONTRACT C10 retires them from 2.0.0-alpha.1 entirely; when the data half
+            // deletes the file this flag goes with it, and nothing else has to change.
+            if (_loadExoplanets)
             {
                 string exoplanetJson = null;
                 yield return Simulation.ReadStreamingAsset(_exoplanetPath, result => exoplanetJson = result);
-                if (!string.IsNullOrEmpty(exoplanetJson)) Simulation.MergeCatalogFromJson(exoplanetJson);
+                sources.Add(new CatalogAssembler.Source("exoplanets", exoplanetJson));
             }
 
-            if (!loaded)
+            var log = new System.Collections.Generic.List<string>();
+            CelestialCatalog assembled = CatalogAssembler.Assemble(sources, log);
+            // A refusal is louder than a success. Every line came out at Log level, so a file
+            // that failed to parse read exactly like one that loaded — which is the Draco/SOHO
+            // trap in CLAUDE.md, one layer up: the check ran, printed, and nobody saw it.
+            foreach (string line in log)
+            {
+                if (line.Contains("skipped")) Debug.LogWarning($"[CosmoSynth] catalogue {line}");
+                else Debug.Log($"[CosmoSynth] catalogue {line}");
+            }
+
+            if (assembled == null)
             {
                 // A missing catalogue is a setup problem, not a crash. Falling back to a
                 // generated system means the app still does something useful, and the log says
@@ -225,10 +242,19 @@ namespace CosmoSynth.Runtime
                 Debug.LogWarning(
                     "[CosmoSynth] Falling back to a procedurally generated system. " +
                     "Run 'python3 tools/cosmodata/build_solar_system.py' for the real Solar System.");
-                Simulation.SetCatalog(PlanetGenerator.GenerateSystem(
-                    new PlanetGenerator.SystemSettings { Seed = 20260730, Name = "Fallback", Epoch = _clock.Now }));
+                assembled = PlanetGenerator.GenerateSystem(
+                    new PlanetGenerator.SystemSettings { Seed = 20260730, Name = "Fallback", Epoch = _clock.Now });
             }
+
+            Adopt(assembled);
         }
+
+        /// <summary>
+        /// The one place a whole catalogue is adopted. Gate G0d allows exactly one such call site
+        /// in the runtime, which is what stops the three-adoptions-at-startup bug returning by a
+        /// different route.
+        /// </summary>
+        private void Adopt(CelestialCatalog catalog) => Simulation.SetCatalog(catalog);
 
         private void OnCatalogLoaded(CelestialCatalog catalog)
         {

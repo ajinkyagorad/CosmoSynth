@@ -110,15 +110,31 @@ namespace CosmoSynth.Runtime
 
             if (_renderer != null)
             {
-                // Instanced so every body can carry its own colour without a material each.
-                _renderer.material.color = new Color(
-                    (float)Body.DisplayColor.x, (float)Body.DisplayColor.y, (float)Body.DisplayColor.z);
-                _renderer.material.SetFloat("_Glossiness", 0.03f);
-                _renderer.material.SetFloat("_Metallic", 0f);
+                // CosmoSynth/Body, explicitly. CreatePrimitive hands back a renderer already
+                // carrying URP's own Lit material, and taking that is the keyword-stripping
+                // magenta failure CosmoShaders exists to prevent: URP/Lit is multi-variant, the
+                // whole scene is built at runtime so no asset references the variant this needs,
+                // and the build step strips what nothing references. It works perfectly in the
+                // editor, where every variant is loaded.
+                Material material = CosmoShaders.Material(CosmoShaders.Body);
+                if (material == null)
+                {
+                    _renderer.enabled = false;
+                }
+                else
+                {
+                    // Instanced so every body can carry its own colour without a material each.
+                    material.color = CosmoTheme.LinearRgb(Body.DisplayColor);
+                    material.SetFloat(SmoothnessId, 0.03f);
 
-                // Stars emit rather than reflect. Without this the Sun renders as a dark ball,
-                // because nothing is lighting it.
-                if (Body.IsStar) _renderer.material.EnableKeyword("_EMISSION");
+                    // Stars emit rather than reflect. Without this the Sun renders as a dark ball,
+                    // because nothing is lighting it. There are no shader keywords any more: the
+                    // emission term is a colour, and black is off.
+                    if (Body.IsStar) material.SetColor(EmissionId, CosmoTheme.Neutral);
+
+                    material.SetColor(AmbientId, CosmoTheme.AmbientFill);
+                    _renderer.sharedMaterial = material;
+                }
             }
 
             // The sky-sphere representation. Built now rather than on demand, because creating a
@@ -127,15 +143,19 @@ namespace CosmoSynth.Runtime
             var pointObject = new GameObject("Star Point");
             pointObject.transform.SetParent(transform, worldPositionStays: false);
             _starPoint = pointObject.AddComponent<StarPointBillboard>();
-            _starPoint.Initialise(new Color(
-                (float)Body.DisplayColor.x, (float)Body.DisplayColor.y, (float)Body.DisplayColor.z));
+            _starPoint.Initialise(CosmoTheme.LinearRgb(Body.DisplayColor));
         }
 
         private StarPointBillboard _starPoint;
 
         /// <summary>
-        /// Recompute this body's state and push it into the transform. Called once per frame by
-        /// <see cref="UniverseSimulation"/>.
+        /// Advance this body's double-precision state. State only: nothing here touches a
+        /// transform.
+        ///
+        /// Placement is a separate question with a separate answer, because it depends on where
+        /// every OTHER body in the group is — a moon cannot be placed until its planet's group has
+        /// been solved. <see cref="Place"/> does that, after <see cref="ScaleRenderer"/> has run
+        /// the solver.
         /// </summary>
         public void UpdateState(CosmicTime time)
         {
@@ -161,15 +181,11 @@ namespace CosmoSynth.Runtime
                 //
                 // Returning here leaves localPosition and localScale holding whatever they last
                 // did — and for a spacecraft that has never once been inside its window, that is
-                // the anchor, at the primitive's unit scale. Six of the twenty-four are outside
-                // their window at any given moment, so six half-metre spheres pile up exactly
-                // where the user placed the hologram. Nothing draws them, but RenderedRadius is
-                // read by things that are not the renderer — selection, the highlight ring,
-                // labels, the orbit lines — and a stale half-metre radius is an enormous target
+                // the anchor, at the primitive's unit scale. RenderedRadius is read by things
+                // that are not the renderer, and a stale half-metre radius is an enormous target
                 // sitting at point-blank range. That is how a fresnel shell the size of the sky
                 // came to be drawn around Dawn, a probe that stopped transmitting in 2018 and was
-                // not on screen at all. Guarding each consumer catches the ones that exist today;
-                // clearing the state catches the ones written next year.
+                // not on screen at all.
                 if (_sphere != null) _sphere.localScale = Vector3.one * DegenerateScale;
                 IsMarkerDrawn = false;
                 return;
@@ -178,30 +194,145 @@ namespace CosmoSynth.Runtime
             StateVector state = _frame.AbsoluteState(time);
             AbsolutePositionKm = state.Position;
             AbsoluteVelocityKmPerSec = state.Velocity;
+        }
+
+        /// <summary>
+        /// Put this body where the group solver says it goes.
+        ///
+        /// Rigid and Collapsed nodes take the similarity about the centre eye; an Envelope node —
+        /// the eye is close to something that fills the view — is placed at true scale and
+        /// compressed per vertex by its material instead. Either way the direction from the eye is
+        /// exact, so head-motion parallax is the real parallax and only binocular disparity
+        /// reflects the compression.
+        /// </summary>
+        public void Place(in FrameContext ctx, in GroupPlacement placement)
+        {
+            if (_simulation == null || !IsKnown) return;
 
             FloatingOrigin origin = _simulation.Origin;
 
             // Local, not world. Everything is parented to the simulation's transform, which acts
             // as the universe's anchor in the room — so moving that one object places the whole
-            // solar system on a table, and the XR rig's tracking space carries it correctly.
-            // Writing world position here would pin the universe to the play-area origin and
-            // make the anchor silently do nothing.
-            transform.localPosition = PlaceForRendering(origin.ToRender(AbsolutePositionKm));
+            // solar system on a table. Writing world position here would pin the universe to the
+            // play-area origin and make the anchor silently do nothing.
+            Vector3 trueUniverse = origin.ToRender(AbsolutePositionKm);
 
-            // Rotation about the body's own pole, from the IAU elements.
+            GroupScale = placement.Mode == GroupMode.Envelope ? 1.0 : placement.Scale;
+            PerVertexCompressed = placement.Mode == GroupMode.Envelope;
+
+            if (PerVertexCompressed) transform.localPosition = trueUniverse;
+            else Placement.PlaceRigid(transform, trueUniverse, placement.Scale, ctx);
+
+            // Rotation about the body's own pole, from the IAU elements, through the one mapping.
             if (Body.Orientation.HasValue)
             {
-                transform.localRotation = ToUnityRotation(Body.Orientation.Value.BodyFixedToIcrf(time));
+                transform.localRotation = origin.MapRotation(Body.Orientation.Value.BodyFixedToIcrf(ctx.Now));
             }
 
-            UpdateVisualScale(origin);
+            UpdateVisualScale(ctx, placement);
+            ApplyLighting();
         }
 
+        /// <summary>Direction to this body's host star, in world space. Read by the ring and the shell.</summary>
+        public Vector3 LightDirectionWS { get; private set; } = Vector3.up;
+
+        /// <summary>This body's host star's colour and intensity, as the shaders receive it.</summary>
+        public Color LightColour { get; private set; } = CosmoTheme.Neutral;
+
+        private CelestialBodyView _hostStar;
+        private bool _hostStarResolved;
+
         /// <summary>
-        /// True when this body is being drawn on the sky sphere instead of at its real distance.
-        /// Its direction is exact; its distance is not.
+        /// Light this body from the star it actually orbits.
+        ///
+        /// Not from a Unity light: a universe has many stars, one camera sees several systems at
+        /// once, and the Android quality level allows exactly one per-pixel light. A single
+        /// directional or point light gets the terminator right on one system and wrong on every
+        /// other — and the star it was attached to came from <c>RootIds[0]</c> whenever the focus
+        /// could not be resolved, which is insertion order, which put the light that models the
+        /// whole Solar System on an exoplanet host eleven parsecs away the moment that catalogue
+        /// merged. <c>CelestialCatalog.HostStarOf</c> walks the parent chain instead, which is one
+        /// function replacing the four copies of that loop this codebase had.
+        ///
+        /// The host is resolved once and remembered: the parent chain is a property of the
+        /// catalogue, and the catalogue rebuilds every view when it changes.
         /// </summary>
-        public bool DrawnAsStarPoint { get; private set; }
+        private void ApplyLighting()
+        {
+            if (_renderer == null) return;
+
+            if (!_hostStarResolved)
+            {
+                _hostStarResolved = true;
+                CelestialBody star = _simulation.HostStarOf(Body.Id);
+                if (star != null && _simulation.Views.TryGetValue(star.Id, out CelestialBodyView view))
+                {
+                    _hostStar = view;
+                    double temperature = star.EffectiveTemperatureK ?? 5772.0;
+                    // 3.2 blew every planet out to pure white under the old point light. This is
+                    // close to what actually lands on the surface, and it is the one knob 7.4's
+                    // re-tune turns after the switch to Linear.
+                    LightColour = CosmoTheme.LinearRgb(
+                        PlanetGenerator.BlackBodyColor(temperature) * (double)StarLook.StarLightIntensity);
+                }
+            }
+
+            // A star lights itself from nowhere; its own surface is emissive.
+            if (_hostStar != null && _hostStar != this)
+            {
+                Double3 toStar = _hostStar.AbsolutePositionKm - AbsolutePositionKm;
+                if (toStar.SqrMagnitude > 0.0)
+                {
+                    LightDirectionWS = _simulation.transform.TransformDirection(
+                        _simulation.Origin.MapDirection(toStar.Normalized));
+                }
+            }
+
+            ApplyLightingTo(_renderer.sharedMaterial);
+            if (_model != null && _renderer.sharedMaterials.Length > 1)
+            {
+                Material[] materials = _renderer.sharedMaterials;
+                for (int i = 0; i < materials.Length; i++) ApplyLightingTo(materials[i]);
+            }
+        }
+
+        private void ApplyLightingTo(Material material)
+        {
+            if (material == null) return;
+            material.SetVector(LightDirId, LightDirectionWS);
+            material.SetColor(LightColorId, LightColour);
+            // Envelope mode: the eye is inside d0 of a body large enough that a similarity would
+            // put its surface inside the near plane, so the vertex shader compresses each vertex
+            // about the centre eye instead. Nothing else in the frame changes.
+            material.SetFloat(PerVertexCompressId, PerVertexCompressed ? 1f : 0f);
+        }
+
+        private static readonly int SmoothnessId = Shader.PropertyToID("_Smoothness");
+        private static readonly int EmissionId = Shader.PropertyToID("_Emission");
+        private static readonly int AmbientId = Shader.PropertyToID("_Ambient");
+        private static readonly int NormalMapId = Shader.PropertyToID("_NormalMap");
+        private static readonly int SurfaceMapId = Shader.PropertyToID("_SurfaceMap");
+        private static readonly int LightDirId = Shader.PropertyToID("_LightDirWS");
+        private static readonly int LightColorId = Shader.PropertyToID("_LightColor");
+        private static readonly int PerVertexCompressId = Shader.PropertyToID("_PerVertexCompress");
+
+        /// <summary>The similarity this body was placed with this frame. 1 means exact.</summary>
+        public double GroupScale { get; private set; } = 1.0;
+
+        /// <summary>True when this body is drawn at true scale and compressed in the vertex shader.</summary>
+        public bool PerVertexCompressed { get; private set; }
+
+        /// <summary>
+        /// True when this body is too small on screen to be worth geometry, and is drawn by the
+        /// additive point path instead.
+        ///
+        /// It is NOT inflated to stay visible. An inflated sphere writes depth at a size the body
+        /// does not have, so a floored moon intersects its own planet and the intra-group ordering
+        /// the whole placement design rests on stops being true. A point writes no depth and
+        /// cannot occlude anything, so "too small to resolve" costs nothing but a dot — which is
+        /// also what a planetarium draws, and for the same reason.
+        /// </summary>
+        public bool DrawnAsPoint { get; private set; }
 
         /// <summary>
         /// False when the clock is outside the span this body's placement covers, and it is
@@ -210,82 +341,45 @@ namespace CosmoSynth.Runtime
         /// </summary>
         public bool IsKnown { get; private set; } = true;
 
-        /// <summary>
-        /// Pull very distant bodies onto a sky sphere around the viewer.
-        ///
-        /// A catalogue that reaches other stars breaks the depth buffer before it breaks
-        /// anything else. With Proxima at 4e13 km and a hologram on the table, the ratio between
-        /// the nearest and furthest thing on screen is about 1e18, and no depth buffer expresses
-        /// that — so the camera's near plane gets pushed out to keep the ratio sane and the
-        /// entire room-scale scene is clipped away. That failure looks exactly like a black
-        /// screen with working passthrough, which is what it was.
-        ///
-        /// Clamping the position onto a sphere at the horizon fixes it without lying about
-        /// anything anyone can see: the direction to the star is preserved exactly, and its
-        /// distance was never perceptible. Planetariums have drawn stars this way forever, for
-        /// the same reason. <see cref="AbsolutePositionKm"/> keeps the true value, so physics,
-        /// selection and the provenance panel are untouched.
-        /// </summary>
-        private Vector3 PlaceForRendering(Vector3 renderPosition)
-        {
-            if (DrawnAsStarPoint && _starPoint != null) _starPoint.SetVisible(false, 0f);
-            DrawnAsStarPoint = false;
-
-            float horizon = _simulation.StarPointHorizonUnits;
-            if (horizon <= 0f) return renderPosition;
-
-            Vector3 offset = renderPosition - _simulation.ViewerLocalPosition;
-            float distance = offset.magnitude;
-            if (distance <= horizon || distance <= 0f) return renderPosition;
-
-            DrawnAsStarPoint = true;
-
-            // The lit sphere is retired here and the billboard takes over. A two-pixel sphere is
-            // a handful of facets lit by a star light years away — a dark angular speck — where
-            // the billboard is round, unlit, and as bright as the star's own magnitude says.
-            RefreshRendererEnabled();
-
-            // A planet beyond the horizon sits inside its own star's dot, separated by far less
-            // than a pixel, so drawing it adds nothing but a draw call — and drawing it in front
-            // of the star would be actively wrong.
-            if (_starPoint != null) _starPoint.SetVisible(Body.IsStar, 0f);
-
-            return _simulation.ViewerLocalPosition + offset * (horizon / distance);
-        }
-
-        private void UpdateVisualScale(FloatingOrigin origin)
+        private void UpdateVisualScale(in FrameContext ctx, in GroupPlacement placement)
         {
             if (_sphere == null) return;
 
-            if (DrawnAsStarPoint)
-            {
-                IsMarkerDrawn = false;
-                UpdateStarPointScale();
-                return;
-            }
-
             if (_model != null)
             {
-                UpdateModelScale(origin);
+                UpdateModelScale(ctx, placement);
                 return;
             }
 
             IsMarkerDrawn = false;
+
             double displayRadiusKm = _simulation.DisplayRadiusKm(Body);
-            float diameter = origin.ScaleLength(displayRadiusKm * 2.0);
+            double distanceKm = Double3.Distance(ctx.EyeKm, AbsolutePositionKm);
+            double pixels = ctx.ApparentPixels(displayRadiusKm, distanceKm);
 
-            // Never let a body collapse to a degenerate transform, which some pipelines dislike.
-            if (diameter < 1e-5f) diameter = 1e-5f;
-
-            // ...and never let it shrink below visibility, so "far away" cannot be mistaken for
-            // "missing".
-            Camera camera = Camera.main;
-            if (camera != null)
+            // The floor decides REPRESENTATION, not size. Below two and a half pixels there is no
+            // shape to draw, so the body hands over to the point path; above it the sphere is
+            // drawn at exactly the size the group similarity gives it and at no other size.
+            bool asPoint = pixels < MinimumApparentPixels && distanceKm > displayRadiusKm;
+            if (asPoint != DrawnAsPoint)
             {
-                float distance = Vector3.Distance(camera.transform.position, transform.position);
-                diameter = ApplyMinimumVisibleSize(diameter, distance,
-                    camera.fieldOfView * Mathf.Deg2Rad, ViewportInfo.VerticalPixels(camera));
+                DrawnAsPoint = asPoint;
+                RefreshRendererEnabled();
             }
+
+            if (asPoint)
+            {
+                UpdatePointScale(ctx);
+                return;
+            }
+
+            if (_starPoint != null) _starPoint.SetVisible(false, 0f);
+
+            float diameter = (float)(placement.Scale * displayRadiusKm * 2.0 * ctx.UnitsPerKm);
+
+            // Never a degenerate transform, which some pipelines dislike; this is far below a
+            // pixel at every scale, so it is not a visibility floor in disguise.
+            if (diameter < DegenerateScale) diameter = DegenerateScale;
 
             // Oblateness: gas giants are visibly flattened and drawing them as spheres is one
             // of the more noticeable ways a solar system renderer looks wrong.
@@ -300,57 +394,58 @@ namespace CosmoSynth.Runtime
         private const float MinimumApparentPixels = 2.5f;
 
         /// <summary>
-        /// Size a sky-sphere star by how bright it actually appears from here.
+        /// Size the point that stands in for a body too small to draw.
         ///
-        /// Every star on the sky sphere sits at the same distance, so without this they would
-        /// all be drawn the same size and the sky would read as a uniform dot grid — the one
-        /// thing a real sky never looks like. Sizing by apparent bolometric magnitude restores
-        /// the only cue that survives: Sirius is obviously brighter than Proxima, and the
-        /// familiar constellations come out of the catalogue rather than being drawn in.
+        /// For a star, by how bright it actually appears from here: every point sits at the same
+        /// apparent size otherwise, and a uniform dot grid is the one thing a real sky never looks
+        /// like. For anything else, at exactly the floor it just failed — which is honest, because
+        /// the point is saying "there is something here", not "it is this big".
+        ///
+        /// ANGULAR, not pixel-derived. A point should subtend the same angle whatever the eye
+        /// buffer's resolution is; deriving it from a pixel count made it a function of the render
+        /// target, and the same star measured 7.5 px in the app's reckoning and 19 px in the
+        /// captured frame.
         /// </summary>
-        private void UpdateStarPointScale()
+        private void UpdatePointScale(in FrameContext ctx)
         {
-            Camera camera = Camera.main;
-            if (camera == null) return;
+            if (_starPoint == null) return;
 
-            float distance = Vector3.Distance(camera.transform.position, transform.position);
-            float brightness = StarLook.BrightnessFromMagnitude(ApparentMagnitude());
+            float distance = Vector3.Distance(ctx.EyeUniverse, transform.localPosition);
+            double floorAngle = ctx.PixelsPerRadian > 0f ? MinimumApparentPixels / ctx.PixelsPerRadian : 0.0;
+            double angle;
+            Color colour;
 
-            // ANGULAR, not pixel-derived.
-            //
-            // A star should subtend the same angle whatever the eye buffer's resolution is, which
-            // is the whole reason this project states sizes in dmm. Deriving it from a pixel
-            // count instead made it a function of the render target: the same star was 7.5 px in
-            // the app's own reckoning and 19 px in the captured frame, because the two were
-            // rendered at different heights. StarLook holds the range, and the procedural field
-            // on the same sky now reads it from there too — the two populations differed by
-            // roughly a factor of two in size and a factor of four in peak brightness while both
-            // sharing one point-spread texture and a comment claiming they could not drift apart.
-            float angle = StarLook.QuadRadians(brightness);
-
-            // The local star is not a dot.
-            //
-            // From Earth the Sun subtends half a degree. Magnitude-driven sizing cannot express
-            // that — Sirius and the Sun differ by ten orders of magnitude in flux and both land
-            // on the bright clamp — so the true angular diameter wins wherever it is the larger
-            // of the two. It falls away by itself with distance, so nothing else has to know
-            // which star is local.
-            if (_simulation != null)
+            if (Body.IsStar)
             {
-                Double3 viewerKm = _simulation.Origin.ToAbsolute(_simulation.ViewerLocalPosition);
-                double distanceKm = Double3.Distance(viewerKm, AbsolutePositionKm);
-                double trueAngle = ScaleSpace.AngularDiameterRad(_simulation.DisplayRadiusKm(Body), distanceKm);
-                if (trueAngle > angle) angle = (float)trueAngle;
+                float brightness = StarLook.BrightnessFromMagnitude(ApparentMagnitude(ctx));
+                angle = StarLook.QuadRadians(brightness);
+                colour = StarLook.Colour(Body.DisplayColor, brightness);
+
+                // The local star is not a dot. From Earth the Sun subtends half a degree, and
+                // magnitude-driven sizing cannot express that — Sirius and the Sun differ by ten
+                // orders of magnitude in flux and both land on the bright clamp. The true angular
+                // diameter wins wherever it is larger, and falls away by itself with distance.
+                double trueAngle = ScaleSpace.AngularDiameterRad(
+                    _simulation.DisplayRadiusKm(Body), Double3.Distance(ctx.EyeKm, AbsolutePositionKm));
+                if (trueAngle > angle) angle = trueAngle;
+            }
+            else
+            {
+                angle = floorAngle;
+                colour = CosmoTheme.LinearRgb(Body.DisplayColor);
             }
 
-            float diameter = distance * angle;
+            if (angle < floorAngle) angle = floorAngle;
 
-            if (_starPoint != null)
-            {
-                _starPoint.SetColour(StarLook.Colour(Body.DisplayColor, brightness));
-                _starPoint.SetRenderQueue(StarPointBillboard.SkyQueue);
-                _starPoint.SetVisible(Body.IsStar, diameter);
-            }
+            // The billboard takes the ANGLE. It used to take a world diameter, which meant
+            // multiplying by the distance here and dividing by it again inside a CPU billboard —
+            // and a CPU billboard is one quad built from one camera transform and shown to two
+            // eyes. CosmoSynth/Point expands the corners against each eye's own projection.
+            float diameter = distance * (float)angle;
+
+            _starPoint.SetColour(colour);
+            _starPoint.SetRenderQueue(StarPointBillboard.SkyQueue);
+            _starPoint.SetVisible(true, (float)angle);
 
             // Kept in step so anything reading RenderedRadius — selection, the rim highlight —
             // still agrees with what is on screen.
@@ -367,13 +462,16 @@ namespace CosmoSynth.Runtime
         /// somewhat brighter here than the eye would see them — worth knowing, and still far
         /// closer than drawing every star identically.
         /// </summary>
-        private double ApparentMagnitude()
+        private double ApparentMagnitude(in FrameContext ctx)
         {
-            // No luminosity: a planet or moon pinned to the sky sphere, which is not drawn as a
-            // point at all. Something faint, so it can never outrank a real star.
+            // No luminosity: a planet or moon drawn as a point. Something faint, so it can never
+            // outrank a real star.
             if (!Body.LuminosityWatts.HasValue || Body.LuminosityWatts.Value <= 0.0) return 5.5;
 
-            double distanceParsecs = AbsolutePositionKm.Magnitude / Constants.Parsec;
+            // From the EYE, not from the solar system barycentre. The doc comment above has always
+            // said "from here"; the code measured from the origin of the coordinate system, which
+            // is the same thing only while the viewer is at home.
+            double distanceParsecs = Double3.Distance(ctx.EyeKm, AbsolutePositionKm) / Constants.Parsec;
             if (distanceParsecs <= 0.0) return -26.0;
 
             double absolute = 4.83 - 2.5 * System.Math.Log10(Body.LuminosityWatts.Value / Constants.SolarLuminosity);
@@ -439,19 +537,21 @@ namespace CosmoSynth.Runtime
             var materials = new Material[model.Submeshes.Length];
             for (int i = 0; i < materials.Length; i++)
             {
-                Material material = CosmoShaders.Material(CosmoShaders.Standard);
+                Material material = CosmoShaders.Material(CosmoShaders.Body);
+                if (material == null) { _renderer.enabled = false; return; }
                 Color baseColour = model.Submeshes[i].Color;
 
                 material.color = baseColour;
-                material.SetFloat("_Metallic", Mathf.Min(model.Submeshes[i].Metallic, MaximumModelMetallic));
-                material.SetFloat("_Glossiness",
+                material.SetFloat(SmoothnessId,
                     Mathf.Clamp(model.Submeshes[i].Smoothness, 0f, MaximumModelSmoothness));
+                material.SetColor(AmbientId, CosmoTheme.AmbientFill);
 
                 // Mixed toward white before being scaled, so a near-black submesh still emits.
                 // Several shipped models carry parts below 0.05 luminance — Parker's is 0.007 —
-                // and a fraction of nothing is nothing.
-                material.EnableKeyword("_EMISSION");
-                material.SetColor("_EmissionColor", Color.Lerp(baseColour, Color.white, 0.35f) * ModelEmission);
+                // and a fraction of nothing is nothing. CosmoSynth/Body multiplies this by the
+                // albedo, so it is a fraction of the submesh's own colour and there is no keyword.
+                material.SetColor(EmissionId,
+                    CosmoTheme.Scaled(CosmoTheme.Desaturate(baseColour, 0.65f), ModelEmission));
 
                 materials[i] = material;
             }
@@ -460,22 +560,11 @@ namespace CosmoSynth.Runtime
             _renderer.materials = materials;
         }
 
-        /// <summary>
-        /// Ceiling on a baked metallic value.
-        ///
-        /// glTF's default <c>metallicFactor</c> is 1.0, so any model whose material omits it
-        /// arrives fully metallic — and this scene has no skybox and no reflection probe, only a
-        /// point light at the star and a flat ambient. A metal has no diffuse response at all;
-        /// everything it shows is a reflection of an environment which here is black. The ISS
-        /// ships with metallic 0.5 on five submeshes and 1.0 on the sixth, Perseverance with 1.0
-        /// on four of six, and the ISS rendered as six near-black pixels on Earth's disc —
-        /// indistinguishable from dirt on the lens, in a captured frame, with the loader
-        /// cheerfully reporting "24/24 applied".
-        ///
-        /// Clamped here rather than only at bake time so already-shipped meshes are fixed without
-        /// a re-bake, and so the renderer's own lighting assumptions live next to the renderer.
-        /// </summary>
-        private const float MaximumModelMetallic = 0.12f;
+        // The metallic clamp that used to stand here is gone with the metal. CosmoSynth/Body
+        // has no metallic term at all: a metal shows a reflection of an environment, this scene
+        // has no skybox and no reflection probe, and the ISS's baked metallic 1.0 therefore
+        // rendered it as six near-black pixels on Earth's disc while the loader reported
+        // "24/24 applied". A term whose only correct value is zero is better deleted than clamped.
 
         /// <summary>
         /// Ceiling on a baked smoothness value; several models carry 0.5 to 0.72.
@@ -602,11 +691,14 @@ namespace CosmoSynth.Runtime
         /// <see cref="SizeExaggeration"/> reports the factor actually used, because at these
         /// scales it is never 1 and the interface has to be able to say so.
         /// </summary>
-        private void UpdateModelScale(FloatingOrigin origin)
+        private void UpdateModelScale(in FrameContext ctx, in GroupPlacement placement)
         {
             const double MetresPerKm = 1000.0;
 
-            float trueScale = origin.ScaleLength(1.0 / MetresPerKm);
+            // Render metres per real metre, INCLUDING the group similarity: a spacecraft rides its
+            // planet's group, so it must shrink with it or it grows through the planet as the
+            // group compresses.
+            float trueScale = (float)(placement.Scale * ctx.UnitsPerKm / MetresPerKm);
             float trueDiameter = trueScale * _model.LengthMetres;
             if (trueDiameter < 1e-12f) trueDiameter = 1e-12f;
 
@@ -614,10 +706,8 @@ namespace CosmoSynth.Runtime
             bool suppressed = false;
             float markerDiameter = 0f;
 
-            Camera camera = Camera.main;
-            if (camera != null)
             {
-                float distance = Vector3.Distance(camera.transform.position, transform.position);
+                float distance = Vector3.Distance(ctx.EyeUniverse, transform.localPosition);
 
                 // A LANDER IS NEVER EXAGGERATED.
                 //
@@ -632,7 +722,7 @@ namespace CosmoSynth.Runtime
                 {
                     diameter = Mathf.Max(trueDiameter, distance * ModelFloorDmm * 0.001f);
 
-                    float ceiling = ParentSizeCeiling(origin);
+                    float ceiling = ParentSizeCeiling(ctx, placement);
                     if (ceiling > 0f && diameter > ceiling) diameter = ceiling;
 
                     // Never shrink a spacecraft below its real size; that would be a lie in the
@@ -716,7 +806,7 @@ namespace CosmoSynth.Runtime
         /// Largest render-unit diameter this spacecraft may be drawn at, from the size of the
         /// body it is attached to. Zero when it has no parent in the catalogue.
         /// </summary>
-        private float ParentSizeCeiling(FloatingOrigin origin)
+        private float ParentSizeCeiling(in FrameContext ctx, in GroupPlacement placement)
         {
             if (_simulation == null || string.IsNullOrEmpty(Body.ParentId)) return 0f;
             if (!_simulation.Views.TryGetValue(Body.ParentId, out CelestialBodyView parent)) return 0f;
@@ -726,7 +816,7 @@ namespace CosmoSynth.Runtime
             // have been floored to stay visible, and deriving a ceiling from a floor would let
             // the two inflate each other.
             double parentRadiusKm = _simulation.DisplayRadiusKm(parent.Body);
-            return origin.ScaleLength(parentRadiusKm) * MaximumFractionOfParent;
+            return (float)(placement.Scale * parentRadiusKm * ctx.UnitsPerKm) * MaximumFractionOfParent;
         }
 
         /// <summary>
@@ -750,45 +840,42 @@ namespace CosmoSynth.Runtime
         {
             if (_renderer == null || texture == null) return;
 
-            Material material = _renderer.material;
+            Material material = _renderer.sharedMaterial;
+            if (material == null) return;
             material.mainTexture = texture;
 
-            if (normalMap != null)
-            {
-                material.EnableKeyword("_NORMALMAP");
-                material.SetTexture("_BumpMap", normalMap);
-                material.SetFloat("_BumpScale", 1f);
-            }
+            // Always bound, and never as a NormalMap-typed import (R13): CosmoSynth/Body unpacks
+            // with UnpackNormalRGBNoScale, and Unity swizzles a NormalMap-typed texture into
+            // DXT5nm/ASTC with X in alpha — which the shader would read as garbage, silently, on
+            // the terminator. PlanetTextureBaker creates these with linear: true.
+            if (normalMap != null) material.SetTexture(NormalMapId, normalMap);
 
+            // Smoothness rides in the surface map's ALPHA, so oceans come out glossy enough to
+            // throw a sun glint while rock stays matte. With the map present the scalar is the
+            // multiplier and must be 1, or the map is silently scaled to nothing.
             if (surfaceMap != null)
             {
-                material.EnableKeyword("_METALLICGLOSSMAP");
-                material.SetTexture("_MetallicGlossMap", surfaceMap);
-                // With a gloss map present the scalar acts as a multiplier, so it must be 1 or
-                // the map is silently scaled down to nothing.
-                material.SetFloat("_Glossiness", 1f);
-                material.SetFloat("_GlossMapScale", 1f);
+                material.SetTexture(SurfaceMapId, surfaceMap);
+                material.SetFloat(SmoothnessId, 1f);
             }
 
             // The tint multiplies the texture, so leave it white or the map is double-darkened
             // by the colour it was already painted with.
-            material.color = Color.white;
+            material.color = CosmoTheme.Neutral;
 
-            // Rough and non-metallic.
+            // Rough, with no metal anywhere.
             //
-            // Standard defaults to 0.5 smoothness, which puts a broad specular highlight in the
-            // middle of the lit face — a planet rendered like polished plastic, blowing out to
-            // pure white exactly where the surface detail is. Rock, ice and cloud are all
-            // diffuse; the only body that genuinely wants a highlight is an ocean, and that
-            // needs a specular mask this shader has no channel for.
-            if (surfaceMap == null) material.SetFloat("_Glossiness", 0.03f);
-            material.SetFloat("_Metallic", 0f);
+            // A broad specular highlight in the middle of the lit face is a planet rendered like
+            // polished plastic, blowing out to pure white exactly where the surface detail is.
+            // Rock, ice and cloud are all diffuse; the only body that genuinely wants a highlight
+            // is an ocean, and that is what the surface map's alpha is for.
+            if (surfaceMap == null) material.SetFloat(SmoothnessId, 0.03f);
 
             if (Body.IsStar)
             {
-                material.EnableKeyword("_EMISSION");
-                material.SetTexture("_EmissionMap", texture);
-                material.SetColor("_EmissionColor", Color.white * 2.2f);
+                // CosmoSynth/Body multiplies the emission by the albedo, and the albedo IS this
+                // texture — so one colour does what a separate emission map used to.
+                material.SetColor(EmissionId, CosmoTheme.Scaled(CosmoTheme.Neutral, 2.2f));
             }
 
             HasSurfaceTexture = true;
@@ -833,9 +920,9 @@ namespace CosmoSynth.Runtime
             // passthrough and no clue why. Until there is something to hand small bodies off
             // to, the honest behaviour is to keep drawing them.
             //
-            // The one exception is a body already pulled onto the sky sphere, which has decided
-            // for itself whether to draw — re-enabling it here would put every exoplanet back on
-            // top of the star it orbits.
+            // The one exception is a body the floor has already handed to the point path, which
+            // has decided for itself whether to draw — re-enabling it here would put every
+            // exoplanet back on top of the star it orbits.
             RefreshRendererEnabled();
         }
 
@@ -849,7 +936,7 @@ namespace CosmoSynth.Runtime
         /// </summary>
         private void RefreshRendererEnabled()
         {
-            IsGeometryDrawn = IsKnown && !DrawnAsStarPoint && !_modelSuppressed;
+            IsGeometryDrawn = IsKnown && !DrawnAsPoint && !_modelSuppressed;
             if (_renderer != null) _renderer.enabled = IsGeometryDrawn;
         }
 
@@ -886,35 +973,11 @@ namespace CosmoSynth.Runtime
             return Mathf.Max(diameter, floor);
         }
 
-        /// <summary>
-        /// Convert a Core rotation matrix into a Unity quaternion.
-        ///
-        /// Note the handedness. Core works in the right-handed ICRF frame that every
-        /// astronomical dataset uses; Unity's world space is left-handed. Negating the z basis
-        /// column converts between them. Getting this wrong produces a solar system that is
-        /// subtly mirrored — planets orbit the correct paths but rotate the wrong way, which is
-        /// easy to miss and very hard to explain later.
-        /// </summary>
-        public static Quaternion ToUnityRotation(Matrix3d rotation)
-        {
-            Double3 right = rotation.Column0;
-            Double3 up = rotation.Column2;      // ICRF z is "up" for a body's pole
-            Double3 forward = rotation.Column1;
-
-            var unityForward = new Vector3((float)forward.x, (float)forward.z, (float)forward.y);
-            var unityUp = new Vector3((float)up.x, (float)up.z, (float)up.y);
-
-            if (unityForward.sqrMagnitude < 1e-12f || unityUp.sqrMagnitude < 1e-12f) return Quaternion.identity;
-            return Quaternion.LookRotation(unityForward, unityUp);
-        }
-
-        /// <summary>Convert an ICRF direction to Unity's left-handed axes (y up).</summary>
-        public static Vector3 ToUnityDirection(Double3 icrf) =>
-            new Vector3((float)icrf.x, (float)icrf.z, (float)icrf.y);
-
-        /// <summary>Convert a Unity direction back to ICRF.</summary>
-        public static Double3 ToIcrfDirection(Vector3 unity) =>
-            new Double3(unity.x, unity.z, unity.y);
+        // The three static axis helpers that used to live here (ToUnityRotation,
+        // ToUnityDirection, ToIcrfDirection) are gone. They were a SECOND account of the
+        // right-handed-to-left-handed conversion, they disagreed with the one in the floating
+        // origin, and a renderer is the wrong place for a coordinate convention. Every caller now
+        // goes through FloatingOrigin, which is the only file gate G0d lets reorder an axis.
 
         private void OnDestroy() => DestroyMaterials();
 

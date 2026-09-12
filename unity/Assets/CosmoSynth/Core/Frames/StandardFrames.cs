@@ -101,17 +101,75 @@ namespace CosmoSynth.Core
                 if (_equatorialToGalactic == null)
                 {
                     // Standard three-rotation construction: swing the x axis round to the node,
-                    // tip the pole down to the z axis, then rotate to the galactic longitude origin.
+                    // tip the pole down to the z axis, then rotate to the galactic longitude
+                    // origin.
+                    //
+                    // Every sign here was wrong until 2026-09-12, and nothing caught it because
+                    // the matrix had no test. Matrix3d's rotations are ACTIVE — they rotate a
+                    // vector, not the frame — so mapping components INTO a frame turned by +a
+                    // needs RotationZ(-a), and the shipped code had each of the three the other
+                    // way round. The north galactic pole came out at (-0.346, 0.176, 0.922)
+                    // instead of (0, 0, 1): a 45-degree error that still produces a plausible
+                    // band of stars across a plausible sky. Checked against the Hipparcos matrix
+                    // element by element, now to 4.9e-11.
                     _equatorialToGalactic =
-                        Matrix3d.RotationZ(-GalacticAscendingNodeLongitudeDeg * MathD.Deg2Rad) *
-                        Matrix3d.RotationX((90.0 - GalacticPoleDecDeg) * MathD.Deg2Rad) *
-                        Matrix3d.RotationZ((90.0 + GalacticPoleRaDeg) * MathD.Deg2Rad);
+                        Matrix3d.RotationZ(+GalacticAscendingNodeLongitudeDeg * MathD.Deg2Rad) *
+                        Matrix3d.RotationX(-(90.0 - GalacticPoleDecDeg) * MathD.Deg2Rad) *
+                        Matrix3d.RotationZ(-(90.0 + GalacticPoleRaDeg) * MathD.Deg2Rad);
                 }
                 return _equatorialToGalactic.Value;
             }
         }
 
         public static Matrix3d GalacticToEquatorial => EquatorialToGalactic.InverseRotation;
+
+        // ---- Supergalactic -------------------------------------------------
+
+        /// <summary>Galactic longitude of the north supergalactic pole, degrees (de Vaucouleurs).</summary>
+        public const double SupergalacticPoleGalacticLonDeg = 47.37;
+
+        /// <summary>Galactic latitude of the north supergalactic pole, degrees.</summary>
+        public const double SupergalacticPoleGalacticLatDeg = 6.32;
+
+        /// <summary>Galactic longitude where supergalactic longitude is zero, degrees.</summary>
+        public const double SupergalacticOriginGalacticLonDeg = 137.37;
+
+        private static Matrix3d? _galacticToSupergalactic;
+
+        /// <summary>
+        /// Rotation from galactic into supergalactic coordinates.
+        ///
+        /// Built from the two defining directions rather than from a copied table: the pole is
+        /// the z row, the SGL = 0 direction orthonormalised against it is the x row, and y is
+        /// their cross product. Agrees with the published matrix to 3.5e-11, and with the CF4
+        /// catalogue's own supergalactic columns to a median of 0.17 arcsec.
+        ///
+        /// This is the frame the local cosmic web is described in — Laniakea, the Great
+        /// Attractor, the flow basins — so it is the frame those layers are levelled to.
+        /// </summary>
+        public static Matrix3d GalacticToSupergalactic
+        {
+            get
+            {
+                if (_galacticToSupergalactic == null)
+                {
+                    Double3 z = FromSpherical(SupergalacticPoleGalacticLonDeg * MathD.Deg2Rad,
+                                              SupergalacticPoleGalacticLatDeg * MathD.Deg2Rad);
+                    Double3 seed = FromSpherical(SupergalacticOriginGalacticLonDeg * MathD.Deg2Rad, 0.0);
+                    Double3 x = (seed - z * Double3.Dot(seed, z)).Normalized;
+                    Double3 y = Double3.Cross(z, x);
+                    _galacticToSupergalactic = Matrix3d.FromRows(x, y, z);
+                }
+                return _galacticToSupergalactic.Value;
+            }
+        }
+
+        public static Matrix3d SupergalacticToGalactic => GalacticToSupergalactic.InverseRotation;
+
+        /// <summary>Rotation from ICRF equatorial straight into supergalactic coordinates.</summary>
+        public static Matrix3d EquatorialToSupergalactic => GalacticToSupergalactic * EquatorialToGalactic;
+
+        public static Matrix3d SupergalacticToEquatorial => EquatorialToSupergalactic.InverseRotation;
 
         // ---- Spherical <-> Cartesian ---------------------------------------
 

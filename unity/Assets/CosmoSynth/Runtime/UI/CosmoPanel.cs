@@ -194,11 +194,11 @@ namespace CosmoSynth.Runtime
         /// <summary>Mark the panel as holding input, by lighting its edge.</summary>
         public void SetActive(bool active)
         {
-            _accent = active ? CosmoTheme.StrokeActive : Color.white;
+            _accent = active ? CosmoTheme.StrokeActive : CosmoTheme.Neutral;
             ApplyOpacity();
         }
 
-        private Color _accent = Color.white;
+        private Color _accent = CosmoTheme.Neutral;
 
         /// <summary>
         /// Fade the whole panel together.
@@ -221,15 +221,12 @@ namespace CosmoSynth.Runtime
 
         private void ApplyOpacity()
         {
-            _backingMaterial.color = new Color(_accent.r, _accent.g, _accent.b, _opacity);
-            _ruleMaterial.color = new Color(CosmoTheme.Accent.r, CosmoTheme.Accent.g, CosmoTheme.Accent.b,
-                _opacity * 0.9f);
-            _highlightMaterial.color = new Color(CosmoTheme.SurfaceRaised.r, CosmoTheme.SurfaceRaised.g,
-                CosmoTheme.SurfaceRaised.b, _opacity * 0.95f);
+            _backingMaterial.color = CosmoTheme.WithAlpha(_accent, _opacity);
+            _ruleMaterial.color = CosmoTheme.WithAlpha(CosmoTheme.Accent, _opacity * 0.9f);
+            _highlightMaterial.color = CosmoTheme.WithAlpha(CosmoTheme.SurfaceRaised, _opacity * 0.95f);
 
-            _title.color = new Color(_titleColour.r, _titleColour.g, _titleColour.b, _opacity);
-            _body.color = new Color(CosmoTheme.TextSecondary.r, CosmoTheme.TextSecondary.g,
-                CosmoTheme.TextSecondary.b, _opacity);
+            _title.color = CosmoTheme.WithAlpha(_titleColour, _opacity);
+            _body.color = CosmoTheme.WithAlpha(CosmoTheme.TextSecondary, _opacity);
         }
 
         /// <summary>

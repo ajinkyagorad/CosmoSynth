@@ -1,4 +1,8 @@
-142
 # The number of tests that must pass. Raised by the integrator after each merge, so a
 # deleted test cannot pass silently: `N passed, 0 failed` with N below this line is red.
-# 142 is the VERIFIED count of the Core suite on 2026-09-11.
+#
+# 142 was the VERIFIED count on 2026-09-11, before lane/foundation-code.
+# 174 after the ScaledSpace and Frame suites.
+# 183 after the review fixes on 2026-09-12: +6 CatalogAssemblerTests (the type had none at all)
+# and +3 ScaledSpaceGuardTests (push-with-collapsed-children, a short result array, a NaN scale).
+183

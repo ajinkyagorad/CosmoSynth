@@ -1,97 +1,114 @@
-using System;
-using System.Collections.Generic;
 using CosmoSynth.Core;
 using UnityEngine;
 
 namespace CosmoSynth.Runtime
 {
     /// <summary>
-    /// Implemented by anything that needs to know when the world has been shifted underneath it.
-    /// Trails, line renderers and particle systems hold positions in world space that the
-    /// origin shift does not move for them.
-    /// </summary>
-    public interface IFloatingOriginListener
-    {
-        void OnOriginShifted(Vector3 shift);
-    }
-
-    /// <summary>
-    /// Keeps the camera near Unity's world origin by moving the universe instead of the viewer.
+    /// The one place Unity vectors meet ICRF kilometres.
     ///
-    /// A 32-bit float carries about 7 significant decimal digits. At 10 km from the origin the
-    /// gap between representable positions is already around a millimetre, which is enough to
-    /// make a held hologram shimmer; at 1000 km it is 6 cm and geometry visibly swims. Since
-    /// the simulation spans billions of kilometres, the only workable answer is to never let
-    /// the rendered scene get far from zero: absolute positions live in
-    /// <see cref="Double3"/> kilometres, and this component periodically rebases the mapping
-    /// between those and Unity's float transforms.
+    /// Absolute positions live in double kilometres about the solar system barycentre. This maps
+    /// them into the universe host's local metres: subtract the origin in <b>double</b>, apply the
+    /// single axis permutation, then scale. Because the subtraction happens before anything is
+    /// cast to float, float error has nowhere to accumulate and there is no rebase — the camera
+    /// simply stays in the room and the movers change <see cref="OriginKm"/> and
+    /// <see cref="UnitsPerKm"/>.
     ///
-    /// The shift is applied to root-level transforms only — children move with their parents —
-    /// and the rebase threshold is chosen so it happens well before precision becomes visible.
+    /// The rebase machinery that used to live here was dead: it only ran when <c>Focus</c> was
+    /// set, and the bootstrap set it to null. What it left behind was worse than nothing — an
+    /// identity mapping between a right-handed frame and a left-handed one, which is a mirror.
+    /// A mirrored solar system orbits along the correct paths and rotates backwards, and there is
+    /// no screenshot in which that is visible.
+    ///
+    /// Gate G0d enforces that no other file reorders an axis.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-100)]
     [AddComponentMenu("CosmoSynth/Floating Origin")]
     public sealed class FloatingOrigin : MonoBehaviour
     {
-        [Header("Rebasing")]
-        [Tooltip("Distance from the Unity origin, in render units, that triggers a rebase.")]
-        [SerializeField] private float _rebaseThreshold = 4000f;
-
-        [Tooltip("The transform kept near the origin. Usually the camera rig.")]
-        [SerializeField] private Transform _focus;
-
-        [Header("Diagnostics")]
-        [SerializeField] private int _rebaseCount;
-
-        private readonly List<IFloatingOriginListener> _listeners = new List<IFloatingOriginListener>();
-
-        /// <summary>The absolute position, in km, that currently maps to Unity's origin.</summary>
+        /// <summary>The absolute position, in km, that maps to the universe host's local origin.</summary>
         public Double3 OriginKm { get; private set; } = Double3.Zero;
 
-        /// <summary>Render units emitted per kilometre. Set by the active scale band.</summary>
+        /// <summary>Room metres emitted per real kilometre. Clamped to <see cref="ScaleLimits"/>.</summary>
         public double UnitsPerKm { get; private set; } = 1.0;
 
-        /// <summary>Number of rebases so far this session. Useful for spotting thrashing.</summary>
-        public int RebaseCount => _rebaseCount;
-
-        /// <summary>Raised after the world has been shifted, with the applied offset.</summary>
-        public event Action<Vector3> OriginShifted;
-
-        public Transform Focus
-        {
-            get => _focus;
-            set => _focus = value;
-        }
-
-        /// <summary>The current absolute-to-render mapping.</summary>
+        /// <summary>The current absolute-to-universe mapping, as engine-free arithmetic.</summary>
         public ScaleSpace.RenderTransform Transform => new ScaleSpace.RenderTransform(OriginKm, UnitsPerKm);
 
-        public void Register(IFloatingOriginListener listener)
-        {
-            if (listener != null && !_listeners.Contains(listener)) _listeners.Add(listener);
-        }
-
-        public void Unregister(IFloatingOriginListener listener) => _listeners.Remove(listener);
-
-        /// <summary>Convert an absolute position to a Unity world position.</summary>
+        /// <summary>Absolute ICRF kilometres to universe-host-local metres.</summary>
         public Vector3 ToRender(Double3 absoluteKm)
         {
-            Double3 local = (absoluteKm - OriginKm) * UnitsPerKm;
+            Double3 local = Transform.ToRender(absoluteKm);
             return new Vector3((float)local.x, (float)local.y, (float)local.z);
         }
 
-        /// <summary>Convert a Unity world position back to an absolute position.</summary>
-        public Double3 ToAbsolute(Vector3 renderPosition) =>
-            new Double3(renderPosition.x, renderPosition.y, renderPosition.z) / UnitsPerKm + OriginKm;
+        /// <summary>Universe-host-local metres back to absolute ICRF kilometres.</summary>
+        public Double3 ToAbsolute(Vector3 universeLocal) =>
+            Transform.ToAbsolute(new Double3(universeLocal.x, universeLocal.y, universeLocal.z));
 
-        /// <summary>Scale a length from km into render units, with no translation.</summary>
+        /// <summary>An ICRF direction in universe-local axes.</summary>
+        public Vector3 MapDirection(Double3 icrf)
+        {
+            Double3 mapped = Transform.MapDirection(icrf);
+            return new Vector3((float)mapped.x, (float)mapped.y, (float)mapped.z);
+        }
+
+        /// <summary>A universe-local direction back in ICRF axes.</summary>
+        public Double3 UnmapDirection(Vector3 universeLocal) =>
+            Transform.UnmapDirection(new Double3(universeLocal.x, universeLocal.y, universeLocal.z));
+
+        /// <summary>
+        /// A body-fixed-to-ICRF rotation as a Unity rotation.
+        ///
+        /// P M P has determinant +1, so it is a proper rotation and converts directly. Universe
+        /// local +y is the body's pole, which is what the sphere's UV layout assumes.
+        /// </summary>
+        public Quaternion MapRotation(Matrix3d bodyToIcrf)
+        {
+            Matrix3d m = Transform.MapRotation(bodyToIcrf);
+            var forward = new Vector3((float)m.M02, (float)m.M12, (float)m.M22);
+            var up = new Vector3((float)m.M01, (float)m.M11, (float)m.M21);
+            if (forward.sqrMagnitude < 1e-12f || up.sqrMagnitude < 1e-12f) return Quaternion.identity;
+            return Quaternion.LookRotation(forward, up);
+        }
+
+        /// <summary>The axis mapping as a matrix, for shaders and for orienting layer meshes.</summary>
+        public Matrix4x4 IcrfToUniverse
+        {
+            get
+            {
+                Matrix3d p = ScaleSpace.RenderTransform.AxisSwap;
+                var m = Matrix4x4.identity;
+                m.m00 = (float)p.M00; m.m01 = (float)p.M01; m.m02 = (float)p.M02;
+                m.m10 = (float)p.M10; m.m11 = (float)p.M11; m.m12 = (float)p.M12;
+                m.m20 = (float)p.M20; m.m21 = (float)p.M21; m.m22 = (float)p.M22;
+                return m;
+            }
+        }
+
+        /// <summary>
+        /// The proper half of the axis mapping, for a mesh whose vertices are authored in ICRF
+        /// components — an orbit ribbon, a volume box.
+        ///
+        /// P is improper, so it cannot be a rotation on its own. Writing it as (P D) D with
+        /// D = diag(1, 1, -1) puts a rotation on the transform and the mirror in the scale, which
+        /// is what <see cref="IcrfMeshScale"/> carries. Unity flips the cull winding for a
+        /// negative-determinant transform by itself.
+        /// </summary>
+        public static Quaternion IcrfMeshRotation => Quaternion.Euler(90f, 0f, 0f);
+
+        /// <summary>The mirror that accompanies <see cref="IcrfMeshRotation"/>, times a uniform scale.</summary>
+        public static Vector3 IcrfMeshScale(float uniform) => new Vector3(uniform, uniform, -uniform);
+
+        /// <summary>Scale a length from km into universe-local metres, with no translation.</summary>
         public float ScaleLength(double km) => (float)(km * UnitsPerKm);
 
         /// <summary>
-        /// Change the render scale. Everything is re-derived from absolute coordinates on the
-        /// next frame, so this is safe to call at any time — it is how the scale bands and the
-        /// tabletop/true-scale toggle work.
+        /// Change the render scale. Everything is re-derived from absolute coordinates next frame,
+        /// so this is safe at any time — it is how the rungs, travel and the two-hand gesture work.
+        ///
+        /// The clamp lives here, and only here. Two components used to carry their own disagreeing
+        /// limits, which is a control whose range depends on which one wrote it last.
         /// </summary>
         public void SetUnitsPerKm(double unitsPerKm)
         {
@@ -100,68 +117,10 @@ namespace CosmoSynth.Runtime
                 Debug.LogError($"[CosmoSynth] Ignoring invalid render scale {unitsPerKm}.");
                 return;
             }
-            UnitsPerKm = unitsPerKm;
+            UnitsPerKm = ScaleLimits.Clamp(unitsPerKm);
         }
 
         /// <summary>Move the absolute origin, without touching any transforms.</summary>
         public void SetOrigin(Double3 absoluteKm) => OriginKm = absoluteKm;
-
-        private void LateUpdate()
-        {
-            if (_focus == null) return;
-
-            Vector3 focusPosition = _focus.position;
-            if (focusPosition.sqrMagnitude < _rebaseThreshold * _rebaseThreshold) return;
-
-            Rebase(focusPosition);
-        }
-
-        /// <summary>
-        /// Shift the whole scene so the focus sits back at the origin.
-        ///
-        /// Only root transforms are moved: a child's world position follows its parent, so
-        /// shifting both would move it twice.
-        /// </summary>
-        public void Rebase(Vector3 focusPosition)
-        {
-            Vector3 shift = -focusPosition;
-
-            // Fold the shift into the absolute origin so the mapping stays consistent.
-            OriginKm += new Double3(focusPosition.x, focusPosition.y, focusPosition.z) / UnitsPerKm;
-
-            var scene = gameObject.scene;
-            var roots = new List<GameObject>(scene.rootCount);
-            scene.GetRootGameObjects(roots);
-
-            foreach (GameObject root in roots)
-            {
-                // Skip this object itself if it has no spatial meaning, but do not special-case
-                // anything else: an object that should not move belongs on a different scene.
-                root.transform.position += shift;
-            }
-
-            _rebaseCount++;
-
-            // Anything holding baked world-space positions has to be told: line renderers in
-            // world space, trail renderers and particle systems in world simulation space all
-            // keep their own vertex data that the transform shift does not reach.
-            for (int i = _listeners.Count - 1; i >= 0; i--)
-            {
-                var listener = _listeners[i];
-                if (listener == null)
-                {
-                    _listeners.RemoveAt(i);
-                    continue;
-                }
-                listener.OnOriginShifted(shift);
-            }
-
-            OriginShifted?.Invoke(shift);
-        }
-
-        private void OnValidate()
-        {
-            if (_rebaseThreshold < 100f) _rebaseThreshold = 100f;
-        }
     }
 }

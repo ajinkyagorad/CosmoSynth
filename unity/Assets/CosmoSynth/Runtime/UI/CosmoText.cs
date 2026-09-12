@@ -75,7 +75,15 @@ namespace CosmoSynth.Runtime
                 if (_textMaterial != null) return _textMaterial;
                 if (Font == null || Font.material == null) return null;
 
-                _textMaterial = new Material(Font.material) { name = "CosmoText", renderQueue = 3210 };
+                // CosmoSynth/Text, not a clone of the font's own material. The built-in font
+                // material carries "GUI/Text Shader", which has no UniversalForward pass at all
+                // under URP — every label in the app would be magenta on the device and correct in
+                // the editor. What is cloned from the font is only its ATLAS.
+                _textMaterial = CosmoShaders.Material(CosmoShaders.Text);
+                if (_textMaterial == null) return null;
+                _textMaterial.name = "CosmoText";
+                _textMaterial.renderQueue = 3210;
+                _textMaterial.mainTexture = Font.material.mainTexture;
 
                 // Static event, named explicitly so it is not mistaken for one on the instance
                 // the property above returns.

@@ -13,7 +13,7 @@ namespace CosmoSynth.Runtime
     /// looked like different kinds of object on the same sky: measured off a captured frame,
     /// every field star peaked at 25% of full brightness regardless of its magnitude while every
     /// catalogue star peaked at 100%, and the field's quads were roughly twice the angular size.
-    /// <see cref="StarSprite"/> already shares one point spread between them for exactly this
+    /// <c>CosmoSynth/Point</c> already draws both populations with one analytic profile for
     /// reason; sharing the texture was never going to be enough while the two things the texture
     /// is multiplied by were decided separately.
     ///
@@ -36,7 +36,7 @@ namespace CosmoSynth.Runtime
         /// <summary>
         /// Angular width of the quad a star at the faint end is drawn on, in dmm.
         ///
-        /// The quad, not the visible dot: the profile in <see cref="StarSprite"/> is half its
+        /// The quad, not the visible dot: the Gaussian in <c>CosmoSynth/Point</c> is half its
         /// maximum at a third of the quad's width, so what the eye reads as the star is about a
         /// third of this.
         ///
@@ -46,7 +46,7 @@ namespace CosmoSynth.Runtime
         /// frame the median 2-pixel star peaked at 11/255 and the single 5-pixel one at 72, with
         /// the correlation between width and peak at 0.80. Below about four pixels the dot cannot
         /// be made bright by any amount of colour — the sampling throws the brightness away. So
-        /// the floor is set where a star can still be lit, and <see cref="StarSprite"/>'s core was
+        /// the floor is set where a star can still be lit, and the shader's Gaussian core was
         /// widened to match; the two are one decision.
         /// </summary>
         public const float FaintestQuadDmm = 3.8f;
@@ -112,14 +112,14 @@ namespace CosmoSynth.Runtime
         {
             brightness = Mathf.Clamp01(brightness);
 
-            var hue = new Color((float)blackBody.x, (float)blackBody.y, (float)blackBody.z);
+            Color hue = CosmoTheme.LinearRgb(blackBody);
             float saturation = 0.30f + brightness * 0.70f;
-            Color tinted = Color.Lerp(Color.white, hue, saturation);
+            Color tinted = CosmoTheme.Desaturate(hue, saturation);
 
             float magnitude = FaintestBrightness + brightness * (1f - FaintestBrightness);
 
             // Alpha is 1 and means nothing. Left explicit so nobody reaches for it as a dial again.
-            return new Color(tinted.r * magnitude, tinted.g * magnitude, tinted.b * magnitude, 1f);
+            return CosmoTheme.WithAlpha(CosmoTheme.Scaled(tinted, magnitude), 1f);
         }
 
         /// <summary>
@@ -148,6 +148,34 @@ namespace CosmoSynth.Runtime
         /// point a brighter star is not a bigger dot, it is a dot with more around it.
         /// </remarks>
         public static float BrightnessFromMagnitude(double apparentMagnitude) =>
-            Mathf.Clamp01((float)((7.0 - apparentMagnitude) / 5.5));
+            Mathf.Clamp01((float)((MagnitudeFaint - apparentMagnitude) /
+                                  (MagnitudeFaint - MagnitudeBright)));
+
+        /// <summary>
+        /// Apparent magnitude at brightness 0 and at brightness 1: the window above, named.
+        ///
+        /// <c>CosmoSynth/Point</c> evaluates the same law in its vertex stage from
+        /// <c>_MagWindow</c>, so the two must be the same pair of numbers or the star field and
+        /// anything the CPU sizes disagree about what a magnitude looks like. That is the defect
+        /// this class was written to prevent, one layer out.
+        /// </summary>
+        public const float MagnitudeFaint = 7.0f;
+
+        /// <inheritdoc cref="MagnitudeFaint"/>
+        public const float MagnitudeBright = 1.5f;
+
+        /// <summary>
+        /// What a host star's black-body colour is multiplied by before it reaches
+        /// <c>_LightColor</c> on every body it lights.
+        ///
+        /// 0.85, which is what the point light this replaces was finally tuned to: 3.2 blew every
+        /// planet out to pure white. It is one of the knobs contract 7.4's re-tune turns after the
+        /// switch to Linear, because the numbers it was measured against were gamma-era.
+        /// </summary>
+        public const float StarLightIntensity = 0.85f;
+
+        /// <summary>The inverse, for a procedural sky that has a rank but no real magnitude.</summary>
+        public static float MagnitudeFromBrightness(float brightness) =>
+            MagnitudeFaint - Mathf.Clamp01(brightness) * (MagnitudeFaint - MagnitudeBright);
     }
 }

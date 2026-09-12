@@ -58,6 +58,87 @@ namespace CosmoSynth.Runtime
         /// <summary>Warning / not-to-scale notices.</summary>
         public static readonly Color Warning = new Color(0.949f, 0.694f, 0.361f);
 
+        /// <summary>Plain white, as a token so no other file has to name a colour to get one.</summary>
+        public static readonly Color Neutral = new Color(1f, 1f, 1f, 1f);
+
+        // ---- Render clears ---------------------------------------------------
+        //
+        // The single most consequential colour in the project, and the one the inspector draws
+        // with the same swatch as its opposite.
+
+        /// <summary>
+        /// The passthrough clear. <b>Alpha zero is the whole point.</b>
+        ///
+        /// Quest composites passthrough UNDERNEATH the app's framebuffer, so alpha is coverage:
+        /// alpha 1 means "this pixel is mine, hide the room". (0, 0, 0, 1) is therefore an opaque
+        /// black wall, not an empty scene — and it looks correct everywhere except on the headset,
+        /// which is the worst possible failure mode.
+        /// </summary>
+        public static readonly Color PassthroughClear = new Color(0f, 0f, 0f, 0f);
+
+        /// <summary>The full-space clear: a very dark blue, opaque, for when there is no room to show.</summary>
+        public static readonly Color SpaceClear = new Color(0.004f, 0.005f, 0.011f, 1f);
+
+        /// <summary>
+        /// Ambient fill, so a night side reads as unlit rather than as missing geometry.
+        ///
+        /// Read by every CosmoSynth shader that lights anything, as _Ambient. It replaces the dim
+        /// directional light that used to do this, which was a hazard rather than a fill: the
+        /// Android quality level allows exactly ONE per-pixel light and Unity ranks a directional
+        /// highly whatever its intensity, so a 0.05 fill could take the only slot and demote the
+        /// star lighting the entire system to a vertex light -- on the device only, with nothing
+        /// in the editor to reproduce it against.
+        ///
+        /// Starting value; re-measure it under Linear colour space.
+        /// </summary>
+        public static readonly Color AmbientFill = new Color(0.05f, 0.055f, 0.07f, 1f);
+
+        /// <summary>The tint of ring particles: dirty ice, warmer than the panel palette.</summary>
+        public static readonly Color RingDust = new Color(0.88f, 0.84f, 0.76f, 1f);
+
+        // ---- Combinators -----------------------------------------------------
+        //
+        // These exist so that "take this colour and change one thing about it" does not have to
+        // name a colour. Every `new Color(...)` outside this file was one of three operations, and
+        // gate G0d cannot tell an alpha override from a palette choice — but a reader can, and so
+        // can these.
+
+        /// <summary>The same colour at a different opacity.</summary>
+        public static Color WithAlpha(Color colour, float alpha) =>
+            new Color(colour.r, colour.g, colour.b, alpha);
+
+        /// <summary>The same colour, brighter or dimmer. Alpha is untouched.</summary>
+        public static Color Scaled(Color colour, float gain) =>
+            new Color(colour.r * gain, colour.g * gain, colour.b * gain, colour.a);
+
+        /// <summary>Mix a colour toward white. 1 keeps it, 0 makes it white.</summary>
+        public static Color Desaturate(Color colour, float saturation) =>
+            Color.Lerp(Neutral, colour, saturation);
+
+        /// <summary>
+        /// A physically LINEAR colour triple, encoded so that what finally reaches the framebuffer
+        /// is that triple.
+        ///
+        /// Core is engine-free, so every physically derived colour — a black-body temperature, a
+        /// catalogue's display colour — arrives as a Double3 of linear radiance and has to cross
+        /// here. Under Linear rendering both routes onward apply an sRGB decode: Unity linearises
+        /// a Color property on the way into a material (contract 7.4), and every CosmoSynth shader
+        /// decodes vertex colours with CS_DisplayToLinear. So the value is gamma-ENCODED here and
+        /// decoded exactly once on the other side.
+        ///
+        /// The name matters. This was <c>FromLinear</c>, which read as "convert from linear" and
+        /// did neither: it copied the components straight across, so under Linear rendering every
+        /// physically derived colour was gamma-decoded a second time. The two call sites that
+        /// mattered were the star light and every body's tint — the one build whose whole purpose
+        /// is a headset A/B of the look.
+        ///
+        /// <c>Color.gamma</c> is unconditional, not colour-space-aware, which is correct here and
+        /// would be wrong under Gamma rendering: this project is Linear (XrSetup.EnsureColorSpace,
+        /// CosmoUrpConfig), and G0c fails if it ever is not.
+        /// </summary>
+        public static Color LinearRgb(Double3 rgb) =>
+            new Color((float)rgb.x, (float)rgb.y, (float)rgb.z, 1f).gamma;
+
         /// <summary>
         /// Provenance colours — the app's most meaning-bearing palette, defined once.
         ///
@@ -218,15 +299,18 @@ namespace CosmoSynth.Runtime
         /// <summary>
         /// A material for panel art that fades as a whole.
         ///
-        /// <c>Unlit/Transparent</c> ignores vertex and material colour entirely, which is why the
+        /// <c>Unlit/Transparent</c> ignored vertex and material colour entirely, which is why the
         /// old panels could not fade: the wrist dashboard faded its text and left the backing at
         /// full opacity, so the panel snapped into existence and then its contents drifted in
-        /// after it. <c>Sprites/Default</c> multiplies by the material tint, so one alpha drives
-        /// the whole surface.
+        /// after it. <c>CosmoSynth/Panel</c> multiplies the mask's alpha by both the material's
+        /// [MainColor] and the vertex colour, so one alpha drives the whole surface — and it is
+        /// premultiplied "over", so a panel occludes passthrough in proportion to its own opacity
+        /// instead of either punching a hole or vanishing into a bright room.
         /// </summary>
         public static Material PanelMaterial()
         {
-            Material material = CosmoShaders.Material(CosmoShaders.SpritesDefault);
+            Material material = CosmoShaders.Material(CosmoShaders.Panel);
+            if (material == null) return null;
             material.mainTexture = PanelTexture;
             // Above transparent geometry — the atmosphere shells — so a panel in front of a
             // planet is not sorted behind its own limb.
@@ -237,7 +321,8 @@ namespace CosmoSynth.Runtime
         /// <summary>As <see cref="PanelMaterial"/>, for the borderless row highlight.</summary>
         public static Material RowMaterial()
         {
-            Material material = CosmoShaders.Material(CosmoShaders.SpritesDefault);
+            Material material = CosmoShaders.Material(CosmoShaders.Panel);
+            if (material == null) return null;
             material.mainTexture = RowTexture;
             material.renderQueue = 3201;
             return material;

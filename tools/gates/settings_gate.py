@@ -12,6 +12,7 @@ when it is wrong.
 
 Exit 0 pass, 1 fail.
 """
+import hashlib
 import os
 import re
 import subprocess
@@ -151,6 +152,18 @@ def run_checks():
         cs = field(ps, "m_ActiveColorSpace")
         check("colour-space", cs == "1", "m_ActiveColorSpace = %s (want 1 = Linear)" % cs)
 
+        # Static batching bakes vertices into WORLD space, which silently destroys three
+        # object-space assumptions: CosmoSynth/Volume's raymarch entry point, CosmoSynth/Sky's
+        # vertices-are-ICRF-directions and CosmoSynth/Ribbon's otherOS endpoint (R12). It is ON by
+        # default for Android, and the default is an EMPTY m_BuildTargetBatching list -- so
+        # "absent" is the failing state, not the passing one. XrSetup.EnsureStaticBatchingOff
+        # writes the Android entry; the "DisableBatching"="True" tags in the shaders are the belt
+        # and this is the braces.
+        sb = re.search(r"^\s*m_StaticBatching:\s*(\d+)", ps, flags=re.M)
+        check("static-batching", sb is not None and sb.group(1) == "0",
+              "m_StaticBatching = %s"
+              % (sb.group(1) if sb else "absent, which IS the default and the default is ON"))
+
     # ------------------------------------------------------------ OpenXR Android
     oxr = read(OXR)
     androids = []
@@ -220,7 +233,12 @@ def run_checks():
     # Optimize Buffer Discards keeps the tile buffer uninitialised between passes. With a
     # second camera that is exactly how you get another camera's frame smeared behind the
     # world. Neither value is wrong on its own; the combination is.
-    cams_file = os.path.join(os.environ.get("TMPDIR", "/tmp"), "cosmosynth-g0d.cameras")
+    # Per TREE: see code_gate.sh, which writes it. A single shared filename is a race between
+    # the worktrees on this box, and reading another lane's count is worse than reading none --
+    # it is a red that names a defect this tree does not have.
+    tree = hashlib.md5(ROOT.encode("utf-8")).hexdigest()[:8]
+    cams_file = os.path.join(os.environ.get("TMPDIR", "/tmp"),
+                             "cosmosynth-g0d-%s.cameras" % tree)
     cams = None
     try:
         with open(cams_file) as fh:
@@ -282,6 +300,10 @@ QualitySettings:
 --- !u!129 &1
 PlayerSettings:
   m_ActiveColorSpace: 1
+  m_BuildTargetBatching:
+  - m_BuildTarget: Android
+    m_StaticBatching: 0
+    m_DynamicBatching: 0
 """,
     OXR: """%YAML 1.1
 --- !u!114 &1
@@ -362,6 +384,7 @@ def self_test():
     mutants = [
         ("pipeline", GS, "guid: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, type: 2}", "fileID: 0}"),
         ("colour-space", PS, "m_ActiveColorSpace: 1", "m_ActiveColorSpace: 0"),
+        ("static-batching", PS, "m_StaticBatching: 0", "m_StaticBatching: 1"),
         ("depth-submission", OXR, "m_depthSubmissionMode: 0", "m_depthSubmissionMode: 1"),
         ("latency", OXR, "m_latencyOptimization: 1", "m_latencyOptimization: 0"),
         ("symmetric-projection", OXR, "m_symmetricProjection: 1", "m_symmetricProjection: 0"),

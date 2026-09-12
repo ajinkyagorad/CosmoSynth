@@ -7,7 +7,6 @@
     "Unity.XR.Management",
     "Unity.XR.OpenXR",
     "Unity.XR.Hands",
-    "Unity.XR.Interaction.Toolkit",
     "Unity.XR.ARFoundation",
     "Unity.InputSystem",
     "Unity.RenderPipelines.Universal.Runtime"

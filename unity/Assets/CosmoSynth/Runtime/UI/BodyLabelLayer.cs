@@ -158,7 +158,7 @@ namespace CosmoSynth.Runtime
         /// bury the system the user is standing in under the rest of the galaxy.
         /// </summary>
         private static bool NamedByType(CelestialBodyView view) =>
-            !view.DrawnAsStarPoint &&
+            !view.DrawnAsPoint &&
             (view.Body.Type == BodyType.Star ||
              view.Body.Type == BodyType.Planet ||
              view.Body.Type == BodyType.DwarfPlanet ||
@@ -185,6 +185,12 @@ namespace CosmoSynth.Runtime
 
                 // Sit the label clear of the body's drawn disc, up and to the right — one
                 // consistent direction, so which name belongs to which dot is never in question.
+                //
+                // Only for something that is actually on screen: IsGeometryDrawn (via
+                // IsPointable) is re-read here rather than trusted from when the candidate was
+                // chosen, because the two are different frames and a body can stop being drawn
+                // between them.
+                if (!candidate.View.IsPointable) continue;
                 float clearance = candidate.View.RenderedRadius +
                                   CosmoTheme.Metres(CosmoTheme.SpaceRow, distance);
                 Vector3 worldOffset = (_camera.transform.up + _camera.transform.right).normalized * clearance;
@@ -212,7 +218,7 @@ namespace CosmoSynth.Runtime
                     alpha = Mathf.Lerp(0.35f, 1f,
                         Mathf.InverseLerp(_minimumPixels, _minimumPixels * 3f, (float)candidate.Pixels));
                 }
-                label.color = new Color(colour.r, colour.g, colour.b, alpha);
+                label.color = CosmoTheme.WithAlpha(colour, alpha);
 
                 label.text = name;
                 label.gameObject.SetActive(true);

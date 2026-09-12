@@ -62,7 +62,12 @@ run_tree() {
   fi
   # G0c and G3 read this: a setting that is only safe with one camera must know how many
   # there are. Written on every run so it can never be stale-but-plausible.
-  echo "$NCAM" > "${TMPDIR:-/tmp}/cosmosynth-g0d.cameras"
+  # Per TREE, the same md5-of-root convention run-tests.sh uses for its lock. One filename
+  # for every worktree on this box is a race, not a handoff: six lane agents run gate-all
+  # concurrently here, and G0c read another lane's count -- reporting "2 cameras" against a tree
+  # whose only AddComponent<Camera> this gate had just counted as 1, on the phase whose entire
+  # subject is the camera count.
+  echo "$NCAM" > "${TMPDIR:-/tmp}/cosmosynth-g0d-$(printf %s "$ROOT" | md5sum | cut -c1-8).cameras"
 
   local pat h n
   while IFS= read -r pat; do
@@ -87,15 +92,64 @@ EOF
   else bad "SetCatalog( called $n times outside its definition"; printf '%s\n' "$SETC" | sed 's/^/        /' | head -5; fi
 
   # ---- a radius that was never drawn is a lie; whoever reads one must read the other
+  #
+  # Comments are STRIPPED before counting. They were not, and a `//` line mentioning the guard
+  # satisfied the rule: BodyLabelLayer names IsGeometryDrawn only in prose at :189-190 and guards
+  # with IsPointable at :193, so deleting the guard the comment describes left G0d green. That is
+  # this project's own named verification-gap pattern -- the gate passed for a reason unrelated to
+  # its name.
+  #
+  # IsPointable counts too. It is IsGeometryDrawn plus a pick test, so a file that asks it has
+  # asked the question; the rule is "did you ask whether the body is drawn", not "did you type one
+  # particular identifier".
   local BADR="" f a b
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    a=$(grep -c 'RenderedRadius' "$f" 2>/dev/null | tr -dc '0-9')
-    b=$(grep -c 'IsGeometryDrawn' "$f" 2>/dev/null | tr -dc '0-9')
+    a=$(sed 's://.*::' "$f" | grep -c 'RenderedRadius' | tr -dc '0-9')
+    b=$(sed 's://.*::' "$f" | grep -cE 'IsGeometryDrawn|IsPointable' | tr -dc '0-9')
     [ "${a:-0}" -gt 0 ] && [ "${b:-0}" -eq 0 ] && BADR="$BADR ${f#"$ROOT"/}"
   done < <(grep -rlE --include='*.cs' 'RenderedRadius' "$SRC" 2>/dev/null)
-  if [ -z "$BADR" ]; then pass "every RenderedRadius reader also references IsGeometryDrawn"
-  else bad "RenderedRadius without IsGeometryDrawn:$BADR"; fi
+  if [ -z "$BADR" ]; then pass "every RenderedRadius reader also asks whether the body is drawn"
+  else bad "RenderedRadius without IsGeometryDrawn/IsPointable:$BADR"; fi
+
+  # ---- every runtime material comes from CosmoShaders
+  #
+  # Two rules, because the failure has two shapes and grep can only see one of them.
+  #
+  # (a) A CosmoShaders member that is not one of the eleven. The existing built-in-shader-name
+  #     rule cannot see this: the names lived as constants INSIDE CosmoShaders.cs, which is
+  #     exempt, and the call sites referred to them by identifier. Eight runtime sites asked for
+  #     Standard, Sprites/Default, Particles/Standard Unlit, Unlit/Color, Unlit/Transparent and
+  #     GUI/Text Shader that way, and G0d was green on all of them. None of those has a
+  #     UniversalForward pass under URP.
+  #
+  # (b) `new Material(` outside CosmoShaders.cs. That is how CosmoText cloned the built-in font
+  #     material -- a material carrying GUI/Text Shader, with no shader name anywhere in the file.
+  #
+  # ponytail: what neither can see is GameObject.CreatePrimitive's IMPLICIT default material,
+  # which under URP is URP/Lit -- multi-variant, so strippable, so magenta in a player. No grep
+  # reaches it; the play-mode `shaders` assertion does, by reading every enabled renderer's shader
+  # name back and requiring it to be in CosmoShaders.All.
+  #
+  # -o, one MATCH per output line, not one line per hit. A line-based filter cannot do this: the
+  # offending call is `CosmoShaders.Material(CosmoShaders.Standard)`, so the line matches an
+  # allowed name as well as a forbidden one and a `grep -v` of the allowed set drops the whole
+  # line -- the mutant passed until this was fixed. There is deliberately no // gate-justified:
+  # hatch here: the eleven ARE the allowed set, and a member outside them is a shader that is not
+  # in the build.
+  local BADM
+  BADM=$(grep -rnoE --include='*.cs' 'CosmoShaders\.[A-Za-z]+' "$SRC" 2>/dev/null \
+         | grep -v '/CosmoShaders\.cs:' \
+         | grep -vE ':CosmoShaders\.(Body|Point|Ribbon|Sky|Volume|Atmosphere|Rim|Ring|Unlit|Panel|Text|Material|Load|All)$')
+  if [ -z "$BADM" ]; then pass "every CosmoShaders reference names one of the eleven"
+  else bad "CosmoShaders member outside the eleven:"; printf '%s\n' "$BADM" | sed 's/^/        /' | head -8; fail=1; fi
+
+  local BADN
+  BADN=$(grep -rnE --include='*.cs' 'new Material\(' "$SRC" 2>/dev/null \
+         | grep -v '/CosmoShaders\.cs:' \
+         | grep -v '// gate-justified:')
+  if [ -z "$BADN" ]; then pass "materials are constructed only in CosmoShaders.cs"
+  else bad "new Material( outside CosmoShaders.cs:"; printf '%s\n' "$BADN" | sed 's/^/        /' | head -8; fail=1; fi
 }
 
 self_test() {
@@ -117,6 +171,9 @@ public class Rig { void Build(){ var c = go.AddComponent<Camera>(); c.clearFlags
 CS
   cat > "$R/Body.cs" <<'CS'
 public class Body { public float RenderedRadius; public bool IsGeometryDrawn; }
+CS
+  cat > "$R/Visual.cs" <<'CS'
+public class Visual { void F(){ var m = CosmoShaders.Material(CosmoShaders.Body); } }
 CS
 
   out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
@@ -148,6 +205,32 @@ CS
   rm -f "$R/Halo.cs"
   if [ "$rc" -eq 0 ]; then echo "  SELF-TEST FAIL: mutant 'radius without drawn' PASSED - the rule cannot fail"; ok=0
   else echo "  ok    self-test: mutant 'radius without drawn' fails as it must"; fi
+
+  # The hole the review found: the guard is a COMMENT and the real code has none. This is the
+  # exact shape of BodyLabelLayer, where the rule stayed green with the guard deleted.
+  cat > "$R/Halo.cs" <<'CS'
+public class Halo {
+  // IsGeometryDrawn is re-read here rather than trusted from when the candidate was chosen.
+  void F(){ var r = x.RenderedRadius; }
+}
+CS
+  out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
+  rm -f "$R/Halo.cs"
+  if [ "$rc" -eq 0 ]; then echo "  SELF-TEST FAIL: mutant 'a comment satisfies the guard' PASSED - the rule cannot fail"; ok=0
+  else echo "  ok    self-test: mutant 'a comment satisfies the guard' fails as it must"; fi
+
+  # ...and the positive control: IsPointable is IsGeometryDrawn plus a pick test, and counts.
+  printf '%s\n' 'public class Label { void F(){ if (!v.IsPointable) return; var r = v.RenderedRadius; } }' > "$R/Label.cs"
+  out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
+  rm -f "$R/Label.cs"
+  if [ "$rc" -eq 0 ]; then echo "  ok    self-test: IsPointable satisfies the drawn-check rule"
+  else echo "  SELF-TEST FAIL: IsPointable should satisfy the drawn-check rule"; ok=0; fi
+
+  # A CosmoShaders member outside the eleven. This is what eight call sites did for the whole
+  # of the pre-migration tree while G0d reported PASS: the names were constants inside the exempt
+  # file, so no built-in shader STRING ever appeared in Runtime.
+  mutate "built-in shader by constant" Visual.cs 'public class V2 { void F(){ var m = CosmoShaders.Material(CosmoShaders.Standard); } }'
+  mutate "material built outside CosmoShaders" Visual.cs 'public class V3 { void F(){ var m = new Material(font.material); } }'
 
   # And one justified hit must NOT fail, or the escape hatch is a lie.
   printf '%s\n' 'public class Just { void F(){ GL.PushMatrix(); } } // gate-justified: self-test' >> "$R/Rig.cs"

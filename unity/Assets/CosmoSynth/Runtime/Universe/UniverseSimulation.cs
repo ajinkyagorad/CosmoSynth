@@ -23,14 +23,6 @@ namespace CosmoSynth.Runtime
     [AddComponentMenu("CosmoSynth/Universe Simulation")]
     public sealed class UniverseSimulation : MonoBehaviour
     {
-        [Header("Catalogue")]
-        [Tooltip("Path under StreamingAssets to the catalogue to load.")]
-        [SerializeField] private string _catalogPath = "CosmoSynth/catalog/solar_system.json";
-
-        [Tooltip("Load the catalogue on Awake. Off by default: the bootstrap loads it asynchronously, " +
-                 "which is the only way that works on Android.")]
-        [SerializeField] private bool _loadOnAwake;
-
         [Header("References")]
         [SerializeField] private SimulationClock _clock;
         [SerializeField] private FloatingOrigin _origin;
@@ -63,8 +55,30 @@ namespace CosmoSynth.Runtime
         /// <summary>The body the camera is currently anchored to, if any.</summary>
         public CelestialBodyView FocusBody { get; private set; }
 
-        /// <summary>Raised once the catalogue has been loaded and all views exist.</summary>
+        /// <summary>
+        /// Raised once, when the assembled catalogue has been adopted and all views exist.
+        ///
+        /// It means "a whole universe arrived, re-frame the scene", and the bootstrap responds by
+        /// anchoring the viewer on the focus body. It used to fire three times during startup,
+        /// because the catalogue was merged by re-adopting; the assembly now happens in Core and
+        /// this fires exactly once. <see cref="CatalogAdoptions"/> is what the play-mode gate
+        /// asserts on.
+        /// </summary>
         public event Action<CelestialCatalog> CatalogLoaded;
+
+        /// <summary>
+        /// Raised when bodies are added or removed after the initial adoption, and deliberately
+        /// NOT by <see cref="SetCatalog"/>. Layers that de-duplicate points against catalogue
+        /// bodies listen to this; re-framing the scene must not.
+        /// </summary>
+        public event Action BodiesChanged;
+
+        /// <summary>
+        /// How many times a whole catalogue has been adopted. Must be 1 by the time the app has
+        /// settled: every adoption destroys and rebuilds every view, discarding work other
+        /// components have already applied to them.
+        /// </summary>
+        public int CatalogAdoptions { get; private set; }
 
         /// <summary>Raised when the focused body changes.</summary>
         public event Action<CelestialBodyView> FocusChanged;
@@ -87,8 +101,6 @@ namespace CosmoSynth.Runtime
         {
             if (_clock == null) _clock = GetComponent<SimulationClock>() ?? gameObject.AddComponent<SimulationClock>();
             if (_origin == null) _origin = GetComponent<FloatingOrigin>() ?? gameObject.AddComponent<FloatingOrigin>();
-
-            if (_loadOnAwake) LoadCatalogFromStreamingAssets(_catalogPath);
         }
 
         /// <summary>
@@ -202,98 +214,14 @@ namespace CosmoSynth.Runtime
         }
 
         /// <summary>
-        /// Load a catalogue from StreamingAssets and build the scene from it.
+        /// Adopt an assembled catalogue. <b>Called once.</b>
         ///
-        /// Synchronous, and therefore desktop and editor only — see
-        /// <see cref="ReadStreamingAsset"/> for the reason. On Android this returns false
-        /// rather than pretending to work.
+        /// Everything after the first adoption uses <see cref="AddBodies"/> and
+        /// <see cref="RemoveBodies"/>, which keep the views they already have. Gate G0d allows one
+        /// call site outside this definition, and the play-mode gate asserts
+        /// <see cref="CatalogAdoptions"/> is 1.
         /// </summary>
-        public bool LoadCatalogFromStreamingAssets(string relativePath)
-        {
-            string fullPath = Path.Combine(Application.streamingAssetsPath, relativePath);
-
-            if (fullPath.Contains("://"))
-            {
-                Debug.LogError(
-                    "[CosmoSynth] StreamingAssets is not a readable directory on this platform. " +
-                    "Use the ReadStreamingAsset coroutine instead of the synchronous loader.");
-                return false;
-            }
-
-            if (!File.Exists(fullPath))
-            {
-                Debug.LogError(
-                    $"[CosmoSynth] Catalogue not found at '{fullPath}'. " +
-                    "Build it with 'python3 tools/cosmodata/build_solar_system.py'.");
-                return false;
-            }
-
-            try
-            {
-                return LoadCatalogFromJson(File.ReadAllText(fullPath));
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError($"[CosmoSynth] Failed to read '{fullPath}': {exception.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>Load a catalogue from JSON text and build the scene from it.</summary>
-        public bool LoadCatalogFromJson(string json)
-        {
-            CelestialCatalog catalog;
-            try
-            {
-                catalog = CelestialCatalog.Parse(json);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError($"[CosmoSynth] Catalogue is malformed: {exception.Message}");
-                return false;
-            }
-
-            return SetCatalog(catalog);
-        }
-
-        /// <summary>
-        /// Merge a second catalogue's JSON into the loaded one, and rebuild the scene.
-        ///
-        /// Used for the exoplanets, which ship as a separate file so a Solar-System-only build
-        /// does not carry 2 MB it will not use. Both are positioned in ICRF about the solar
-        /// system barycentre, so they belong in one frame tree — that is what makes "how far is
-        /// Proxima b from Earth" a question with an answer.
-        /// </summary>
-        public bool MergeCatalogFromJson(string json)
-        {
-            if (Catalog == null)
-            {
-                Debug.LogError("[CosmoSynth] cannot merge before a catalogue is loaded.");
-                return false;
-            }
-
-            CelestialCatalog incoming;
-            try
-            {
-                incoming = CelestialCatalog.Parse(json);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError($"[CosmoSynth] merged catalogue is malformed: {exception.Message}");
-                return false;
-            }
-
-            int added = Catalog.MergeFrom(incoming);
-            Debug.Log($"[CosmoSynth] merged '{incoming.Name}': {added} bodies added, " +
-                      $"{Catalog.Count} total.");
-
-            // Rebuild the whole scene from the combined catalogue, so the frame tree and the
-            // views agree with it.
-            return SetCatalog(Catalog);
-        }
-
-        /// <summary>Adopt an in-memory catalogue — the entry point the generators use.</summary>
-        public bool SetCatalog(CelestialCatalog catalog)
+        public void SetCatalog(CelestialCatalog catalog)
         {
             if (catalog == null) throw new ArgumentNullException(nameof(catalog));
 
@@ -302,6 +230,13 @@ namespace CosmoSynth.Runtime
             // diagnose, not easier. The messages name the body and the reason.
             var problems = catalog.Validate();
             foreach (string problem in problems) Debug.LogWarning($"[CosmoSynth] {problem}");
+
+            CatalogAdoptions++;
+            if (CatalogAdoptions > 1)
+            {
+                Debug.LogWarning($"[CosmoSynth] catalogue adopted {CatalogAdoptions} times — every " +
+                                 "adoption rebuilds every view and re-anchors the viewer.");
+            }
 
             ClearViews();
 
@@ -317,7 +252,6 @@ namespace CosmoSynth.Runtime
             CatalogLoaded?.Invoke(catalog);
 
             if (FocusBody == null && catalog.RootIds.Count > 0) SetFocus(catalog.RootIds[0]);
-            return true;
         }
 
 
@@ -348,6 +282,7 @@ namespace CosmoSynth.Runtime
             }
 
             _bodyCount = Catalog.Count;
+            BodiesChanged?.Invoke();
             return added;
         }
 
@@ -375,6 +310,7 @@ namespace CosmoSynth.Runtime
             Catalog.Rebuild();
             RebuildFramesKeepingViews();
             _bodyCount = Catalog.Count;
+            BodiesChanged?.Invoke();
             return removed;
         }
 
@@ -424,17 +360,6 @@ namespace CosmoSynth.Runtime
         /// </summary>
         public Vector3 ViewerLocalPosition { get; private set; }
 
-        /// <summary>
-        /// Render distance beyond which a body is drawn on the sky rather than in space, in
-        /// render units. Zero disables the treatment.
-        ///
-        /// Set by <see cref="ScaleRenderer"/> from the depth range the camera can actually
-        /// express. Past this distance parallax is unmeasurable anyway — nobody perceives depth
-        /// at four light years — so pinning the direction and giving up the distance costs
-        /// nothing visible and keeps the far plane finite.
-        /// </summary>
-        public float StarPointHorizonUnits { get; set; }
-
         private void LateUpdate()
         {
             if (Catalog == null || _rootFrame == null) return;
@@ -449,6 +374,14 @@ namespace CosmoSynth.Runtime
             // body rather than one per ancestor per body.
             foreach (var view in _views.Values) view.UpdateState(now);
         }
+
+        /// <summary>
+        /// The star that lights a body, found by walking its parents. Null for a rogue body.
+        ///
+        /// One function, so the four places that used to walk up to a star cannot disagree, and
+        /// so that "which star lights Mars" is answerable in a headless test.
+        /// </summary>
+        public CelestialBody HostStarOf(string bodyId) => Catalog?.HostStarOf(bodyId);
 
         /// <summary>Absolute position of a body at an instant, in km, in the root frame.</summary>
         public Double3 AbsolutePositionKm(string bodyId, CosmicTime time)

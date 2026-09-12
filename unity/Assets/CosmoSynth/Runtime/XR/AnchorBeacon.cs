@@ -62,7 +62,8 @@ namespace CosmoSynth.Runtime
 
             // Three thin bars forming an axis cross. Unlit, so it shows even with no light in the
             // scene — one of the things that could be wrong.
-            _material = CosmoShaders.Material(CosmoShaders.UnlitColor);
+            _material = CosmoShaders.Material(CosmoShaders.Unlit);
+            if (_material == null) return;
             _material.color = CosmoTheme.Accent;
 
             CreateBar(new Vector3(1f, 0.06f, 0.06f));
@@ -118,7 +119,11 @@ namespace CosmoSynth.Runtime
             // There is room to the side and nowhere else, and the left is free because the
             // provenance panel opens to the right.
             float clearance = _sizeMetres * 2f;
-            if (_simulation != null && _simulation.FocusBody != null)
+            // The focus body's radius is only meaningful while its geometry is on screen. A body
+            // that has handed over to the point path keeps a RenderedRadius that describes the
+            // dot, and one that is outside its ephemeris window keeps whatever it last had.
+            if (_simulation != null && _simulation.FocusBody != null &&
+                _simulation.FocusBody.IsGeometryDrawn)
             {
                 clearance = Mathf.Max(clearance, _simulation.FocusBody.RenderedRadius);
             }

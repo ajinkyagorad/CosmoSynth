@@ -144,7 +144,7 @@ namespace CosmoSynth.Runtime
                         counts[i] = (int)reader.ReadUInt32();
                         submeshes[i] = new Submesh
                         {
-                            Color = new Color(reader.ReadSingle(), reader.ReadSingle(),
+                            Color = new Color(reader.ReadSingle(), reader.ReadSingle(),   // gate-justified: four floats read out of the .csmesh file, not a palette choice
                                               reader.ReadSingle(), reader.ReadSingle()),
                             Metallic = reader.ReadSingle(),
                             Smoothness = reader.ReadSingle(),

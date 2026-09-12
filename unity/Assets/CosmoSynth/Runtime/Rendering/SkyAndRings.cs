@@ -25,9 +25,6 @@ namespace CosmoSynth.Runtime
                  "to magnitude 13; a headset draws the bright end of it.")]
         [SerializeField] private int _catalogStarBudget = 9000;
 
-        [Tooltip("Radius of the star sphere in render units. Sits beyond everything else.")]
-        [SerializeField] private float _starSphereRadius = 900f;
-
         [Header("Rings")]
         [SerializeField] private int _ringSegments = 128;
 
@@ -82,7 +79,6 @@ namespace CosmoSynth.Runtime
             }
 
             BuildRings(simulation);
-            BuildStarLight(simulation, anchor);
             BuildAtmospheres(simulation);
         }
 
@@ -130,16 +126,9 @@ namespace CosmoSynth.Runtime
         // for the top handful rather than only ever asymptotically approached.
 
         /// <summary>Uniform draw above which a star starts to get a halo at all.</summary>
-        /// <summary>Apparent magnitude at which a catalogued star starts earning a halo.</summary>
-        private const float CatalogBrightMagnitudeFloor = 3.4f;
-
-        /// <summary>...and the magnitude at which it gets the full treatment. Sirius is -1.44.</summary>
-        private const float CatalogBrightMagnitudeCeiling = -1.5f;
-
-        private const float BrightStarFloor = 0.965f;
-
-        /// <summary>Uniform draw at which the halo, second core and spikes are at full strength.</summary>
-        private const float BrightStarCeiling = 0.9995f;
+        // The bright-end grades that used to live here are gone: CosmoSynth/Point derives both
+        // size and brightness from one apparent magnitude, so a second window grading the same
+        // stars a second way is exactly the drift this file's own comment warns about.
 
         /// <summary>Halo width, as a multiple of the core quad. Wide and faint.</summary>
         private const float HaloScale = 2.8f;
@@ -155,128 +144,102 @@ namespace CosmoSynth.Runtime
         private const float SpikeBrightness = 0.42f;
 
         /// <summary>
-        /// Append one camera-facing quad carrying the shared star point-spread.
+        /// Append one CosmoSynth/Point quad: four coincident vertices, spread in the shader.
         ///
-        /// The two half-extents are separate so the same helper draws a round core, a wide halo
-        /// and a thin elongated spike — a radially symmetric sprite on a non-square quad is an
-        /// elliptical Gaussian, which is all a diffraction spike needs to be.
+        /// The positions are ICRF directions and nothing else — no radius, no axis reorder, no
+        /// mapping. In sky mode the shader rotates them by the global <c>_CS_IcrfToWorld</c> and
+        /// anchors them at THIS eye, so the shell is at infinity by construction rather than at a
+        /// 900-unit sphere parented to the anchor, and the one ICRF-to-Unity mapping stays inside
+        /// FloatingOrigin. The reorder that used to stand here was the second copy of that
+        /// conversion in the codebase, and a sky that is silently mirrored is a sky in which every
+        /// constellation is its own reflection — which no screenshot shows.
+        ///
+        /// All four vertices carry the same data.w (R14): the shader's cull writes an off-screen
+        /// clip position, which CLIPS a primitive rather than discarding it, so a quad whose
+        /// vertices disagreed would rasterise as a wedge rather than as nothing.
         /// </summary>
-        private static void AddQuad(List<Vector3> vertices, List<Color> colors, List<Vector2> uvs,
-            List<int> triangles, Vector3 centre, Vector3 right, Vector3 up, Color colour)
+        /// <param name="shape">0 core, 1 halo, 2 spike across, 3 spike up. The shader turns the
+        /// last three off by themselves for anything but the brightest stars.</param>
+        private static void AddPoint(List<Vector3> vertices, List<Color> colors,
+            List<Vector4> data, List<int> triangles, Vector3 direction, Color colour,
+            float apparentMagnitude, int shape)
         {
             int b = vertices.Count;
 
-            vertices.Add(centre - right - up);
-            vertices.Add(centre + right - up);
-            vertices.Add(centre + right + up);
-            vertices.Add(centre - right + up);
+            for (int c = 0; c < 4; c++)
+            {
+                vertices.Add(direction);
+                colors.Add(colour);
+                data.Add(new Vector4(apparentMagnitude, c, shape, 0f));
+            }
 
-            uvs.Add(new Vector2(0, 0));
-            uvs.Add(new Vector2(1, 0));
-            uvs.Add(new Vector2(1, 1));
-            uvs.Add(new Vector2(0, 1));
-
-            for (int c = 0; c < 4; c++) colors.Add(colour);
-
-            triangles.Add(b); triangles.Add(b + 2); triangles.Add(b + 1);
+            // Corner bits are (x = c & 1, y = c & 2), so 0,1,3,2 walks the perimeter and the two
+            // triangles cover the quad rather than folding across it.
+            triangles.Add(b); triangles.Add(b + 1); triangles.Add(b + 3);
             triangles.Add(b); triangles.Add(b + 3); triangles.Add(b + 2);
         }
 
         /// <summary>
-        /// Emit one star's geometry. The single place a star becomes triangles, so the invented
-        /// sky and the measured one cannot drift apart in appearance — the defect StarSprite's
-        /// own docstring warned about and which happened anyway when the two populations kept
-        /// separate size and brightness rules.
+        /// Emit one star. The single place a star becomes triangles, so the invented sky and the
+        /// measured one cannot drift apart in appearance — the defect the deleted StarSprite's
+        /// warned about and which happened anyway when the two populations kept separate size and
+        /// brightness rules.
+        ///
+        /// Size and brightness are now one law evaluated once, in the shader, from the apparent
+        /// magnitude: <c>_SizeDmm</c>, <c>_MagWindow</c> and <c>_Look</c> on the material are
+        /// StarLook's own constants. The CPU decides only WHICH shapes to emit, because the halo
+        /// and the spikes are what separate the conspicuous handful from the field and there is no
+        /// point paying for four extra quads on a star that will scale all three to zero.
         /// </summary>
         /// <param name="direction">Unit vector toward the star, ICRF.</param>
-        /// <param name="rank">Normalised brightness, 0 at the visibility floor and 1 at the top.
-        /// Drives both the drawn size and the colour intensity, because a star has one apparent
-        /// magnitude and on a display both channels are expressions of it.</param>
-        /// <param name="bright">How far into the bright end this star is, 0 to 1. Graded
-        /// separately from <paramref name="rank"/> because rank saturates at the very top and
-        /// therefore cannot order the handful of stars that get a halo and spikes.</param>
-        private void EmitStar(List<Vector3> vertices, List<Color> colors, List<Vector2> uvs,
-            List<int> triangles, Double3 direction, float rank, float bright, double temperatureK)
+        private static void EmitStar(List<Vector3> vertices, List<Color> colors,
+            List<Vector4> data, List<int> triangles, Double3 direction, float apparentMagnitude,
+            double temperatureK)
         {
-            float size = _starSphereRadius * StarLook.QuadRadians(rank) * 0.5f;
-
             // Colour from a black-body temperature drawn across the main sequence: many cool
-            // red dwarfs, few hot blue stars.
-            Double3 rgb = PlanetGenerator.BlackBodyColor(temperatureK);
+            // red dwarfs, few hot blue stars. Display-referred, because the shader decodes vertex
+            // colours exactly once (contract 7.4) -- so a physically linear triple is encoded on
+            // the way in rather than handed over raw.
+            Color colour = CosmoTheme.LinearRgb(PlanetGenerator.BlackBodyColor(temperatureK));
 
-            // Magnitude goes into the RGB, not the alpha.
-            //
-            // It was in the alpha, and the alpha was doing nothing. Measured across forty
-            // stars in a captured frame, every one of them peaked at 63/255 in its brightest
-            // channel — the faintest six-pixel star and the brightest nineteen-pixel one
-            // alike — so the dial that was supposed to carry the entire magnitude range was
-            // carrying none of it, and size had been enlarged to compensate for a signal
-            // that had simply been disconnected. An additive blend consumes colour, not
-            // coverage; see StarLook.
-            var colour = StarLook.Colour(rgb, rank);
+            Vector3 icrf = new Vector3((float)direction.x, (float)direction.y, (float)direction.z);
 
-            // Camera-facing quad. Billboarding in a shader would be better; at this count the
-            // difference is not measurable and a fixed quad needs no custom shader.
-            var centre = new Vector3((float)direction.x, (float)direction.z, (float)direction.y)
-                     * _starSphereRadius;
-
-            Vector3 forward = centre.normalized;
-            Vector3 right = Vector3.Cross(forward, Vector3.up).normalized;
-            if (right.sqrMagnitude < 1e-9f) right = Vector3.right;
-            Vector3 up = Vector3.Cross(forward, right).normalized;
-
-            AddQuad(vertices, colors, uvs, triangles, centre, right * size, up * size, colour);
+            AddPoint(vertices, colors, data, triangles, icrf, colour, apparentMagnitude, 0);
 
             // ---- The bright end, which one quad cannot reach --------------------------
             //
-            // Measured across three renders with completely different quad sizes and
-            // profiles, the brightest a SINGLE additive star quad ever gets is about 0.27 of
-            // full scale — 69/255 in the last frame, with three separate stars landing on
-            // exactly that value. Widening the core removed the width-dependence of the gain
-            // (it is now flat at 0.25 to 0.27 from the faintest star to the brightest) but it
-            // did not raise the ceiling. So no amount of size or colour tuning produces a
-            // star that stands out, and the sky stays a field where everything is within a
-            // factor of two of everything else.
+            // Measured across three renders with completely different quad sizes and profiles,
+            // the brightest a SINGLE additive star quad ever gets is about 0.27 of full scale --
+            // 69/255 in the last frame, with three separate stars landing on exactly that value.
+            // Widening the core removed the width-dependence of the gain but it did not raise the
+            // ceiling. So no amount of size or colour tuning produces a star that stands out, and
+            // the sky stays a field where everything is within a factor of two of everything else.
             //
-            // Additive geometry sums in the framebuffer, so overlapping quads is the way
-            // past it — and it is not a workaround, it is what the thing actually looks like.
-            // A bright point source is a saturated core, an extended halo several times
-            // wider, and diffraction spikes. Drawing those as separate pieces decouples "how
-            // bright" from "how big", which is precisely the tension that made the first
-            // attempt cotton wool: brightness had been gated by width, and width was what
-            // ruined it.
+            // Additive geometry sums in the framebuffer, so overlapping quads is the way past it
+            // -- and it is not a workaround, it is what the thing actually looks like. A bright
+            // point source is a saturated core, an extended halo several times wider, and
+            // diffraction spikes. Drawing those as separate pieces decouples "how bright" from
+            // "how big", which is precisely the tension that made the first attempt cotton wool.
             //
-            // Driven by the raw uniform draw rather than by rank. Rank is rank = u^2.2, which
-            // saturates against 1.0 for the top few stars — that is why three of them
-            // rendered at identical values — so it cannot grade the very top. u can.
-            if (bright <= 0.01f) return;
+            // The shader scales all three by saturate(2b - 1), so they are already zero below the
+            // midpoint of the magnitude window. Emitting them there would be four quads of
+            // guaranteed nothing per star, on the layer with the most stars in it.
+            if (apparentMagnitude > BrightShapeMagnitude) return;
 
-            // Second core, exactly on the first. This is the part that actually breaks the
-            // ceiling: two overlapping cores reach ~0.54 where one reaches ~0.27.
-            Color core = colour * bright; core.a = 1f;
-            AddQuad(vertices, colors, uvs, triangles, centre, right * size, up * size, core);
-
-            // The halo: wide and faint. It is what reads as "bright" at a glance, because the
-            // eye judges a point source by the glow around it long before it can resolve the
-            // core, and it adds to the centre as well.
-            Color halo = colour * (bright * HaloBrightness); halo.a = 1f;
-            AddQuad(vertices, colors, uvs, triangles, centre,
-                right * (size * HaloScale), up * (size * HaloScale), halo);
-
-            // Diffraction spikes, from geometry alone — no new shader, no new texture.
-            //
-            // The sprite is radially symmetric, so a quad stretched long in one axis and thin
-            // in the other samples it as an elongated Gaussian, which is exactly what a spike
-            // looks like. Two crossed ones give the four-point star. Confined to this handful
-            // because spikes on every star is the look that destroys a sky rather than making
-            // one: they are a property of the instrument, and instruments only show them on
-            // sources bright enough to saturate.
-            Color spike = colour * (bright * SpikeBrightness); spike.a = 1f;
-            AddQuad(vertices, colors, uvs, triangles, centre,
-                right * (size * SpikeLength), up * (size * SpikeWidth), spike);
-            AddQuad(vertices, colors, uvs, triangles, centre,
-                right * (size * SpikeWidth), up * (size * SpikeLength), spike);
+            AddPoint(vertices, colors, data, triangles, icrf, colour, apparentMagnitude, 1);
+            AddPoint(vertices, colors, data, triangles, icrf, colour, apparentMagnitude, 2);
+            AddPoint(vertices, colors, data, triangles, icrf, colour, apparentMagnitude, 3);
         }
+
+        /// <summary>
+        /// Magnitude at which the halo and spikes first have any strength at all.
+        ///
+        /// Not a taste threshold: it is exactly where the shader's own saturate(2b - 1) reaches
+        /// zero, so emitting geometry on the faint side of it can only ever draw nothing. Derived
+        /// from StarLook rather than written down, or the two drift.
+        /// </summary>
+        private static float BrightShapeMagnitude =>
+            StarLook.MagnitudeFromBrightness(0.5f);
 
         /// <summary>Path under StreamingAssets to the real star catalogue.</summary>
         private const string CatalogPath = "CosmoSynth/sky/stars.csstars";
@@ -340,7 +303,7 @@ namespace CosmoSynth.Runtime
         /// what the interstellar phase will fly along.
         /// </summary>
         private void EmitCatalogSky(List<Vector3> vertices, List<Color> colors,
-            List<Vector2> uvs, List<int> triangles)
+            List<Vector4> data, List<int> triangles)
         {
             int drawn = System.Math.Min(_catalog.Count, _catalogStarBudget);
 
@@ -348,19 +311,12 @@ namespace CosmoSynth.Runtime
             {
                 CatalogStar star = _catalog.Stars[i];
 
-                float rank = StarLook.BrightnessFromMagnitude(star.ApparentMagnitude);
-
-                // The bright end is graded by magnitude, not by the rank above, for the same
-                // reason the invented sky grades it by the raw draw: rank saturates at the top
-                // and cannot order the few stars that earn a halo and spikes. Real magnitudes
-                // order themselves — this window puts roughly the fifty brightest stars in,
-                // which is about what a dark sky shows as obviously bright.
-                float bright = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(
-                    CatalogBrightMagnitudeFloor, CatalogBrightMagnitudeCeiling,
-                    (float)star.ApparentMagnitude));
-
-                EmitStar(vertices, colors, uvs, triangles,
-                    star.Direction, rank, bright, star.TemperatureK);
+                // The measured magnitude, straight through. Size, brightness and the bright-end
+                // shapes are all functions of it in CosmoSynth/Point, so the two grades this used
+                // to compute here — one saturating rank and one separate SmoothStep window — are
+                // one number again.
+                EmitStar(vertices, colors, data, triangles,
+                    star.Direction, (float)star.ApparentMagnitude, star.TemperatureK);
             }
 
             Debug.Log($"[CosmoSynth] star field: {drawn} real stars of {_catalog.Count} " +
@@ -377,7 +333,7 @@ namespace CosmoSynth.Runtime
         /// provenance says Procedural where the catalogue says Measured.
         /// </summary>
         private void EmitInventedSky(List<Vector3> vertices, List<Color> colors,
-            List<Vector2> uvs, List<int> triangles)
+            List<Vector4> data, List<int> triangles)
         {
             var random = new DeterministicRandom(20260730);
 
@@ -392,12 +348,13 @@ namespace CosmoSynth.Runtime
                 // on both, which over the stars in view happens about once.
                 float rank = (float)System.Math.Pow(draw, 2.2);
 
-                float bright = Mathf.SmoothStep(0f, 1f,
-                    Mathf.InverseLerp(BrightStarFloor, BrightStarCeiling, (float)draw));
-
                 double temperature = 2600.0 + System.Math.Pow(random.Unit(), 2.6) * 22000.0;
 
-                EmitStar(vertices, colors, uvs, triangles, direction, rank, bright, temperature);
+                // An invented star has no magnitude, so one is invented from the rank through the
+                // same window the real ones are read with. That keeps both populations on one law
+                // — which is the whole point of this method existing beside the catalogue one.
+                EmitStar(vertices, colors, data, triangles, direction,
+                    StarLook.MagnitudeFromBrightness(rank), temperature);
             }
 
             Debug.Log($"[CosmoSynth] star field: {_starCount} INVENTED stars " +
@@ -408,20 +365,26 @@ namespace CosmoSynth.Runtime
         {
             // Lists, not fixed arrays: the brightest stars are drawn with more than one quad.
             int budget = _catalog != null ? _catalog.Count : _starCount;
-            var vertices = new List<Vector3>(budget * 5);
-            var colors = new List<Color>(budget * 5);
-            var uvs = new List<Vector2>(budget * 5);
-            var triangles = new List<int>(budget * 8);
+            var vertices = new List<Vector3>(budget * 4);
+            var colors = new List<Color>(budget * 4);
+            var data = new List<Vector4>(budget * 4);
+            var triangles = new List<int>(budget * 6);
 
-            if (_catalog != null) EmitCatalogSky(vertices, colors, uvs, triangles);
-            else EmitInventedSky(vertices, colors, uvs, triangles);
+            if (_catalog != null) EmitCatalogSky(vertices, colors, data, triangles);
+            else EmitInventedSky(vertices, colors, data, triangles);
 
             var mesh = new Mesh { name = "StarField", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.SetVertices(vertices);
             mesh.SetColors(colors);
-            mesh.SetUVs(0, uvs);
+            mesh.SetUVs(0, data);
             mesh.SetTriangles(triangles, 0);
-            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * _starSphereRadius * 4f);
+
+            // The vertices are unit ICRF directions and the shader places them at this eye, so the
+            // mesh's own extent says nothing about where it is drawn. Bounds large enough that it
+            // is never culled — and the play-mode `far` assertion exempts sky-mode renderers by
+            // reading _Space back off the material, rather than measuring a shell that is not
+            // where its vertices say it is.
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 2e6f);
 
             var starObject = Own(new GameObject("Star Field"));
             _starField = starObject;
@@ -432,15 +395,26 @@ namespace CosmoSynth.Runtime
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
 
-            // Soft round dots, not squares.
+            // Soft round dots, not squares, and no texture to supply them.
             //
-            // These quads carried no texture, and Unity's default _MainTex is solid white — so
-            // every star rendered as a hard-edged coloured tile and the sky read as a field of
-            // confetti. StarSprite supplies the point-spread the quad was always missing, and
-            // the same one the catalogue stars use, so the two cannot look like different
-            // things. It also handles the passthrough blend: additive colour with destination
-            // alpha left alone, or every star stamps a black hole into the room.
-            Material material = StarSprite.CreateMaterial();
+            // These quads carried no texture and Unity's default _MainTex is solid white, so every
+            // star rendered as a hard-edged coloured tile and the sky read as confetti. The
+            // point-spread is now analytic in CosmoSynth/Point — there is no sprite for the build
+            // step to strip, and both star populations are drawn by the one shader, so they cannot
+            // look like different kinds of object. It also declares the passthrough blend rather
+            // than hoping for it: `Blend One One, Zero One`, additive colour with destination alpha
+            // untouched, or every star stamps an opaque hole into the room.
+            Material material = CosmoShaders.Material(CosmoShaders.Point);
+            if (material == null) { renderer.enabled = false; return; }
+
+            material.SetFloat("_Space", 2f);                      // sky: directions, per eye
+            material.SetVector("_MagWindow", new Vector4(StarLook.MagnitudeFaint, StarLook.MagnitudeBright, 0f, 0f));
+            material.SetVector("_SizeDmm", new Vector4(StarLook.FaintestQuadDmm, StarLook.BrightestQuadDmm, 0f, 0f));
+            material.SetVector("_Look", new Vector4(StarLook.FaintestBrightness, 1f, 0f, 0f));
+            // The bright-end shape constants, unchanged; they moved from this file's geometry into
+            // the one shader that now draws every star.
+            material.SetVector("_Shape", new Vector4(HaloScale, SpikeLength, SpikeWidth, 0f));
+            material.SetVector("_ShapeGain", new Vector4(HaloBrightness, SpikeBrightness, 0f, 0f));
             material.renderQueue = 1000;                          // behind everything
             _materials.Add(material);
             renderer.sharedMaterial = material;
@@ -511,9 +485,12 @@ namespace CosmoSynth.Runtime
             var renderer = ringObject.AddComponent<MeshRenderer>();
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            var material = CosmoShaders.Material(CosmoShaders.UnlitTransparent);
+            var material = CosmoShaders.Material(CosmoShaders.Ring);
+            if (material == null) { renderer.enabled = false; return; }
             material.mainTexture = BuildRingTexture(view.Body.Id, opacity);
-            material.renderQueue = 3000;
+            // The ring plane's radial coordinate is uv.x, which this mesh already writes: 0 at the
+            // inner edge and 1 at the outer. The shader takes it from there rather than from a
+            // pair of radius uniforms that would be a second copy of the same fact.
             _materials.Add(material);
             renderer.sharedMaterial = material;
         }
@@ -559,7 +536,7 @@ namespace CosmoSynth.Runtime
                 density *= MathD.SmoothStep(0.0, 0.06, t) * MathD.SmoothStep(0.0, 0.06, 1.0 - t);
 
                 // Ring particles are dirty ice: bright and slightly warm.
-                var colour = new Color(0.88f, 0.84f, 0.76f, (float)density * opacity);
+                Color colour = CosmoTheme.WithAlpha(CosmoTheme.RingDust, (float)density * opacity);
                 pixels[x] = colour;
             }
 
@@ -569,72 +546,22 @@ namespace CosmoSynth.Runtime
         }
 
         // ---- Lighting --------------------------------------------------------
+        //
+        // There is none, and that is the design (contract 8.2 item 12).
+        //
+        // A Unity light cannot express this scene. A universe has many stars and one camera sees
+        // several systems at once, while the Android quality level allows exactly one per-pixel
+        // light — so a single point light gets the terminator right on one system and wrong on
+        // every other. Worse, the star it was attached to came from RootIds[0] whenever the focus
+        // could not be resolved, and RootIds is in insertion order: the moment the exoplanet
+        // catalogue merged in, the light modelling the entire Solar System moved to 61 Vir, eleven
+        // parsecs away. Every planet went dark and the build reported complete success.
+        //
+        // CosmoSynth/Body is lit by _LightDirWS and _LightColor instead, set per body per frame by
+        // CelestialBodyView from its own host star through CelestialCatalog.HostStarOf. Every body
+        // is then lit by the star it actually orbits, and the URP asset turns both light modes off
+        // (contract 8.1) because nothing reads them.
 
-        /// <summary>
-        /// Light the system from the star's actual position, as a point source.
-        ///
-        /// A directional light gives every body the same lighting direction wherever it is, so
-        /// planets on opposite sides of the Sun are lit identically — which reads as obviously
-        /// wrong the moment you look at two of them at once. A point light at the star produces
-        /// correct terminators and correct phases for free.
-        /// </summary>
-        private void BuildStarLight(UniverseSimulation simulation, Transform anchor)
-        {
-            if (simulation.Catalog == null || simulation.Catalog.RootIds.Count == 0) return;
-
-            string starId = simulation.Catalog.RootIds[0];
-            if (!simulation.Views.TryGetValue(starId, out CelestialBodyView starView)) return;
-
-            var lightObject = Own(new GameObject("Star Point Light"));
-            lightObject.transform.SetParent(starView.transform, false);
-
-            var light = lightObject.AddComponent<Light>();
-            light.type = LightType.Point;
-
-            // The star's own colour, from its own temperature.
-            //
-            // This was hardcoded to (1, 0.97, 0.92) — near enough for the Sun and wrong for every
-            // other star the catalogue can hold. Core already computes black-body colour and the
-            // catalogue already carries the temperature, so there is no reason for a G2V constant
-            // to be baked into the renderer; an M dwarf's system should be lit orange.
-            double temperature = starView.Body.EffectiveTemperatureK ?? 5772.0;
-            Double3 rgb = PlanetGenerator.BlackBodyColor(temperature);
-            light.color = new Color((float)rgb.x, (float)rgb.y, (float)rgb.z);
-
-            // 3.2 blew every planet out to pure white. Unity's point light barely attenuates
-            // when the range is far larger than the distance, so the intensity here is close to
-            // what actually lands on the surface.
-            light.intensity = 0.85f;
-            light.shadows = LightShadows.None;   // mobile GPU; shadows cost more here than they add
-
-            // Per-pixel, explicitly.
-            //
-            // The Android quality level this ships on allows exactly ONE per-pixel light, and
-            // Unity decides which by its own importance heuristic — in which a directional light
-            // ranks highly whatever its intensity, because it has infinite range. So the 0.05
-            // fill below could take the only per-pixel slot and demote the star that lights the
-            // entire solar system to a vertex light, on the device only. That does not look like
-            // a bug, it looks like flat, terminator-less planets: correct geometry, no modelling,
-            // no obvious cause, and nothing whatever in the editor to reproduce it against.
-            light.renderMode = LightRenderMode.ForcePixel;
-
-            // Reach the whole system. Unity's point light falls off to zero at its range, so this
-            // has to cover the outermost body or Neptune sits in the dark.
-            light.range = 1e6f;
-
-            // A dim fill so night sides read as unlit rather than as missing geometry.
-            var ambientObject = Own(new GameObject("Ambient Fill"));
-            ambientObject.transform.SetParent(anchor, false);
-            var ambient = ambientObject.AddComponent<Light>();
-            ambient.type = LightType.Directional;
-            ambient.intensity = 0.05f;
-            ambient.color = new Color(0.5f, 0.55f, 0.7f);
-            ambient.shadows = LightShadows.None;
-            // Never the per-pixel one. See the star light above: this exists to keep a night side
-            // off pure black, and it must not outrank the light that models every lit face.
-            ambient.renderMode = LightRenderMode.ForceVertex;
-            ambientObject.transform.rotation = Quaternion.Euler(45f, 130f, 0f);
-        }
 
         // ---- Atmospheres -----------------------------------------------------
 
@@ -719,6 +646,7 @@ namespace CosmoSynth.Runtime
                 renderer.receiveShadows = false;
 
                 var material = CosmoShaders.Material(CosmoShaders.Atmosphere);
+                if (material == null) { renderer.enabled = false; continue; }
                 material.SetFloat("_ScaleHeight", densityFalloff);
                 material.SetFloat("_MieG", (float)atmosphere.MieAsymmetry);
 

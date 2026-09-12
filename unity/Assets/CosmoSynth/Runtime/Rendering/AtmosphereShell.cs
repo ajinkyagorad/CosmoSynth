@@ -18,6 +18,7 @@ namespace CosmoSynth.Runtime
     /// once on the material.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(60)]
     [AddComponentMenu("")]
     public sealed class AtmosphereShell : MonoBehaviour
     {
