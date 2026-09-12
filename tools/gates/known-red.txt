@@ -5,3 +5,18 @@
 # out past an excused gate.
 #
 # Empty on purpose. Add a line only with a written reason and a date to remove it by.
+
+# G0i (tools/gates/parity_gate.py) is NOT excused here, on purpose.
+#
+# It is green today: every row of docs/ATLAS-PARITY.md is accounted for. What it also
+# prints is that 144 of 240 rows are `absent` - the WebXR features the Unity app does
+# not have yet. Those are not a gate failure; they are the work.
+#
+# The strict form is `tools/gates/parity_gate.py --require-parity`, which fails while
+# any row is absent. That is what "entire functionality plus more" means as a command
+# that exits non-zero, and it is the form gate-all.sh's G0i row switches to at the end
+# of PHASE 2, when 2.0.0 is cut. Until then, run it by hand to see the remaining count.
+#
+# It is a comment and not an entry because tools/build.sh:56-60 refuses to build at all
+# while this file holds any non-comment line, and this file's own header scopes it to
+# Phase 0. Excusing a gate that is not failing, for two phases, would stop every APK.

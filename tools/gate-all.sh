@@ -41,6 +41,7 @@ G0e|MonoScript filename/class|tools/gates/class_gate.sh|tools/gates/class_gate.s
 G0f|data documented + droppable|tools/gates/data_gate.py|tools/gates/data_gate.py --self-test
 G0g|unique input bindings|tools/gates/binding_gate.py|tools/gates/binding_gate.py --self-test
 G0h|lane ownership|tools/gates/own_gate.py|tools/gates/own_gate.py --self-test
+G0i|Atlas parity table|tools/gates/parity_gate.py|tools/gates/parity_gate.py --self-test
 "
 
 wanted() {
