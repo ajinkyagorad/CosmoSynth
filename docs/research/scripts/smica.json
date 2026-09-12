@@ -1,0 +1,18 @@
+{
+ "source": "https://pla.esac.esa.int/pla/aio/product-action?MAP.MAP_ID=COM_CMB_IQU-smica-nosz_2048_R3.00_full.fits",
+ "column": "I_STOKES_INP",
+ "unit": "uK_CMB (dipole and monopole removed)",
+ "nside_in": 2048,
+ "nside_out": 1024,
+ "width": 4096,
+ "height": 2048,
+ "frame": "ICRS equirectangular, row 0 = dec +90, column 0 = RA 0, RA increases with column",
+ "bad_pixels_after_degrade": 0,
+ "min_uK": -1034.012939453125,
+ "max_uK": 653.9412231445312,
+ "rms_uK": 107.7336654663086,
+ "p01_uK": -251.9553680419922,
+ "p99_uK": 249.67715454101562,
+ "seconds_stream": 23.8,
+ "seconds_project": 27.9
+}

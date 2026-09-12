@@ -119,3 +119,27 @@ implementations, then after one round they will solve their own critiques, you m
 finish"**
 
 Done. What the round found is listed in the 1.7.0 notes; the durable lessons are in `CLAUDE.md`.
+
+---
+
+## 1.7.0 — the grid report (recorded 2026-09-11; missing from this log until then)
+
+Verbatim, 2026-07-31 16:47 UTC, about 1.7.0:
+
+> "current apk renders like 100 plus isntances of earth , issue with something aI see everyghin so manh times repeated ona grid flat"
+
+1.7.0 was the only build to switch Android quality level 2 to 4x MSAA, and 1.7.1 reverted exactly that change. 1.7.2 added the `render:` status line. **No build after 1.7.0 has been tested on a headset.** The v1.7.2 gallery shot is byte-identical to v1.7.0's, so it shows nothing about 1.7.2.
+
+The most likely mechanism was found on 2026-09-11, but only inferred: the two-camera `DepthBands` stack, combined with 4x MSAA and OpenXR's Optimize Buffer Discards (which makes MSAA colour memoryless). With all three, the near camera's depth-only pass loads tile garbage. See `docs/research/2026-09-11-render-xr-audit.md`. The 2.0 fix is structural: one camera, and DepthBands deleted.
+
+## 1.9.0 — 2026-08-01, verbatim, no headset test
+
+> "Convert current game into Space Engine,"
+> "cant test in XR right now, continue whats todo"
+> "its not possible to check everytime, you verify it, you have not even done space engine level yet, have you, do it"
+
+## Revival request — 2026-09-11, verbatim
+
+> "On hetzner server, based on CosmosSynth, in for unity, make optimal ,: but also note the local group, and etc galaxy : D:\PhD_Backup\OneDrive - Aalto University\Projects\Nebulytic\webxr-examples, heere there is cosmos and stuff ,both ficitonal and current universe stars catalog from earth to solar ystem to local starts to milky way , to local group, to beyond, to microwave cosmoic background, make all into coherent unity app, as cosmos synth broke it had some issues last time  and never picked up since, continue working on it , make major corrections, all functionalities from nebuulytic star thingies should be avilable there."
+
+This request leads to 2.0.0. The plan is in `docs/CONTRACT.md`.

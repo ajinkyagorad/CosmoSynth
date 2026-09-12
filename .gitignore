@@ -81,3 +81,7 @@ secrets/
 local.properties
 *keys.json
 *.pem
+
+# Raw fetched source data staged by the licence-clearance pass. Large, re-fetchable, and
+# superseded by the baked files in StreamingAssets. Never commit it.
+data-staging/
