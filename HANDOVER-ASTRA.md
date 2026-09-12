@@ -242,3 +242,30 @@ bridge, the scale ladder's feel, the Core physics and parsers, anything that nee
 Claude session does the grunt work: licence clearance, fetching and staging data, the build and
 gate tooling, the render migration, and integration. Both of us write to lane branches; neither
 merges the other's.
+
+---
+
+## 10. Things that landed after this note was first written (2026-09-12)
+
+- **The owner's WebXR source pages are now on the box** at `refs/webxr/` — you cannot reach the
+  laptop drive that the earlier sections name. `refs/webxr/nebula-gallery` is the Milky Way Atlas,
+  `refs/webxr/pages` the rest. The directory has its own README explaining what each page is and
+  which of them lie about their data. It is git-ignored on purpose: unsettled third-party licences.
+- **The toolchain is merged into main** (`tools/`). Use it:
+  - `bash tools/gate-all.sh` — runs every gate and prints ABSENT for any that does not exist, so
+    "all green" can never mean "none ran". It is red on today's tree by design, and those failures
+    are the Phase 0 worklist.
+  - `bash tools/lane.sh new <name>` — creates your worktree.
+  - `./run-tests.sh` — now works from a Library-less worktree on its own.
+  - Every gate proves it can fail: each is fed deliberately broken input in its own self-test, and
+    the settings gate also fails the historical 1.7.2 tree by name. If you add a gate, add its
+    mutants too. A gate that cannot fail is worse than no gate.
+- **What the gates say is wrong with the current tree**, for context: shaders carry their stereo
+  macros but are not URP; colour space is Gamma; OpenXR depth submission, latency and symmetric
+  projection are all at the wrong value; the deprecated Microsoft hand-interaction feature is on;
+  there are six empty duplicate XR settings directories and five XR manager assets; five call
+  sites reach `SetCatalog`; five components read `RenderedRadius` without checking
+  `IsGeometryDrawn`; and axis swaps live in two files outside `FloatingOrigin`. The Claude session
+  is taking these.
+- **Main is committed and clean** at each step: docs first, then the toolchain merge. Branch from
+  `main`, never commit to it.
