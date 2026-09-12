@@ -1,0 +1,1648 @@
+{
+ "schema": "cosmosynth.places/1",
+ "generator": "tools/cosmodata/build_galaxy_points.py",
+ "generatorCommit": "e72d89a+dirty",
+ "generatedUtc": "2026-09-12T18:23:02Z",
+ "attribution": "Cloud distances: Zucker, Speagle, Schlafly, Green, Alves, Goodman et al. (2020), A&A 633, A51 / AJ 879, 125 handbook table, via Harvard Dataverse doi:10.7910/DVN/07L7YZ, CC0 1.0.",
+ "licenceTag": "cc0",
+ "sourceSha256": "aea23bd136ae635172f78ca77b569dc6517d1ca02a67119fdf0a2d1713a060ca",
+ "assertions": [
+  {
+   "name": "sightlines",
+   "ok": true,
+   "expected": 326,
+   "got": 326
+  },
+  {
+   "name": "named clouds",
+   "ok": true,
+   "expected": 94,
+   "got": 94,
+   "note": "one row is one SIGHTLINE, not one cloud; Orion alone has 17"
+  },
+  {
+   "name": "Orion present",
+   "ok": true,
+   "expected": true,
+   "got": true
+  },
+  {
+   "name": "Orion distance",
+   "ok": true,
+   "expected": "420 +/- 25 pc",
+   "got": 420.0
+  },
+  {
+   "name": "Taurus is the nearest of the big four",
+   "ok": true,
+   "expected": "Taurus < Perseus < Orion < California",
+   "got": "149 < 285 < 420 < 454"
+  },
+  {
+   "name": "every place has a reference",
+   "ok": true,
+   "expected": true,
+   "got": true
+  }
+ ],
+ "places": [
+  {
+   "id": "aquila-rift",
+   "name": "Aquila Rift",
+   "category": "cloud",
+   "l": 18.3,
+   "b": 12.7,
+   "distancePc": 254.0,
+   "distanceErrPc": 5.0,
+   "radiusPc": 21.7,
+   "description": "5 sightlines, distance 254 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "aquila-s",
+   "name": "Aquila S",
+   "category": "cloud",
+   "l": 37.8,
+   "b": -17.5,
+   "distancePc": 135.0,
+   "distanceErrPc": 2.0,
+   "radiusPc": 6.1,
+   "description": "4 sightlines, distance 135 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ara",
+   "name": "Ara",
+   "category": "cloud",
+   "l": 336.7,
+   "b": -2.0,
+   "distancePc": 1064.0,
+   "distanceErrPc": 15.0,
+   "radiusPc": 7.9,
+   "description": "2 sightlines, distance 1064 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cb28",
+   "name": "CB28",
+   "category": "cloud",
+   "l": 204.0,
+   "b": -25.3,
+   "distancePc": 398.0,
+   "distanceErrPc": 32.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 398 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cb29",
+   "name": "CB29",
+   "category": "cloud",
+   "l": 205.8,
+   "b": -21.6,
+   "distancePc": 374.0,
+   "distanceErrPc": 10.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 374 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cb34",
+   "name": "CB34",
+   "category": "cloud",
+   "l": 187.0,
+   "b": -3.9,
+   "distancePc": 1322.0,
+   "distanceErrPc": 19.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 1322 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cma-ob1",
+   "name": "CMa OB1",
+   "category": "cloud",
+   "l": 225.0,
+   "b": -0.2,
+   "distancePc": 1266.0,
+   "distanceErrPc": 3.0,
+   "radiusPc": 59.7,
+   "description": "4 sightlines, distance 1266 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "california",
+   "name": "California",
+   "category": "cloud",
+   "l": 161.2,
+   "b": -9.0,
+   "distancePc": 454.0,
+   "distanceErrPc": 18.0,
+   "radiusPc": 22.2,
+   "description": "3 sightlines, distance 454 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cam",
+   "name": "Cam",
+   "category": "cloud",
+   "l": 146.1,
+   "b": 17.7,
+   "distancePc": 235.0,
+   "distanceErrPc": 9.0,
+   "radiusPc": 10.6,
+   "description": "5 sightlines, distance 235 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "carina",
+   "name": "Carina",
+   "category": "cloud",
+   "l": 286.3,
+   "b": 0.2,
+   "distancePc": 2501.0,
+   "distanceErrPc": 50.0,
+   "radiusPc": 96.9,
+   "description": "4 sightlines, distance 2501 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cepheus",
+   "name": "Cepheus",
+   "category": "cloud",
+   "l": 106.4,
+   "b": 17.7,
+   "distancePc": 377.0,
+   "distanceErrPc": 5.0,
+   "radiusPc": 81.1,
+   "description": "28 sightlines, distance 377 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "chamaeleon",
+   "name": "Chamaeleon",
+   "category": "cloud",
+   "l": 303.3,
+   "b": -14.2,
+   "distancePc": 190.0,
+   "distanceErrPc": 4.0,
+   "radiusPc": 19.0,
+   "description": "3 sightlines, distance 190 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "circinus",
+   "name": "Circinus",
+   "category": "cloud",
+   "l": 318.4,
+   "b": -3.2,
+   "distancePc": 683.0,
+   "distanceErrPc": 3.0,
+   "radiusPc": 19.7,
+   "description": "2 sightlines, distance 683 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "coalsack",
+   "name": "Coalsack",
+   "category": "cloud",
+   "l": 302.9,
+   "b": 3.1,
+   "distancePc": 191.0,
+   "distanceErrPc": 5.0,
+   "radiusPc": 19.6,
+   "description": "6 sightlines, distance 191 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "corona-australis",
+   "name": "Corona Australis",
+   "category": "cloud",
+   "l": 0.8,
+   "b": -20.1,
+   "distancePc": 155.0,
+   "distanceErrPc": 6.0,
+   "radiusPc": 7.1,
+   "description": "3 sightlines, distance 155 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "cygnusx",
+   "name": "CygnusX",
+   "category": "cloud",
+   "l": 80.5,
+   "b": 1.1,
+   "distancePc": 1214.0,
+   "distanceErrPc": 21.0,
+   "radiusPc": 81.8,
+   "description": "13 sightlines, distance 1214 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "draco",
+   "name": "Draco",
+   "category": "cloud",
+   "l": 89.5,
+   "b": 38.4,
+   "distancePc": 481.0,
+   "distanceErrPc": 51.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 481 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ggd4",
+   "name": "GGD4",
+   "category": "cloud",
+   "l": 185.1,
+   "b": -4.3,
+   "distancePc": 1396.0,
+   "distanceErrPc": 23.0,
+   "radiusPc": 19.6,
+   "description": "2 sightlines, distance 1396 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "gem-ob1",
+   "name": "Gem OB1",
+   "category": "cloud",
+   "l": 189.5,
+   "b": 0.7,
+   "distancePc": 1864.0,
+   "distanceErrPc": 16.0,
+   "radiusPc": 113.9,
+   "description": "5 sightlines, distance 1864 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "hercules",
+   "name": "Hercules",
+   "category": "cloud",
+   "l": 44.1,
+   "b": 8.6,
+   "distancePc": 223.0,
+   "distanceErrPc": 3.0,
+   "radiusPc": 5.7,
+   "description": "3 sightlines, distance 223 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ic1396",
+   "name": "IC1396",
+   "category": "cloud",
+   "l": 98.9,
+   "b": 4.0,
+   "distancePc": 916.0,
+   "distanceErrPc": 21.0,
+   "radiusPc": 25.8,
+   "description": "4 sightlines, distance 916 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ic2118",
+   "name": "IC2118",
+   "category": "cloud",
+   "l": 206.9,
+   "b": -26.6,
+   "distancePc": 283.0,
+   "distanceErrPc": 30.0,
+   "radiusPc": 3.7,
+   "description": "3 sightlines, distance 283 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ic2944",
+   "name": "IC2944",
+   "category": "cloud",
+   "l": 294.1,
+   "b": -1.6,
+   "distancePc": 2363.0,
+   "distanceErrPc": 39.0,
+   "radiusPc": 33.2,
+   "description": "3 sightlines, distance 2363 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ic443",
+   "name": "IC443",
+   "category": "cloud",
+   "l": 189.2,
+   "b": 4.7,
+   "distancePc": 1593.0,
+   "distanceErrPc": 26.0,
+   "radiusPc": 41.7,
+   "description": "4 sightlines, distance 1593 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ic5146",
+   "name": "IC5146",
+   "category": "cloud",
+   "l": 93.7,
+   "b": -4.6,
+   "distancePc": 774.0,
+   "distanceErrPc": 16.0,
+   "radiusPc": 15.4,
+   "description": "4 sightlines, distance 774 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1228",
+   "name": "L1228",
+   "category": "cloud",
+   "l": 111.8,
+   "b": 20.2,
+   "distancePc": 366.0,
+   "distanceErrPc": 6.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 366 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1228d",
+   "name": "L1228D",
+   "category": "cloud",
+   "l": 112.3,
+   "b": 13.8,
+   "distancePc": 491.0,
+   "distanceErrPc": 160.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 491 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1251",
+   "name": "L1251",
+   "category": "cloud",
+   "l": 114.6,
+   "b": 14.5,
+   "distancePc": 351.0,
+   "distanceErrPc": 10.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 351 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1265",
+   "name": "L1265",
+   "category": "cloud",
+   "l": 115.9,
+   "b": -2.0,
+   "distancePc": 344.0,
+   "distanceErrPc": 34.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 344 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1293",
+   "name": "L1293",
+   "category": "cloud",
+   "l": 121.7,
+   "b": 0.1,
+   "distancePc": 1083.0,
+   "distanceErrPc": 12.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 1083 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1302",
+   "name": "L1302",
+   "category": "cloud",
+   "l": 122.0,
+   "b": -1.4,
+   "distancePc": 906.0,
+   "distanceErrPc": 13.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 906 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1306",
+   "name": "L1306",
+   "category": "cloud",
+   "l": 126.8,
+   "b": -0.8,
+   "distancePc": 941.0,
+   "distanceErrPc": 20.0,
+   "radiusPc": 20.0,
+   "description": "2 sightlines, distance 941 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1307",
+   "name": "L1307",
+   "category": "cloud",
+   "l": 124.6,
+   "b": 2.6,
+   "distancePc": 902.0,
+   "distanceErrPc": 20.0,
+   "radiusPc": 12.0,
+   "description": "2 sightlines, distance 902 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1333",
+   "name": "L1333",
+   "category": "cloud",
+   "l": 128.9,
+   "b": 13.7,
+   "distancePc": 283.0,
+   "distanceErrPc": 3.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 283 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1335",
+   "name": "L1335",
+   "category": "cloud",
+   "l": 128.9,
+   "b": 4.3,
+   "distancePc": 647.0,
+   "distanceErrPc": 26.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 647 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1340",
+   "name": "L1340",
+   "category": "cloud",
+   "l": 130.0,
+   "b": 11.5,
+   "distancePc": 858.0,
+   "distanceErrPc": 12.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 858 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1355",
+   "name": "L1355",
+   "category": "cloud",
+   "l": 132.8,
+   "b": 8.9,
+   "distancePc": 948.0,
+   "distanceErrPc": 34.0,
+   "radiusPc": 14.7,
+   "description": "2 sightlines, distance 948 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1616",
+   "name": "L1616",
+   "category": "cloud",
+   "l": 203.5,
+   "b": -24.8,
+   "distancePc": 392.0,
+   "distanceErrPc": 8.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 392 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1617",
+   "name": "L1617",
+   "category": "cloud",
+   "l": 203.5,
+   "b": -12.0,
+   "distancePc": 414.0,
+   "distanceErrPc": 9.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 414 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1622",
+   "name": "L1622",
+   "category": "cloud",
+   "l": 204.7,
+   "b": -11.8,
+   "distancePc": 418.0,
+   "distanceErrPc": 17.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 418 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l1634",
+   "name": "L1634",
+   "category": "cloud",
+   "l": 207.6,
+   "b": -23.2,
+   "distancePc": 389.0,
+   "distanceErrPc": 24.0,
+   "radiusPc": 2.7,
+   "description": "2 sightlines, distance 389 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l291",
+   "name": "L291",
+   "category": "cloud",
+   "l": 11.4,
+   "b": -2.7,
+   "distancePc": 1348.0,
+   "distanceErrPc": 24.0,
+   "radiusPc": 16.6,
+   "description": "3 sightlines, distance 1348 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l379",
+   "name": "L379",
+   "category": "cloud",
+   "l": 16.8,
+   "b": -2.7,
+   "distancePc": 2061.0,
+   "distanceErrPc": 20.0,
+   "radiusPc": 18.3,
+   "description": "3 sightlines, distance 2061 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l977",
+   "name": "L977",
+   "category": "cloud",
+   "l": 89.5,
+   "b": 2.0,
+   "distancePc": 660.0,
+   "distanceErrPc": 15.0,
+   "radiusPc": 4.2,
+   "description": "2 sightlines, distance 660 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "l988",
+   "name": "L988",
+   "category": "cloud",
+   "l": 90.7,
+   "b": 2.4,
+   "distancePc": 627.0,
+   "distanceErrPc": 6.0,
+   "radiusPc": 5.6,
+   "description": "2 sightlines, distance 627 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lbn906",
+   "name": "LBN906",
+   "category": "cloud",
+   "l": 202.2,
+   "b": -31.4,
+   "distancePc": 287.0,
+   "distanceErrPc": 5.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 287 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lbn917",
+   "name": "LBN917",
+   "category": "cloud",
+   "l": 203.7,
+   "b": -30.3,
+   "distancePc": 232.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 232 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lbn942",
+   "name": "LBN942",
+   "category": "cloud",
+   "l": 205.6,
+   "b": -22.0,
+   "distancePc": 257.0,
+   "distanceErrPc": 6.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 257 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lbn968",
+   "name": "LBN968",
+   "category": "cloud",
+   "l": 208.4,
+   "b": -28.4,
+   "distancePc": 319.0,
+   "distanceErrPc": 14.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 319 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lbn969",
+   "name": "LBN969",
+   "category": "cloud",
+   "l": 208.4,
+   "b": -22.2,
+   "distancePc": 274.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 274 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lbn991",
+   "name": "LBN991",
+   "category": "cloud",
+   "l": 213.6,
+   "b": -28.9,
+   "distancePc": 408.0,
+   "distanceErrPc": 20.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 408 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lacerta",
+   "name": "Lacerta",
+   "category": "cloud",
+   "l": 96.1,
+   "b": -10.2,
+   "distancePc": 504.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 11.7,
+   "description": "2 sightlines, distance 504 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lagoon",
+   "name": "Lagoon",
+   "category": "cloud",
+   "l": 6.9,
+   "b": -2.2,
+   "distancePc": 1325.0,
+   "distanceErrPc": 8.0,
+   "radiusPc": 10.3,
+   "description": "2 sightlines, distance 1325 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "lupus",
+   "name": "Lupus",
+   "category": "cloud",
+   "l": 338.7,
+   "b": 17.4,
+   "distancePc": 160.0,
+   "distanceErrPc": 6.0,
+   "radiusPc": 38.2,
+   "description": "6 sightlines, distance 160 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "m16",
+   "name": "M16",
+   "category": "cloud",
+   "l": 17.5,
+   "b": 1.2,
+   "distancePc": 1739.0,
+   "distanceErrPc": 23.0,
+   "radiusPc": 13.6,
+   "description": "2 sightlines, distance 1739 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "m17",
+   "name": "M17",
+   "category": "cloud",
+   "l": 15.2,
+   "b": -0.3,
+   "distancePc": 1509.0,
+   "distanceErrPc": 24.0,
+   "radiusPc": 21.2,
+   "description": "3 sightlines, distance 1509 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "m20",
+   "name": "M20",
+   "category": "cloud",
+   "l": 6.7,
+   "b": -0.5,
+   "distancePc": 1234.0,
+   "distanceErrPc": 23.0,
+   "radiusPc": 15.1,
+   "description": "4 sightlines, distance 1234 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "maddalena",
+   "name": "Maddalena",
+   "category": "cloud",
+   "l": 216.5,
+   "b": -2.5,
+   "distancePc": 2110.0,
+   "distanceErrPc": 10.0,
+   "radiusPc": 109.1,
+   "description": "4 sightlines, distance 2110 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "mon-ob1-ngc2264",
+   "name": "Mon OB1 NGC2264",
+   "category": "cloud",
+   "l": 202.8,
+   "b": 2.3,
+   "distancePc": 759.0,
+   "distanceErrPc": 26.0,
+   "radiusPc": 37.5,
+   "description": "6 sightlines, distance 759 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "mon-r2",
+   "name": "Mon R2",
+   "category": "cloud",
+   "l": 220.9,
+   "b": -8.3,
+   "distancePc": 915.0,
+   "distanceErrPc": 5.0,
+   "radiusPc": 141.0,
+   "description": "6 sightlines, distance 915 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ngc2362",
+   "name": "NGC2362",
+   "category": "cloud",
+   "l": 239.5,
+   "b": -4.9,
+   "distancePc": 1317.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 52.7,
+   "description": "3 sightlines, distance 1317 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ngc6604",
+   "name": "NGC6604",
+   "category": "cloud",
+   "l": 17.8,
+   "b": 2.2,
+   "distancePc": 1352.0,
+   "distanceErrPc": 21.0,
+   "radiusPc": 11.8,
+   "description": "3 sightlines, distance 1352 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "norma",
+   "name": "Norma",
+   "category": "cloud",
+   "l": 338.8,
+   "b": 1.8,
+   "distancePc": 721.0,
+   "distanceErrPc": 56.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 721 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "north-america",
+   "name": "North America",
+   "category": "cloud",
+   "l": 84.2,
+   "b": -1.3,
+   "distancePc": 811.0,
+   "distanceErrPc": 14.0,
+   "radiusPc": 35.8,
+   "description": "10 sightlines, distance 811 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "northern-coalsack",
+   "name": "Northern Coalsack",
+   "category": "cloud",
+   "l": 92.6,
+   "b": 3.5,
+   "distancePc": 561.0,
+   "distanceErrPc": 13.0,
+   "radiusPc": 14.4,
+   "description": "3 sightlines, distance 561 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ophiuchus",
+   "name": "Ophiuchus",
+   "category": "cloud",
+   "l": 355.2,
+   "b": 16.0,
+   "distancePc": 128.0,
+   "distanceErrPc": 3.0,
+   "radiusPc": 5.5,
+   "description": "3 sightlines, distance 128 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ophiuchus-arc",
+   "name": "Ophiuchus Arc",
+   "category": "cloud",
+   "l": 349.3,
+   "b": 14.9,
+   "distancePc": 155.0,
+   "distanceErrPc": 3.0,
+   "radiusPc": 12.2,
+   "description": "3 sightlines, distance 155 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ophiuchus-b44",
+   "name": "Ophiuchus B44",
+   "category": "cloud",
+   "l": 359.2,
+   "b": 12.0,
+   "distancePc": 149.0,
+   "distanceErrPc": 5.0,
+   "radiusPc": 14.2,
+   "description": "3 sightlines, distance 149 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ophiuchus-b45",
+   "name": "Ophiuchus B45",
+   "category": "cloud",
+   "l": 358.6,
+   "b": 15.3,
+   "distancePc": 139.0,
+   "distanceErrPc": 9.0,
+   "radiusPc": 7.3,
+   "description": "3 sightlines, distance 139 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ophiuchus-l1688",
+   "name": "Ophiuchus L1688",
+   "category": "cloud",
+   "l": 353.2,
+   "b": 16.6,
+   "distancePc": 139.0,
+   "distanceErrPc": 4.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 139 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ophiuchus-north",
+   "name": "Ophiuchus North",
+   "category": "cloud",
+   "l": 6.5,
+   "b": 20.4,
+   "distancePc": 134.0,
+   "distanceErrPc": 11.0,
+   "radiusPc": 7.2,
+   "description": "3 sightlines, distance 134 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "orion",
+   "name": "Orion",
+   "category": "cloud",
+   "l": 201.3,
+   "b": -13.8,
+   "distancePc": 420.0,
+   "distanceErrPc": 10.0,
+   "radiusPc": 101.6,
+   "description": "17 sightlines, distance 420 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "orion-lam",
+   "name": "Orion Lam",
+   "category": "cloud",
+   "l": 192.3,
+   "b": -8.9,
+   "distancePc": 406.0,
+   "distanceErrPc": 17.0,
+   "radiusPc": 59.4,
+   "description": "7 sightlines, distance 406 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "pegasus",
+   "name": "Pegasus",
+   "category": "cloud",
+   "l": 95.3,
+   "b": -35.7,
+   "distancePc": 257.0,
+   "distanceErrPc": 19.0,
+   "radiusPc": 44.9,
+   "description": "5 sightlines, distance 257 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "perseus",
+   "name": "Perseus",
+   "category": "cloud",
+   "l": 160.8,
+   "b": -18.7,
+   "distancePc": 285.0,
+   "distanceErrPc": 18.0,
+   "radiusPc": 24.7,
+   "description": "18 sightlines, distance 285 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "pipe-b59",
+   "name": "Pipe B59",
+   "category": "cloud",
+   "l": 356.9,
+   "b": 7.3,
+   "distancePc": 180.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 180 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "polaris",
+   "name": "Polaris",
+   "category": "cloud",
+   "l": 126.3,
+   "b": 21.2,
+   "distancePc": 343.0,
+   "distanceErrPc": 10.0,
+   "radiusPc": 101.0,
+   "description": "3 sightlines, distance 343 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "rcw38",
+   "name": "RCW38",
+   "category": "cloud",
+   "l": 267.7,
+   "b": -1.2,
+   "distancePc": 1650.0,
+   "distanceErrPc": 25.0,
+   "radiusPc": 8.6,
+   "description": "2 sightlines, distance 1650 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "rosette",
+   "name": "Rosette",
+   "category": "cloud",
+   "l": 206.8,
+   "b": -1.2,
+   "distancePc": 1356.0,
+   "distanceErrPc": 15.0,
+   "radiusPc": 50.3,
+   "description": "3 sightlines, distance 1356 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "s106",
+   "name": "S106",
+   "category": "cloud",
+   "l": 76.0,
+   "b": -0.7,
+   "distancePc": 1091.0,
+   "distanceErrPc": 22.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 1091 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "serpens",
+   "name": "Serpens",
+   "category": "cloud",
+   "l": 29.6,
+   "b": 3.9,
+   "distancePc": 501.0,
+   "distanceErrPc": 11.0,
+   "radiusPc": 13.3,
+   "description": "4 sightlines, distance 501 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "serpens-low",
+   "name": "Serpens Low",
+   "category": "cloud",
+   "l": 31.8,
+   "b": 2.6,
+   "distancePc": 494.0,
+   "distanceErrPc": 17.0,
+   "radiusPc": 14.7,
+   "description": "4 sightlines, distance 494 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "serpens-main",
+   "name": "Serpens Main",
+   "category": "cloud",
+   "l": 30.3,
+   "b": 5.2,
+   "distancePc": 490.0,
+   "distanceErrPc": 14.0,
+   "radiusPc": 7.7,
+   "description": "2 sightlines, distance 490 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "serpens-ob2",
+   "name": "Serpens OB2",
+   "category": "cloud",
+   "l": 18.0,
+   "b": 1.6,
+   "distancePc": 1577.0,
+   "distanceErrPc": 21.0,
+   "radiusPc": 24.6,
+   "description": "3 sightlines, distance 1577 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "serpens-w40",
+   "name": "Serpens W40",
+   "category": "cloud",
+   "l": 28.8,
+   "b": 3.5,
+   "distancePc": 487.0,
+   "distanceErrPc": 27.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 487 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "sh2-231",
+   "name": "Sh2-231",
+   "category": "cloud",
+   "l": 173.0,
+   "b": 2.4,
+   "distancePc": 1616.0,
+   "distanceErrPc": 28.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 1616 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "sh2-232",
+   "name": "Sh2-232",
+   "category": "cloud",
+   "l": 173.5,
+   "b": 2.9,
+   "distancePc": 1713.0,
+   "distanceErrPc": 18.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 1713 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "spider",
+   "name": "Spider",
+   "category": "cloud",
+   "l": 134.8,
+   "b": 40.5,
+   "distancePc": 369.0,
+   "distanceErrPc": 22.0,
+   "radiusPc": 1.0,
+   "description": "1 sightline, distance 369 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "taurus",
+   "name": "Taurus",
+   "category": "cloud",
+   "l": 171.7,
+   "b": -17.2,
+   "distancePc": 149.0,
+   "distanceErrPc": 2.0,
+   "radiusPc": 15.2,
+   "description": "10 sightlines, distance 149 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "ursa-major",
+   "name": "Ursa Major",
+   "category": "cloud",
+   "l": 153.5,
+   "b": 36.7,
+   "distancePc": 352.0,
+   "distanceErrPc": 19.0,
+   "radiusPc": 50.4,
+   "description": "4 sightlines, distance 352 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "vela-c",
+   "name": "Vela C",
+   "category": "cloud",
+   "l": 264.7,
+   "b": 1.4,
+   "distancePc": 931.0,
+   "distanceErrPc": 10.0,
+   "radiusPc": 22.7,
+   "description": "5 sightlines, distance 931 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "w3",
+   "name": "W3",
+   "category": "cloud",
+   "l": 133.3,
+   "b": 1.1,
+   "distancePc": 1873.0,
+   "distanceErrPc": 20.0,
+   "radiusPc": 19.6,
+   "description": "3 sightlines, distance 1873 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "w4",
+   "name": "W4",
+   "category": "cloud",
+   "l": 135.6,
+   "b": 1.2,
+   "distancePc": 1755.0,
+   "distanceErrPc": 39.0,
+   "radiusPc": 30.6,
+   "description": "4 sightlines, distance 1755 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  },
+  {
+   "id": "w5",
+   "name": "W5",
+   "category": "cloud",
+   "l": 136.5,
+   "b": 1.2,
+   "distancePc": 2026.0,
+   "distanceErrPc": 36.0,
+   "radiusPc": 54.1,
+   "description": "5 sightlines, distance 2026 pc",
+   "reference": "Zucker et al. 2020, AJ 879, 125 (handbook of distances to molecular clouds); per-sightline posterior median",
+   "provenance": {
+    "position": "Measured",
+    "distance": "Inferred",
+    "radius": "Inferred"
+   }
+  }
+ ]
+}

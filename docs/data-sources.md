@@ -87,6 +87,13 @@ Read from `unity/Assets/StreamingAssets/CosmoSynth/` on 2026-09-12.
 | `catalog/exoplanets.json` (329,896 B) | NASA Exoplanet Archive | **PASS** |
 | `sky/stars_named.json` (57,079 B) | HYG `proper` names | **FAILS** — rebuild from IAU-CSN |
 | **`sky/stars.csstars` (2,870,728 B, 119,613 stars)** | **HYG v4.4** | **FAILS. Must not ship.** See §4.1 |
+| `galaxy/dust.csdu` (16,783,144 B, 256³ voxels at 10 pc) | Edenhofer et al. 2024 (Zenodo 8187943) | **PASS** — CC BY 4.0, credit C15 with the change statement; §4.7 |
+| `galaxy/globulars.csgp` (28,252 B, 213 clusters) | Local Volume Database v1.1.1 | **PASS** — CC0; §4.8 |
+| `galaxy/clouds.csgp` (34,812 B, 1,039 clouds) | Rice et al. 2016 | **PASS** — CC0; §4.8 |
+| `galaxy/radcliffe.csgp` (35,496 B, 1,500 spine points) | Konietzka et al. 2024 | **PASS** — CC0; §4.8 |
+| `galaxy/radcliffe_clusters.csgp` (8,156 B, 125 clusters) | Konietzka et al. 2024 | **PASS** — CC0; §4.8 |
+| `galaxy/namedclouds.json` (44,158 B, 94 named clouds) | Zucker et al. 2020 | **PASS** — CC0; §4.8 |
+| `galaxy/landmarks.json` (7,039 B, 12 places) | hand-authored, one citation each | **PASS** — `own`; §4.8 |
 | *(no font file exists in the project)* | Unity built-in `LegacyRuntime.ttf` | **FAILS on fitness** — 15 required codepoints absent, including U+2609 ☉ and U+2295 ⊕ |
 | *(no credits panel exists in the app)* | — | **BLOCKS RELEASE** — the CC BY and CC BY-SA obligations below have nowhere to be discharged |
 
@@ -454,10 +461,20 @@ All CC0 1.0 except the arm model, which is facts.
 - **Use LVDB's `M_V` column, never `m_V − μ`.**
 - **Honour Rice's `KDA_resolution`** — kinematic distances carry the near/far ambiguity, and
   `'U'` means unresolved.
-- **Reid's Table 2 numbers are not transcribed anywhere in this project.** The licence
-  position is settled; the numbers are not recorded. A human must open the primary paper and
-  copy each with its uncertainty — not scraped from VizieR, not recalled by a model. That
-  is how a wrong R₀ ships looking confident.
+- **Reid's Table 2 is now transcribed, and here is where from.** Lane `data-milkyway`
+  fetched the arXiv e-print of ApJ 885, 131 (`https://arxiv.org/e-print/1910.03357`,
+  2,657,580 B, one LaTeX source file) and copied the `deluxetable` labelled
+  `table:pitchangles` — the paper itself, not a VizieR or ADS scrape and not model recall.
+  The seven arm segments, their azimuth ranges, kink azimuths, kink radii with uncertainties,
+  both pitch angles and the fitted widths are in
+  `unity/Assets/CosmoSynth/Core/Deep/GalaxyModel.cs`, with R₀ = 8.15 ± 0.15 kpc and
+  Θ₀ = 236 ± 7 km/s from the same paper's fit B, and the arm-width relation
+  w(R) = 336 + 36 (Rₕₚₜ − 8.15) pc from its section 4. Disc and bar numbers
+  come the same way from the e-print of Bland-Hawthorn & Gerhard 2016, ARA&A 54, 529
+  (`https://arxiv.org/e-print/1602.07702`): thin disc 2.6 ± 0.5 kpc / 300 ± 50 pc,
+  thick disc 2.0 ± 0.2 kpc / 900 ± 180 pc, bar angle 27 ± 2°, long-bar
+  half-length 5.0 ± 0.2 kpc. Nothing is redistributed but that file, which is the whole
+  point of the distinction. `GalaxyModelTests` spot-checks the transcription row by row.
 
 **The Cepheid hole, stated plainly.** This is the one place where the commercial constraint
 costs real science. **No commercial-clean Galactic Cepheid catalogue exists** — five

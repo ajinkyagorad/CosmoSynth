@@ -1,0 +1,161 @@
+{
+ "schema": "cosmosynth.places/1",
+ "_comment": [
+  "Hand-authored. Every entry carries exactly one reference, and build_authored.py refuses the",
+  "file if any entry lacks one. Seeded from the marker list of the owner's WebXR Milky Way",
+  "Atlas (refs/webxr/nebula-gallery/data/{markers,mw_landmarks}.json) and then re-sourced: the",
+  "Atlas ships numbers with no citation and two of them are wrong, both recorded below.",
+  "",
+  "Deliberately SHORT. Named molecular clouds are not listed here: 94 of them ship in",
+  "galaxy/namedclouds.json, generated from Zucker et al. 2020 with a measured distance and an",
+  "uncertainty each, in this same schema. Five globular landmarks carry no coordinates at all;",
+  "they name a row of galaxy/globulars.csgp, so their positions exist once.",
+  "",
+  "Not here, and why: open clusters (Pleiades, Hyades) -- no staged source carries their",
+  "distances, and a recalled parallax is exactly the failure this project has paid for before.",
+  "Local Group landmarks belong to the `galaxies` lane (ATLAS-PARITY MWA-18b)."
+ ],
+ "places": [
+  {
+   "id": "sun",
+   "name": "Sun",
+   "category": "mw",
+   "l": 0.0,
+   "b": 0.0,
+   "distancePc": 0.0,
+   "description": "You are here. Every position in the Milky Way layer is heliocentric.",
+   "reference": "origin of the heliocentric frame, by definition",
+   "provenance": {"position": "Measured", "distance": "Measured"}
+  },
+  {
+   "id": "sgr-a-star",
+   "name": "Sgr A*",
+   "category": "blackhole",
+   "ra": 266.41684,
+   "dec": -29.00781,
+   "distancePc": 8150.0,
+   "distanceErrPc": 150.0,
+   "radiusPc": 0.0,
+   "description": "The 4.3-million-solar-mass black hole at the Galactic Centre. The distance here is GalaxyModel.R0 = 8.15 kpc so that the arm model and the Galactic Centre agree; GRAVITY Collaboration give 8.178 kpc (2019) and 8.277 kpc (2022). The Atlas places it at 8178 pc with no citation.",
+   "reference": "Reid & Brunthaler 2004, ApJ 616, 872 (radio position); R0 = 8.15 +/- 0.15 kpc from Reid et al. 2019, ApJ 885, 131",
+   "provenance": {"position": "Measured", "distance": "Measured", "radius": "Inferred"}
+  },
+  {
+   "id": "local-bubble",
+   "name": "Local Bubble",
+   "category": "mw",
+   "l": 0.0,
+   "b": 0.0,
+   "distancePc": 0.0,
+   "radiusPc": 150.0,
+   "description": "The supernova-blown cavity the Sun sits inside, about 1000 light years across and peanut-shaped, with every nearby young star forming on its surface. The Atlas gives its size as 150 pc in one place and 100 pc in another; neither is the published figure, which is about 300 pc across.",
+   "reference": "Zucker et al. 2022, Nature 601, 334 (the Local Bubble's surface as the site of nearby star formation; ~1000 ly across)",
+   "provenance": {"position": "Measured", "distance": "Measured", "radius": "Inferred"},
+   "closeup": "localbubble"
+  },
+  {
+   "id": "radcliffe-wave",
+   "name": "Radcliffe Wave",
+   "category": "mw",
+   "l": 180.0,
+   "b": 0.0,
+   "distancePc": 300.0,
+   "radiusPc": 1350.0,
+   "description": "A 2.7 kpc coherent, oscillating wave of star-forming gas passing about 300 pc from the Sun. Its fitted spine ships as galaxy/radcliffe.csgp; this entry is the label.",
+   "reference": "Alves et al. 2020, Nature 578, 237 (discovery); Konietzka et al. 2024, Nature 628, 62 (the oscillation and the fitted spine)",
+   "provenance": {"position": "Inferred", "distance": "Inferred", "radius": "Inferred"}
+  },
+  {
+   "id": "orion-complex",
+   "name": "Orion complex",
+   "category": "cloud",
+   "l": 209.0,
+   "b": -19.0,
+   "distancePc": 414.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 60.0,
+   "description": "M42, the Horsehead and the Flame: the nearest massive star-forming region.",
+   "reference": "Menten, Reid, Forbrich & Brunthaler 2007, A&A 474, 515 (VLBA parallax to the Orion Nebula Cluster, 414 +/- 7 pc)",
+   "provenance": {"position": "Measured", "distance": "Measured", "radius": "Inferred"},
+   "closeup": "orion"
+  },
+  {
+   "id": "m42",
+   "name": "Orion Nebula (M42)",
+   "category": "nebula",
+   "ra": 83.822,
+   "dec": -5.391,
+   "distancePc": 414.0,
+   "distanceErrPc": 7.0,
+   "radiusPc": 4.0,
+   "description": "The blister of ionised gas on the near face of the Orion A cloud, lit by the Trapezium.",
+   "reference": "Menten, Reid, Forbrich & Brunthaler 2007, A&A 474, 515 (VLBA parallax, 414 +/- 7 pc)",
+   "provenance": {"position": "Measured", "distance": "Measured", "radius": "Inferred"}
+  },
+  {
+   "id": "crab",
+   "name": "Crab Nebula (M1)",
+   "category": "snr",
+   "ra": 83.633,
+   "dec": 22.0145,
+   "distancePc": 2000.0,
+   "distanceErrPc": 500.0,
+   "radiusPc": 1.7,
+   "description": "The remnant of SN 1054 and its pulsar. The pulsar's spin frequency is the one number here that is measured to nine digits; the distance is the one that is worst known.",
+   "reference": "Trimble 1973, PASP 85, 579 (distance ~2 kpc); spin frequency 29.6 Hz at MJD 58058 from Lyne et al. 2018, MNRAS 478, 3832",
+   "provenance": {"position": "Measured", "distance": "Inferred", "radius": "Inferred"},
+   "pulsarHz": 29.6,
+   "closeup": "crab"
+  },
+  {
+   "id": "47-tuc",
+   "name": "47 Tucanae",
+   "category": "cluster",
+   "source": "globulars",
+   "sourceName": "NGC 104",
+   "description": "The second-brightest globular cluster, and one of the densest.",
+   "reference": "position and distance from galaxy/globulars.csgp (Local Volume Database v1.1.1); that file carries the per-object distance reference",
+   "provenance": {"position": "Measured", "distance": "Inferred"}
+  },
+  {
+   "id": "omega-cen",
+   "name": "Omega Centauri",
+   "category": "cluster",
+   "source": "globulars",
+   "sourceName": "NGC 5139",
+   "description": "The most luminous globular cluster of the Milky Way, and probably the stripped core of a swallowed dwarf galaxy.",
+   "reference": "position and distance from galaxy/globulars.csgp (Local Volume Database v1.1.1)",
+   "provenance": {"position": "Measured", "distance": "Inferred"}
+  },
+  {
+   "id": "m4",
+   "name": "M4",
+   "category": "cluster",
+   "source": "globulars",
+   "sourceName": "NGC 6121",
+   "description": "The nearest globular cluster to the Sun.",
+   "reference": "position and distance from galaxy/globulars.csgp (Local Volume Database v1.1.1)",
+   "provenance": {"position": "Measured", "distance": "Inferred"}
+  },
+  {
+   "id": "m13",
+   "name": "M13",
+   "category": "cluster",
+   "source": "globulars",
+   "sourceName": "NGC 6205",
+   "description": "The Hercules cluster, target of the 1974 Arecibo message.",
+   "reference": "position and distance from galaxy/globulars.csgp (Local Volume Database v1.1.1)",
+   "provenance": {"position": "Measured", "distance": "Inferred"}
+  },
+  {
+   "id": "m15",
+   "name": "M15",
+   "category": "cluster",
+   "source": "globulars",
+   "sourceName": "NGC 7078",
+   "description": "One of the most core-collapsed globulars known.",
+   "reference": "position and distance from galaxy/globulars.csgp (Local Volume Database v1.1.1)",
+   "provenance": {"position": "Measured", "distance": "Inferred"}
+  }
+ ]
+}

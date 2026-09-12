@@ -5,3 +5,22 @@
 # out past an excused gate.
 #
 # Empty on purpose. Add a line only with a written reason and a date to remove it by.
+
+G0a  four assertions, all one bug: Core/Frames/StandardFrames.cs builds the ICRS->galactic
+#    rotation with all three signs reversed, sending the north galactic pole to
+#    (-0.346, 0.176, 0.922) instead of (0, 0, 1). The fix is on lane/foundation-code; merging
+#    it turns these green with no other change (verified in the data-milkyway worktree on
+#    2026-09-12: with that file swapped in, 188 passed / 0 failed).
+#
+#    The suite must read "184 passed, 4 failed" and the four must be exactly:
+#      GalaxyModelTests.NorthGalacticPoleIsThePole
+#      GalaxyModelTests.GalacticCentreDirection
+#      GalacticPointsTests.CloudsTraceTheDisc          (galactic z of the CO clouds)
+#      GalacticPointsTests.RadcliffeWaveShape          (galactic z of the wave)
+#    Any other failure, or any other count, is NOT excused by this line: G0a covers the whole
+#    suite and that is the cost of excusing it at all. Check the names before trusting a green
+#    gate-all run.
+#
+#    Remove this line the moment lane/foundation-code merges. If that has not happened by
+#    2026-09-19, escalate rather than extend: every day this sits here, a real regression in
+#    any of the other 184 tests is invisible to the gate.
