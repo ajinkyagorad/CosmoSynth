@@ -347,6 +347,18 @@ namespace CosmoSynth.EditorTools
 
                 Bounds b = r.bounds;
                 float distance = Vector3.Distance(camera.transform.position, b.center) + b.extents.magnitude;
+
+                // Measure Envelope geometry where it is actually DRAWN.
+                //
+                // Envelope mode places at true scale deliberately and compresses every vertex in
+                // the shader, so its CPU bounds are millions of metres by design and reading them
+                // raw made the assertion fail for a reason unrelated to what it checks - the one
+                // failure left at true scale was Earth's atmosphere at 1.5e7 m, geometry the GPU
+                // was going to draw at about 250 m. Applying f here keeps every renderer in the
+                // assertion rather than exempting a whole placement mode from it, which is what
+                // skipping them would have done.
+                if (IsPerVertexCompressed(r)) distance = (float)ScaledSpace.Compress(distance);
+
                 if (distance > farthest) { farthest = distance; farthestPath = HierarchyPath(r.transform); }
             }
 
@@ -991,6 +1003,21 @@ namespace CosmoSynth.EditorTools
         /// shell. Both sit at the declared sky radius from THIS eye however large their mesh
         /// bounds are.
         /// </summary>
+        /// <summary>
+        /// The shader maps every vertex through f, so the renderer's bounds are in true space
+        /// and what reaches the screen is f(bounds). Section 1.2's per-vertex placement mode.
+        /// </summary>
+        private static bool IsPerVertexCompressed(Renderer renderer)
+        {
+            foreach (Material m in renderer.sharedMaterials)
+            {
+                if (m == null) continue;
+                if (m.HasFloat("_PerVertexCompress") && m.GetFloat("_PerVertexCompress") > 0.5f)
+                    return true;
+            }
+            return false;
+        }
+
         private static bool IsShaderPlaced(Renderer renderer)
         {
             foreach (Material m in renderer.sharedMaterials)

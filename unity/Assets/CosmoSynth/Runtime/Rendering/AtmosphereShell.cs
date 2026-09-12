@@ -28,6 +28,7 @@ namespace CosmoSynth.Runtime
         private static readonly int SunDirectionId = Shader.PropertyToID("_SunDirection");
         private static readonly int RayleighCoeffId = Shader.PropertyToID("_RayleighCoeff");
         private static readonly int MieCoeffId = Shader.PropertyToID("_MieCoeff");
+        private static readonly int PerVertexCompressId = Shader.PropertyToID("_PerVertexCompress");
 
         private CelestialBodyView _body;
         private Transform _star;
@@ -114,6 +115,17 @@ namespace CosmoSynth.Runtime
                                    / Mathf.Max(1e-6f, transform.parent.lossyScale.x);
 
             if (_material == null) return;
+
+            // Air is compressed the same way the ground under it is.
+            //
+            // CosmoSynth/Atmosphere declares _PerVertexCompress and branches on it in both
+            // stages, and this component never wrote it. In Envelope mode - the eye near a body
+            // that fills the view - the body renders at TRUE scale and its shader maps each
+            // vertex through f, so an unset shell is the one thing in the frame still drawn in
+            // uncompressed space: at true scale that is a 1.5e7 m sphere around a surface the
+            // shader has pulled inside the far plane. RingSystem already does this; the shell
+            // was simply missed.
+            _material.SetFloat(PerVertexCompressId, _body.PerVertexCompressed ? 1f : 0f);
 
             Vector3 centre = transform.position;
             _material.SetFloat(PlanetRadiusId, planetRadius);
