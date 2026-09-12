@@ -142,6 +142,12 @@ namespace CosmoSynth.Runtime
             // Point-and-pinch selection with the world-space provenance panel.
             host.AddComponent<BodySelector>();
 
+            // BuildLayers(): the populations that are not catalogue bodies -- stars in three
+            // dimensions, the dust volume, the galaxies, the microwave background. Parented to the
+            // universe host, because every one of them places itself in universe-local space and
+            // anywhere else would offset the entire deep sky by the anchor.
+            host.AddComponent<DeepSkyLayers>();
+
             // Wrist dashboard: the scale ladder and destination list. Parented to the tracking
             // space rather than to the universe, because it belongs to the user, not the scene.
             var dashboardObject = new GameObject("Wrist Dashboard");

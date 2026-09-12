@@ -35,9 +35,18 @@ namespace CosmoSynth.Runtime
         /// <summary>The instant being drawn.</summary>
         public readonly CosmicTime Now;
 
+        /// <summary>
+        /// Everything a layer's visibility depends on besides the scale: which data arrived, the
+        /// stage, how much room is showing. Built once here so no layer works it out for itself
+        /// (CONTRACT 4.2).
+        /// </summary>
+        public readonly LayerContext LayerContext;
+
         public FrameContext(Double3 eyeKm, Vector3 eyeWorld, Vector3 eyeUniverse, double unitsPerKm,
-            Matrix4x4 icrfToWorld, float pixelsPerRadian, CosmicTime now)
+            Matrix4x4 icrfToWorld, float pixelsPerRadian, CosmicTime now,
+            LayerContext layerContext = default)
         {
+            LayerContext = layerContext;
             EyeKm = eyeKm;
             EyeWorld = eyeWorld;
             EyeUniverse = eyeUniverse;

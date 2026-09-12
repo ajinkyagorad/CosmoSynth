@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # G0e - MonoScript filename / class-name rules (Worldfall integrate.sh:53-65).
 #
+# `record` counts as a type here: CONTRACT 4.2 declares five shared types as positional
+# records, and a file whose only type is one of them would otherwise be reported as
+# declaring nothing at all. It is NOT added to the MonoBehaviour scan below, because a
+# record cannot inherit MonoBehaviour.
+#
 # Unity binds a MonoScript to the FIRST type whose name matches the file name. A second
 # class in the same file is silently dropped from any prefab saved headlessly, and the
 # app "partially works, with no errors" on device (memory: unity-monoscript-filename-trap).
@@ -23,7 +28,7 @@ bad()  { printf '  FAIL  %s\n' "$1"; fail=1; }
 # Type declarations, ignoring comments and the `class` inside a doc comment.
 types() {   # $1 = file -> "kind<TAB>name" per line
   sed -e 's://.*::' "$1" 2>/dev/null \
-    | grep -oE '\b(class|struct|interface|enum)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' \
+    | grep -oE '\b(class|record|struct|interface|enum)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' \
     | awk '{print $1"\t"$2}'
 }
 mono_classes() {   # classes with a MonoBehaviour base

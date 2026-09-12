@@ -36,6 +36,14 @@ namespace CosmoSynth.Runtime
 
         private readonly List<GroupNode> _nodes = new List<GroupNode>();
         private readonly List<CelestialBodyView> _ordered = new List<CelestialBodyView>();
+
+        // Layer groups live after the body nodes in the same solve. One array of (layer, local
+        // index) per frame maps a solved node back to the layer that declared it.
+        private readonly List<CosmoLayer> _groupOwner = new List<CosmoLayer>();
+        private readonly List<int> _groupLocalIndex = new List<int>();
+        private readonly List<CosmoLayer> _active = new List<CosmoLayer>();
+        private DeepSkyLayers _layerHost;
+        private int _layerGroups;
         private readonly Dictionary<string, int> _indexById = new Dictionary<string, int>();
         private GroupPlacement[] _placement = new GroupPlacement[0];
         private GroupPlacement[] _previous = new GroupPlacement[0];
@@ -60,8 +68,23 @@ namespace CosmoSynth.Runtime
         /// <summary>The farthest rendered surface this frame, metres. Must stay inside the far plane.</summary>
         public float FarthestRenderedMetres => _farthestRenderedMetres;
 
+        /// <summary>1 = full passthrough, 0 = Space. Owned by the UI lane's ROOM slider; here a field.</summary>
+        public float RoomVisibility = 1f;
+
+        /// <summary>The "CMB backdrop in passthrough" switch.</summary>
+        public bool CmbBackdrop;
+
+        /// <summary>Whether the star field is showing an observed sky from an explicit vantage.</summary>
+        public bool ObservedSky;
+
         /// <summary>The context built this frame, for anything that needs the eye or the scale.</summary>
         public FrameContext Context { get; private set; }
+
+        /// <summary>Layers with a non-zero weight this frame. The play-mode report prints it.</summary>
+        public int ActiveLayers => _active.Count;
+
+        /// <summary>Layer groups declared this frame (volumes, shells, impostor boxes).</summary>
+        public int LayerGroups => _layerGroups;
 
         /// <summary>
         /// Resolve dependencies lazily rather than once in Awake.
@@ -95,9 +118,17 @@ namespace CosmoSynth.Runtime
             Placement.PublishGlobals(ctx);
 
             if (_topologyDirty) RebuildTopology();
-            if (_ordered.Count == 0) return;
+            if (_ordered.Count == 0 && LayerRegistry.All.Count == 0) return;
 
             FillNodes(ctx);
+
+            // CONTRACT 4.3 rule 3, in this order and no other: every registered layer is asked
+            // for its weight FIRST, so a layer that is off, out of window or missing its data
+            // declares no group at all -- and the push pass can then never move a real group away
+            // from geometry that is not being drawn.
+            UpdateLayerWeights(ctx);
+            DeclareLayerGroups();
+            _layerGroups = _nodes.Count - _ordered.Count;
 
             if (_placement.Length < _nodes.Count)
             {
@@ -112,7 +143,7 @@ namespace CosmoSynth.Runtime
             _enclosingGroups = 0;
             _farthestRenderedMetres = 0f;
 
-            for (int i = 0; i < _ordered.Count; i++)
+            for (int i = 0; i < _ordered.Count && i < _placement.Length; i++)
             {
                 CelestialBodyView view = _ordered[i];
                 if (view == null) continue;
@@ -136,11 +167,114 @@ namespace CosmoSynth.Runtime
                 }
             }
 
+            PlaceLayerGroups(ctx);
+
+            for (int i = 0; i < _active.Count; i++) _active[i].Apply(ctx);
+
             // Hysteresis: next frame's cut is decided partly by this frame's, so a group sitting
             // on the 9 m threshold does not flip mode with every twitch of the head.
             GroupPlacement[] swap = _previous;
             _previous = _placement;
             _placement = swap;
+        }
+
+        /// <summary>
+        /// Ask every registered layer for its weight. Every one, not only the ones that drew last
+        /// frame: a layer whose data has just arrived has to be able to switch itself on.
+        /// </summary>
+        private void UpdateLayerWeights(in FrameContext ctx)
+        {
+            _active.Clear();
+            IReadOnlyList<CosmoLayer> layers = LayerRegistry.All;
+            for (int i = 0; i < layers.Count; i++)
+            {
+                if (layers[i] == null) continue;
+                layers[i].UpdateWeight(ctx);
+                if (layers[i].Weight > 0f) _active.Add(layers[i]);
+            }
+        }
+
+        /// <summary>
+        /// Collect the rigid and enclosing parts the active layers declare, and enforce R2: at
+        /// most ONE MayEnclose volume survives a frame.
+        ///
+        /// Two enclosing volumes at full screen coverage would be 60 raymarch step-coverages
+        /// against a global budget of 33 -- about 20 ms on an 11 ms frame. The windows of `dust`
+        /// and `nebulae` overlap over nearly three decades of scale and belong to lanes that
+        /// cannot talk to each other, so the arbitration has to live here rather than in either
+        /// layer's judgement. Ties break by layer id, ascending, so the choice is deterministic.
+        /// </summary>
+        private void DeclareLayerGroups()
+        {
+            _groupOwner.Clear();
+            _groupLocalIndex.Clear();
+
+            // Last frame's layer nodes go first. They are appended fresh every frame, and a list
+            // that only ever grows would quietly turn a 60-node solve into a 60,000-node one.
+            while (_nodes.Count > _ordered.Count) _nodes.RemoveAt(_nodes.Count - 1);
+
+            CosmoLayer keptVolume = null;
+            for (int i = 0; i < _active.Count; i++)
+            {
+                if (!DeclaresEnclosure(_active[i])) continue;
+                if (keptVolume == null ||
+                    _active[i].Weight > keptVolume.Weight ||
+                    (_active[i].Weight == keptVolume.Weight &&
+                     string.CompareOrdinal(_active[i].LayerId, keptVolume.LayerId) < 0))
+                {
+                    keptVolume = _active[i];
+                }
+            }
+
+            List<GroupNode> declared = new List<GroupNode>();
+            for (int i = 0; i < _active.Count; i++)
+            {
+                declared.Clear();
+                int count = _active[i].DeclareGroups(declared);
+                for (int g = 0; g < count && g < declared.Count; g++)
+                {
+                    GroupNode node = declared[g];
+                    if (node.MayEnclose && _active[i] != keptVolume)
+                    {
+                        // Not this frame's volume: it declares nothing, so it is not solved, not
+                        // placed and not drawn. Its own SetRenderersEnabled(false) follows from
+                        // the weight it will be given next frame.
+                        continue;
+                    }
+                    node.Parent = -1;                       // layer groups are always roots
+                    _nodes.Add(node);
+                    _groupOwner.Add(_active[i]);
+                    _groupLocalIndex.Add(g);
+                }
+            }
+        }
+
+        /// <summary>Does this layer want an enclosing volume this frame? Asked without allocating.</summary>
+        private static readonly List<GroupNode> EnclosureProbe = new List<GroupNode>();
+
+        private static bool DeclaresEnclosure(CosmoLayer layer)
+        {
+            EnclosureProbe.Clear();
+            int count = layer.DeclareGroups(EnclosureProbe);
+            for (int i = 0; i < count && i < EnclosureProbe.Count; i++)
+                if (EnclosureProbe[i].MayEnclose) return true;
+            return false;
+        }
+
+        private void PlaceLayerGroups(in FrameContext ctx)
+        {
+            int first = _nodes.Count - _groupOwner.Count;
+            for (int i = 0; i < _groupOwner.Count; i++)
+            {
+                GroupPlacement p = _placement[first + i];
+                switch (p.Mode)
+                {
+                    case GroupMode.Rigid: _rigidGroups++; break;
+                    case GroupMode.Envelope: _envelopeGroups++; break;
+                    case GroupMode.Enclosing: _enclosingGroups++; break;
+                }
+                _groupOwner[i].AcceptGroup(_groupLocalIndex[i], p, ctx);
+            }
         }
 
         private FrameContext BuildContext()
@@ -160,8 +294,14 @@ namespace CosmoSynth.Runtime
 
             Matrix4x4 icrfToWorld = universe.localToWorldMatrix * origin.IcrfToUniverse;
 
+            if (_layerHost == null) _layerHost = FindAnyObjectByType<DeepSkyLayers>();
+            LayerContext layerContext = _layerHost != null
+                ? _layerHost.BuildContext(eyeKm, RoomVisibility, CmbBackdrop, ObservedSky)
+                : default;
+
             return new FrameContext(eyeKm, eyeWorld, eyeUniverse, origin.UnitsPerKm,
-                icrfToWorld, pixelsPerRadian, _simulation.Clock != null ? _simulation.Clock.Now : default);
+                icrfToWorld, pixelsPerRadian,
+                _simulation.Clock != null ? _simulation.Clock.Now : default, layerContext);
         }
 
         /// <summary>
