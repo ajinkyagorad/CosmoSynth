@@ -5,3 +5,13 @@
 # out past an excused gate.
 #
 # Empty on purpose. Add a line only with a written reason and a date to remove it by.
+G0a  one test red: CmbModelTests.DipoleApexInIcrf (lane data-cmb, 2026-09-12)
+#    StandardFrames.EquatorialToGalactic on master has all three rotation signs flipped and
+#    sends the north galactic pole to (-0.346, 0.176, 0.922) instead of (0, 0, 1). The CMB
+#    dipole apex therefore converts to the wrong RA/Dec. Nothing in the cmb lane is wrong and
+#    nothing in it works around the bug with a private rotation - the CMB must turn with the
+#    same matrix as the stars.
+#    FIXED BY: lane/foundation-code. VERIFIED on 2026-09-12 by dropping that branch's
+#    StandardFrames.cs into the data-cmb worktree: 20 passed, 0 failed, against 19/1 on master.
+#    REMOVE THIS LINE when lane/foundation-code merges. It excuses the WHOLE suite gate, which
+#    is more than it should, so it must not outlive that merge.
