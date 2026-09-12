@@ -191,7 +191,7 @@ namespace CosmoSynth.Runtime
                 // chosen, because the two are different frames and a body can stop being drawn
                 // between them.
                 if (!candidate.View.IsPointable) continue;
-                float clearance = candidate.View.RenderedRadius +
+                float clearance = candidate.View.RoomRadius +
                                   CosmoTheme.Metres(CosmoTheme.SpaceRow, distance);
                 Vector3 worldOffset = (_camera.transform.up + _camera.transform.right).normalized * clearance;
                 Vector3 worldPosition = candidate.View.transform.position + worldOffset;

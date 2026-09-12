@@ -112,6 +112,28 @@ EOF
   if [ -z "$BADR" ]; then pass "every RenderedRadius reader also asks whether the body is drawn"
   else bad "RenderedRadius without IsGeometryDrawn/IsPointable:$BADR"; fi
 
+  # ---- room-space code reads RoomRadius, never RenderedRadius
+  #
+  # The rule above catches a STALE radius. It cannot catch one in the wrong SPACE, and that is
+  # the other half of the same defect: RenderedRadius is the sphere transform's world radius,
+  # and in Envelope mode the sphere is placed at TRUE scale on purpose and compressed by its own
+  # shader. A caller measuring a room in metres then reads a planet in kilometres. It threw the
+  # status card 6378 km to the left of the viewer with 76 cm type at true scale, and a pointer
+  # ray would have hit the planet under your feet from anywhere (G1c `far`, 2026-09-12).
+  #
+  # Runtime/UI and Runtime/XR place things in the ROOM, so they read RoomRadius, which is zero
+  # for a body that is not drawn AND for one the eye is inside. The raw radius has exactly three
+  # legitimate readers and all are in Runtime/Rendering: RingSystem and AtmosphereShell are
+  # children of the body and inherit its true scale, and ScaleRenderer measures rendered extents.
+  local BADS
+  # Whole-line comments are prose about the rule, not reads of the radius. (The first version
+  # stripped them with a ':'-delimited sed whose pattern contained ':'; sed errored, the
+  # output was empty, and the rule passed on its own mutant.)
+  BADS=$(grep -rn --include='*.cs' 'RenderedRadius' "$SRC/UI" "$SRC/XR" 2>/dev/null \
+         | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//')
+  if [ -z "$BADS" ]; then pass "room-space code (UI, XR) reads RoomRadius, not RenderedRadius"
+  else bad "RenderedRadius in room-space code - use RoomRadius:"; printf '%s\n' "$BADS" | sed 's/^/        /' | head -8; fail=1; fi
+
   # ---- every runtime material comes from CosmoShaders
   #
   # Two rules, because the failure has two shapes and grep can only see one of them.
@@ -218,6 +240,20 @@ CS
   rm -f "$R/Halo.cs"
   if [ "$rc" -eq 0 ]; then echo "  SELF-TEST FAIL: mutant 'a comment satisfies the guard' PASSED - the rule cannot fail"; ok=0
   else echo "  ok    self-test: mutant 'a comment satisfies the guard' fails as it must"; fi
+
+  # The room-space rule, both ways: a UI file reading the raw radius must fail, and the same
+  # file reading RoomRadius must pass. Without the second half the rule could be a grep for a
+  # string nobody is allowed to type, which is not the same thing as a rule with an answer.
+  mkdir -p "$R/UI"
+  printf '%s\n' 'public class Card { void F(){ if (!v.IsPointable) return; var c = v.RenderedRadius + 0.1f; } }' > "$R/UI/Card.cs"
+  out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ]; then echo "  SELF-TEST FAIL: mutant 'raw radius in room-space code' PASSED - the rule cannot fail"; ok=0
+  else echo "  ok    self-test: mutant 'raw radius in room-space code' fails as it must"; fi
+  printf '%s\n' 'public class Card { void F(){ var c = v.RoomRadius + 0.1f; } }' > "$R/UI/Card.cs"
+  out=$(GATE_ROOT="$d" bash "$0" 2>&1); rc=$?
+  rm -rf "$R/UI"
+  if [ "$rc" -eq 0 ]; then echo "  ok    self-test: RoomRadius in room-space code passes"
+  else echo "  SELF-TEST FAIL: RoomRadius in room-space code should pass"; printf '%s\n' "$out"; ok=0; fi
 
   # ...and the positive control: IsPointable is IsGeometryDrawn plus a pick test, and counts.
   printf '%s\n' 'public class Label { void F(){ if (!v.IsPointable) return; var r = v.RenderedRadius; } }' > "$R/Label.cs"

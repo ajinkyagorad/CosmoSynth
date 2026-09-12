@@ -119,13 +119,14 @@ namespace CosmoSynth.Runtime
             // There is room to the side and nowhere else, and the left is free because the
             // provenance panel opens to the right.
             float clearance = _sizeMetres * 2f;
-            // The focus body's radius is only meaningful while its geometry is on screen. A body
-            // that has handed over to the point path keeps a RenderedRadius that describes the
-            // dot, and one that is outside its ephemeris window keeps whatever it last had.
-            if (_simulation != null && _simulation.FocusBody != null &&
-                _simulation.FocusBody.IsGeometryDrawn)
+
+            // RoomRadius, not RenderedRadius: it is zero for a body that is not drawn (the dot
+            // the point path left behind) AND for one the eye is inside, whose transform
+            // measures a planet in kilometres. Reading the raw radius here threw this card
+            // 6378 km out of the room at true scale.
+            if (_simulation != null && _simulation.FocusBody != null)
             {
-                clearance = Mathf.Max(clearance, _simulation.FocusBody.RenderedRadius);
+                clearance = Mathf.Max(clearance, _simulation.FocusBody.RoomRadius);
             }
             clearance += _panel.Size.x * 0.5f + _sizeMetres;
 

@@ -923,6 +923,29 @@ namespace CosmoSynth.Runtime
         public float RenderedRadius =>
             _sphere != null ? _sphere.lossyScale.x * 0.5f : 0.01f;
 
+        /// <summary>
+        /// This body's radius in ROOM metres: what anything placed beside it must clear, and
+        /// what a pointer aimed at it is aiming at. Zero when there is no such number.
+        ///
+        /// <see cref="RenderedRadius"/> is the sphere transform's world radius, and it stops
+        /// being a room-space quantity in exactly two cases, both of which have shipped as bugs:
+        ///
+        /// - the body is not drawn, so the radius is stale - the dot the point path left behind,
+        ///   or whatever the minimum-visible clamp last produced at horizon distance. That is
+        ///   the translucent dome over half the sky, and the pointer picking Dawn.
+        /// - the body is in Envelope mode, so the sphere is at TRUE scale and its shader
+        ///   compresses each vertex. The transform then measures a planet in kilometres while
+        ///   the caller is measuring a room in metres. At true scale that put the status card
+        ///   6378 km to the left of the viewer with 76 cm type (G1c `far`, 2026-09-12), and a
+        ///   pointer ray would have hit the planet it is standing on from anywhere at all.
+        ///
+        /// A body you are inside has no "beside it", which is why the answer is zero rather than
+        /// a compressed radius: there is no single room-space radius for a surface whose near
+        /// side is under your feet and whose horizon maps out to hundreds of metres.
+        /// </summary>
+        public float RoomRadius =>
+            IsGeometryDrawn && !PerVertexCompressed ? RenderedRadius : 0f;
+
         /// <summary>Called by the scale renderer once it has chosen a representation.</summary>
         public void SetRepresentation(RepresentationLevel level, double apparentPixels)
         {

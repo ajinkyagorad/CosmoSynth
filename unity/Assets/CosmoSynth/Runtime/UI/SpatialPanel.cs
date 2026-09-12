@@ -69,7 +69,7 @@ namespace CosmoSynth.Runtime
             // Clear the body's drawn radius, not a fixed fraction of the view distance. A gas
             // giant filling the room and a two-pixel moon need very different offsets, and the
             // old rule — 28% of the distance to the camera — knew about neither.
-            float clearance = _target.RenderedRadius + _panel.Size.x * 0.5f +
+            float clearance = _target.RoomRadius + _panel.Size.x * 0.5f +
                               CosmoTheme.Metres(CosmoTheme.SpacePanelPadding, distance);
 
             transform.position = _target.transform.position + right * clearance;

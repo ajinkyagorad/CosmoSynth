@@ -232,8 +232,11 @@ namespace CosmoSynth.Runtime
 
                 float perpendicular = (toBody - direction * along).magnitude;
 
-                // The drawn radius, which is what the user is aiming at — not the physical one.
-                float radius = view.RenderedRadius + along * forgiveness;
+                // The drawn radius, which is what the user is aiming at — not the physical one,
+                // and not the true-scale one a body the eye is inside reports (RoomRadius is
+                // zero there, so the forgiveness cone alone decides, which is the honest answer
+                // for a surface you are standing on).
+                float radius = view.RoomRadius + along * forgiveness;
                 if (perpendicular > radius) continue;
 
                 if (along < bestDistance)
@@ -309,7 +312,7 @@ namespace CosmoSynth.Runtime
             // carries a scale of its own, and the ring then misses the silhouette it is supposed
             // to trace by whatever that scale happens to be.
             float parentScale = _highlight.parent != null ? Mathf.Max(1e-6f, _highlight.parent.lossyScale.x) : 1f;
-            _highlight.localScale = Vector3.one * (shown.RenderedRadius * 2.18f / parentScale);
+            _highlight.localScale = Vector3.one * (shown.RoomRadius * 2.18f / parentScale);
 
             // A gentle pulse, so the highlight reads as an interface element rather than as part
             // of the body. Alpha is the brightness dial the rim shader actually reads.
