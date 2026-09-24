@@ -90,3 +90,11 @@ data-staging/
 # them without the laptop. Third-party licences are unsettled (one dust cube came from a GPL-3.0
 # repository), so they are reference material only and are never committed or shipped.
 refs/
+
+# standard ignores (2026-09-24)
+build/
+MemoryCaptures/
+.gradle/
+.pio/
+*.tmp
+*_BackUpThisFolder_ButDontShipItWithYourGame/

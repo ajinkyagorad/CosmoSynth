@@ -15,4 +15,3 @@
 /home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGAConfigurationCallbacks.h
 /home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGAKeyEventCallbacks.h
 /home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGAMotionEventCallbacks.h
-/home/triton/projects/CosmoSynth/unity/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/FramePacing/UnitySwappyWrapper.h
